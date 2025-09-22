@@ -5,12 +5,12 @@ namespace InventoryManagement.Models
     public class Category
     {
         [Key]
-        public string CategoryID { get; set; }
+        public string CategoryID { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(200)]
-        public string CategoryName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
 
-        public ICollection<Good> Goods { get; set; }
+        public ICollection<Good>? Goods { get; set; }
+        //
     }
 }

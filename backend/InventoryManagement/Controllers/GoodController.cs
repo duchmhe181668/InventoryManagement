@@ -7,11 +7,11 @@ namespace InventoryManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class GoodsController : ControllerBase
+    public class GoodController : ControllerBase
     {
         private readonly AppDbContext _context;
 
-        public GoodsController(AppDbContext context)
+        public GoodController(AppDbContext context)
         {
             _context = context;
         }

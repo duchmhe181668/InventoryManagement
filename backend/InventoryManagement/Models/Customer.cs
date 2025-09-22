@@ -2,20 +2,19 @@
 
 namespace InventoryManagement.Models
 {
-    public class Supplier
+    public class Customer
     {
         [Key]
-        public int SupplierID { get; set; }
+        public int CustomerID { get; set; }
 
         [Required]
         public string Name { get; set; } = string.Empty;
 
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
-        public string? Address { get; set; }
 
-        public ICollection<Good>? Goods { get; set; }
-        public ICollection<Order>? Orders { get; set; }
+        public ICollection<Receipt>? Receipts { get; set; }
+
+        //
     }
 }
-//

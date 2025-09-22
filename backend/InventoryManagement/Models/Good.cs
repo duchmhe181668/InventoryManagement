@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace InventoryManagement.Models
 {
-    [Table("Goods")] // bảng thật trong DB là Goods (theo lỗi bạn báo)
+    
     public class Good
     {
         [Key]
@@ -36,7 +36,7 @@ namespace InventoryManagement.Models
         public int StoreID { get; set; }
 
         // CategoryID của bạn đang là NVARCHAR(200) ở DB -> để string?
-        [MaxLength(200)]
+        
         public string? CategoryID { get; set; }
 
         public int? SupplierID { get; set; }

@@ -9,5 +9,10 @@ namespace InventoryManagement.Models
 
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
+
+        public ICollection<Good>? Goods { get; set; }
+        public ICollection<OrderDetail>? OrderDetails { get; set; } //
+
+
     }
 }
