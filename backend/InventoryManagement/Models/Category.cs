@@ -5,7 +5,7 @@ namespace InventoryManagement.Models
     public class Category
     {
         [Key]
-        public string CategoryID { get; set; } = string.Empty;
+        public int CategoryID { get; set; }
 
         [Required]
         public string CategoryName { get; set; } = string.Empty;

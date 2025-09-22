@@ -48,13 +48,6 @@ namespace InventoryManagement.Data
 
             modelBuilder.Entity<OutboundDetail>()
                 .HasKey(od => new { od.OutboundID, od.GoodID });
-            modelBuilder.Entity<Good>(e =>
-            {
-                e.ToTable("Goods");
-                e.Property(p => p.Quantity).HasColumnType("decimal(18,3)");
-                e.Property(p => p.PriceCost).HasColumnType("decimal(18,2)");
-                e.Property(p => p.PriceSell).HasColumnType("decimal(18,2)");
-            });
 
         }
     }

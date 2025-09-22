@@ -27,7 +27,7 @@ namespace InventoryManagement.Controllers
             public decimal PriceCost { get; set; }
             public decimal PriceSell { get; set; }
             public int StoreID { get; set; }            // BẮT BUỘC
-            public string? CategoryID { get; set; }     // NVARCHAR(200) theo DB hiện tại
+            public int? CategoryID { get; set; }     // NVARCHAR(200) theo DB hiện tại
             public int? SupplierID { get; set; }
         }
 
