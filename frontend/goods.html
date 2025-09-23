@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Goods Admin (theo API của bạn)</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --ok:#16a34a; --warn:#ef4444; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    header{padding:14px 18px;border-bottom:1px solid #1f2937;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    header h1{font-size:18px;margin:0}
+    input,select,button{border:1px solid #334155;background:#0b1220;color:var(--text);border-radius:10px;padding:8px 10px}
+    input::placeholder{color:#64748b}
+    button{cursor:pointer}
+    button.primary{background:#14532d;border-color:#14532d}
+    button.primary:hover{background:#166534}
+    button.ghost{background:transparent}
+    button.danger{background:#7f1d1d;border-color:#7f1d1d}
+    button.danger:hover{background:#991b1b}
+    .container{padding:18px}
+    .card{background:var(--panel);border:1px solid #1f2937;border-radius:14px;padding:14px}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
+    th,td{padding:10px 12px;border-bottom:1px solid #1f2937;text-align:left}
+    th{color:#9ca3af;font-weight:600}
+    td.num{text-align:right}
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+
+    dialog{border:1px solid #1f2937;border-radius:14px;background:var(--panel);color:var(--text);padding:0;max-width:760px;width:96%}
+    dialog::backdrop{background:rgba(0,0,0,.65)}
+    .modal-header{padding:14px 16px;border-bottom:1px solid #1f2937;display:flex;gap:8px;align-items:center}
+    .modal-body{padding:16px}
+    .modal-actions{padding:14px 16px;border-top:1px solid #1f2937;display:flex;gap:8px;justify-content:flex-end}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    .col-12{grid-column:span 12}
+    @media (max-width:900px){.col-6,.col-4{grid-column:span 12}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Goods Admin</h1>
+    <input id="txtApiBase" style="min-width:300px" placeholder="http://localhost:5000/api" />
+    <button id="btnSaveApi" class="ghost">Lưu API</button>
+    <span class="muted" id="apiHint"></span>
+    <div class="right"><button id="btnCreate" class="primary">+ Thêm</button></div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <input id="txtSearch" placeholder="Tìm theo Name (search)" />
+        <input id="txtCategory" type="number" placeholder="CategoryID" style="width:130px" />
+        <input id="txtSupplier" type="number" placeholder="SupplierID" style="width:130px" />
+        <select id="selSort">
+          <option value="-dateIn" selected>-dateIn (mới nhất)</option>
+          <option value="dateIn">dateIn</option>
+          <option value="name">name</option>
+          <option value="-name">-name</option>
+          <option value="priceSell">priceSell</option>
+          <option value="-priceSell">-priceSell</option>
+          <option value="quantity">quantity</option>
+          <option value="-quantity">-quantity</option>
+        </select>
+        <select id="selPageSize">
+          <option>10</option><option>20</option><option>50</option><option>100</option>
+        </select>
+        <button id="btnSearch" class="ghost">Lọc</button>
+        <span class="muted right" id="lblTotal"></span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px">GoodID</th>
+            <th>Name</th>
+            <th>Unit</th>
+            <th>Category</th>
+            <th>Supplier</th>
+            <th>DateIn</th>
+            <th class="num">Qty</th>
+            <th class="num">PriceSell</th>
+            <th style="width:180px"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button id="btnPrev" class="ghost">◀ Prev</button>
+        <span class="muted" id="lblPage"></span>
+        <button id="btnNext" class="ghost">Next ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="dlg">
+    <form method="dialog" id="goodForm">
+      <div class="modal-header">
+        <strong id="dlgTitle">Thêm Good</strong>
+        <span class="muted right" id="dlgErr"></span>
+      </div>
+      <div class="modal-body">
+        <div class="grid">
+          <div class="col-6"><label>Name<br><input id="f_Name" required></label></div>
+          <div class="col-6"><label>Unit<br><input id="f_Unit" required></label></div>
+          <div class="col-6"><label>DateIn<br><input id="f_DateIn" type="date"></label></div>
+          <div class="col-6"><label>ImageURL<br><input id="f_ImageURL"></label></div>
+          <div class="col-4"><label>Quantity<br><input id="f_Quantity" type="number" step="0.01" min="0" required></label></div>
+          <div class="col-4"><label>PriceCost<br><input id="f_PriceCost" type="number" step="0.01" min="0" required></label></div>
+          <div class="col-4"><label>PriceSell<br><input id="f_PriceSell" type="number" step="0.01" min="0" required></label></div>
+          <div class="col-4"><label>StoreID<br><input id="f_StoreID" type="number" min="1" required></label></div>
+          <div class="col-4"><label>CategoryID<br><input id="f_CategoryID" type="number" min="1"></label></div>
+          <div class="col-4"><label>SupplierID<br><input id="f_SupplierID" type="number" min="1"></label></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancel">Hủy</button>
+        <button class="primary" id="btnSave">Lưu</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    // ====== CONFIG: theo Program.cs -> MapControllers() => /api/goods ======
+    const txtApiBase = document.getElementById('txtApiBase');
+    const saved = localStorage.getItem('api_base_goods');
+    txtApiBase.value = saved || 'http://localhost:5000/api'; // đổi nếu server của bạn dùng port khác
+    const apiHint = document.getElementById('apiHint');
+    document.getElementById('btnSaveApi').onclick = () => { localStorage.setItem('api_base_goods', txtApiBase.value.trim()); apiHint.textContent = 'Đã lưu!'; setTimeout(()=>apiHint.textContent='',1500); };
+
+    // ====== STATE ======
+    let state = { page:1, pageSize:10, search:'', categoryId:'', supplierId:'', sort:'-dateIn', total:0, totalPages:1, items:[], editingId:null };
+
+    // ====== ELs ======
+    const tbody = document.getElementById('tbody');
+    const txtSearch = document.getElementById('txtSearch');
+    const txtCategory = document.getElementById('txtCategory');
+    const txtSupplier = document.getElementById('txtSupplier');
+    const selSort = document.getElementById('selSort');
+    const selPageSize = document.getElementById('selPageSize');
+    const lblTotal = document.getElementById('lblTotal');
+    const lblPage = document.getElementById('lblPage');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+
+    // form
+    const dlg = document.getElementById('dlg');
+    const dlgTitle = document.getElementById('dlgTitle');
+    const dlgErr = document.getElementById('dlgErr');
+    const f = (id)=>document.getElementById(id);
+
+    // ====== API helpers ======
+    const base = ()=> txtApiBase.value.replace(/\/$/,'');
+    async function apiList(){
+      const p = new URLSearchParams();
+      if(state.search) p.set('search', state.search);
+      if(state.categoryId) p.set('categoryId', state.categoryId);
+      if(state.supplierId) p.set('supplierId', state.supplierId);
+      if(state.sort) p.set('sort', state.sort);
+      p.set('page', state.page);
+      p.set('pageSize', state.pageSize);
+      const res = await fetch(`${base()}/goods?${p}`);
+      if(!res.ok) throw new Error(await res.text());
+      return res.json(); // PagedResult<GoodListItemDto>
+    }
+    async function apiGet(id){
+      const res = await fetch(`${base()}/goods/${id}`);
+      if(!res.ok) throw new Error(await res.text());
+      return res.json(); // Good
+    }
+    async function apiCreate(payload){
+      const res = await fetch(`${base()}/goods`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      if(!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+    async function apiUpdate(id, payload){
+      const res = await fetch(`${base()}/goods/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      if(!res.ok) throw new Error(await res.text());
+      return true;
+    }
+    async function apiDelete(id){
+      const res = await fetch(`${base()}/goods/${id}`, {method:'DELETE'});
+      if(!res.ok) throw new Error(await res.text());
+      return true;
+    }
+
+    // ====== UI ======
+    function fmtDate(d){ if(!d) return ''; const dt = new Date(d); if(isNaN(dt)) return d; return dt.toISOString().slice(0,10); }
+    function fmtNum(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
+
+    function render(){
+      lblTotal.textContent = `${state.total} items`;
+      lblPage.textContent = `Trang ${state.page}/${state.totalPages}`;
+      btnPrev.disabled = state.page<=1; btnNext.disabled = state.page>=state.totalPages;
+
+      tbody.innerHTML = '';
+      if(!state.items || state.items.length===0){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="9" class="muted">Không có dữ liệu — thử bấm \"+ Thêm\" để tạo item mới.</td>`;
+        tbody.appendChild(tr);
+      } else {
+        for(const g of state.items){
+          const id = g.GoodID ?? g.goodID ?? g.goodId ?? g.id;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${id ?? ''}</td>
+            <td>${(g.Name ?? g.name) ?? ''}</td>
+            <td>${(g.Unit ?? g.unit) ?? ''}</td>
+            <td>${(g.CategoryName ?? g.categoryName) ?? ''}</td>
+            <td>${(g.SupplierName ?? g.supplierName) ?? ''}</td>
+            <td>${fmtDate(g.DateIn ?? g.dateIn)}</td>
+            <td class="num">${fmtNum(g.Quantity ?? g.quantity)}</td>
+            <td class="num">${fmtNum(g.PriceSell ?? g.priceSell)}</td>
+            <td>
+              <button class="ghost" data-act="edit" data-id="${id}">Sửa</button>
+              <button class="danger" data-act="del" data-id="${id}">Xóa</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    async function reload(){
+      try{
+        state.pageSize = Number(selPageSize.value);
+        const data = await apiList();
+        console.log('[Goods] response:', data);
+        state.items = (data.Items || data.items) || [];
+        state.total = (data.Total ?? data.total) ?? 0;
+        state.page = (data.Page ?? data.page) ?? state.page;
+        state.totalPages = (data.TotalPages ?? data.totalPages) ?? Math.max(1, Math.ceil(state.total/state.pageSize));
+        render();
+      }catch(e){ alert(e.message||e); }
+    }
+
+    // ====== Events ======
+    document.getElementById('btnSearch').onclick = ()=>{ state.search=txtSearch.value.trim(); state.categoryId=txtCategory.value; state.supplierId=txtSupplier.value; state.sort=selSort.value; state.page=1; reload(); };
+    selPageSize.onchange = ()=>{ state.page=1; reload(); };
+    btnPrev.onclick = ()=>{ if(state.page>1){ state.page--; reload(); }};
+    btnNext.onclick = ()=>{ state.page++; reload(); };
+
+    document.getElementById('btnCreate').onclick = ()=> openForm();
+    document.getElementById('btnCancel').onclick = ()=> dlg.close();
+
+    tbody.addEventListener('click', async (e)=>{
+      const t = e.target.closest('button'); if(!t) return;
+      const id = Number(t.dataset.id);
+      if(t.dataset.act==='edit'){ const full = await apiGet(id); openForm(full); }
+      if(t.dataset.act==='del'){
+        if(confirm('Xóa Good #' + id + '?')){ try{ await apiDelete(id); reload(); } catch(err){ alert(err.message||err); } }
+      }
+    });
+
+    function openForm(obj){
+      state.editingId = obj?.GoodID ?? null;
+      dlgTitle.textContent = state.editingId ? ('Sửa Good #' + state.editingId) : 'Thêm Good';
+      dlgErr.textContent = '';
+      // gán giá trị
+      f('f_Name').value = obj?.Name ?? '';
+      f('f_Unit').value = obj?.Unit ?? '';
+      f('f_DateIn').value = obj?.DateIn ? fmtDate(obj.DateIn) : '';
+      f('f_ImageURL').value = obj?.ImageURL ?? '';
+      f('f_Quantity').value = obj?.Quantity ?? '';
+      f('f_PriceCost').value = obj?.PriceCost ?? '';
+      f('f_PriceSell').value = obj?.PriceSell ?? '';
+      f('f_StoreID').value = obj?.StoreID ?? '';
+      f('f_CategoryID').value = obj?.CategoryID ?? '';
+      f('f_SupplierID').value = obj?.SupplierID ?? '';
+      dlg.showModal();
+    }
+
+    document.getElementById('btnSave').onclick = async (ev)=>{
+      ev.preventDefault();
+      const payload = {
+        Name: f('f_Name').value.trim(),
+        Unit: f('f_Unit').value.trim(),
+        DateIn: f('f_DateIn').value ? new Date(f('f_DateIn').value).toISOString() : null,
+        ImageURL: f('f_ImageURL').value.trim() || null,
+        Quantity: Number(f('f_Quantity').value||0),
+        PriceCost: Number(f('f_PriceCost').value||0),
+        PriceSell: Number(f('f_PriceSell').value||0),
+        StoreID: Number(f('f_StoreID').value||0),
+        CategoryID: f('f_CategoryID').value ? Number(f('f_CategoryID').value) : null,
+        SupplierID: f('f_SupplierID').value ? Number(f('f_SupplierID').value) : null
+      };
+      try{
+        if(state.editingId){ await apiUpdate(state.editingId, payload); }
+        else { await apiCreate(payload); }
+        dlg.close(); reload();
+      }catch(err){ dlgErr.textContent = err.message || err; }
+    };
+
+    // kick
+    reload();
+  </script>
+</body>
+</html>
