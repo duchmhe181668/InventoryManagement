@@ -185,7 +185,6 @@ namespace InventoryManagement.Controllers
         {
             if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name is required.");
             if (string.IsNullOrWhiteSpace(dto.Unit)) return BadRequest("Unit is required.");
-            if (dto.StoreID <= 0) return BadRequest("StoreID is required and must be > 0.");
 
             // Validate FK tồn tại để tránh DbUpdateException
             if (!await _context.Stores.AnyAsync(s => s.StoreID == dto.StoreID, ct))
