@@ -24,17 +24,42 @@ namespace InventoryManagement.Migrations
 
             modelBuilder.Entity("InventoryManagement.Models.Category", b =>
                 {
-                    b.Property<string>("CategoryID")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("CategoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryID"));
 
                     b.Property<string>("CategoryName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("CategoryID");
 
-                    b.ToTable("Category");
+                    b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Customer", b =>
+                {
+                    b.Property<int>("CustomerID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomerID"));
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CustomerID");
+
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("InventoryManagement.Models.Good", b =>
@@ -45,8 +70,8 @@ namespace InventoryManagement.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("GoodID"));
 
-                    b.Property<string>("CategoryID")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int?>("CategoryID")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DateIn")
                         .HasColumnType("datetime2");
@@ -56,8 +81,7 @@ namespace InventoryManagement.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("PriceCost")
                         .HasColumnType("decimal(18,2)");
@@ -76,8 +100,7 @@ namespace InventoryManagement.Migrations
 
                     b.Property<string>("Unit")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("GoodID");
 
@@ -88,6 +111,189 @@ namespace InventoryManagement.Migrations
                     b.HasIndex("SupplierID");
 
                     b.ToTable("Goods");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Order", b =>
+                {
+                    b.Property<int>("OrderID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ManagerID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SupplierID")
+                        .HasColumnType("int");
+
+                    b.HasKey("OrderID");
+
+                    b.HasIndex("ManagerID");
+
+                    b.HasIndex("SupplierID");
+
+                    b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.OrderDetail", b =>
+                {
+                    b.Property<int>("OrderID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GoodID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("StoreID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("OrderID", "GoodID");
+
+                    b.HasIndex("GoodID");
+
+                    b.HasIndex("StoreID");
+
+                    b.ToTable("OrderDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Outbound", b =>
+                {
+                    b.Property<int>("OutboundID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OutboundID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StaffID")
+                        .HasColumnType("int");
+
+                    b.HasKey("OutboundID");
+
+                    b.HasIndex("StaffID");
+
+                    b.ToTable("Outbounds");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.OutboundDetail", b =>
+                {
+                    b.Property<int>("OutboundID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GoodID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("OutboundID", "GoodID");
+
+                    b.HasIndex("GoodID");
+
+                    b.ToTable("OutboundDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Receipt", b =>
+                {
+                    b.Property<int>("ReceiptID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReceiptID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CustomerID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Discount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("StaffID")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReceiptID");
+
+                    b.HasIndex("CustomerID");
+
+                    b.HasIndex("StaffID");
+
+                    b.ToTable("Receipts");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.ReceiptDetail", b =>
+                {
+                    b.Property<int>("ReceiptID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GoodID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ReceiptID", "GoodID");
+
+                    b.HasIndex("GoodID");
+
+                    b.ToTable("ReceiptDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Report", b =>
+                {
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Revenue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Date");
+
+                    b.ToTable("Reports");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Role", b =>
+                {
+                    b.Property<int>("RoleID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleID"));
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("RoleID");
+
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("InventoryManagement.Models.Store", b =>
@@ -104,9 +310,15 @@ namespace InventoryManagement.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
                     b.HasKey("StoreID");
 
-                    b.ToTable("Store");
+                    b.HasIndex("UserID")
+                        .IsUnique();
+
+                    b.ToTable("Stores");
                 });
 
             modelBuilder.Entity("InventoryManagement.Models.Supplier", b =>
@@ -125,15 +337,50 @@ namespace InventoryManagement.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("SupplierID");
 
-                    b.ToTable("Supplier");
+                    b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.User", b =>
+                {
+                    b.Property<int>("UserID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserID"));
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RoleID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("UserID");
+
+                    b.HasIndex("RoleID");
+
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("InventoryManagement.Models.Good", b =>
@@ -143,13 +390,13 @@ namespace InventoryManagement.Migrations
                         .HasForeignKey("CategoryID");
 
                     b.HasOne("InventoryManagement.Models.Store", "Store")
-                        .WithMany()
+                        .WithMany("Goods")
                         .HasForeignKey("StoreID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("InventoryManagement.Models.Supplier", "Supplier")
-                        .WithMany()
+                        .WithMany("Goods")
                         .HasForeignKey("SupplierID");
 
                     b.Navigation("Category");
@@ -159,9 +406,187 @@ namespace InventoryManagement.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("InventoryManagement.Models.Order", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.User", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InventoryManagement.Models.Supplier", "Supplier")
+                        .WithMany("Orders")
+                        .HasForeignKey("SupplierID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Manager");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.OrderDetail", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.Good", "Good")
+                        .WithMany()
+                        .HasForeignKey("GoodID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InventoryManagement.Models.Order", "Order")
+                        .WithMany("OrderDetails")
+                        .HasForeignKey("OrderID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InventoryManagement.Models.Store", "Store")
+                        .WithMany("OrderDetails")
+                        .HasForeignKey("StoreID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Good");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Outbound", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.User", "Staff")
+                        .WithMany()
+                        .HasForeignKey("StaffID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.OutboundDetail", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.Good", "Good")
+                        .WithMany()
+                        .HasForeignKey("GoodID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InventoryManagement.Models.Outbound", "Outbound")
+                        .WithMany("OutboundDetails")
+                        .HasForeignKey("OutboundID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Good");
+
+                    b.Navigation("Outbound");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Receipt", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.Customer", "Customer")
+                        .WithMany("Receipts")
+                        .HasForeignKey("CustomerID");
+
+                    b.HasOne("InventoryManagement.Models.User", "Staff")
+                        .WithMany()
+                        .HasForeignKey("StaffID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.ReceiptDetail", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.Good", "Good")
+                        .WithMany()
+                        .HasForeignKey("GoodID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InventoryManagement.Models.Receipt", "Receipt")
+                        .WithMany("ReceiptDetails")
+                        .HasForeignKey("ReceiptID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Good");
+
+                    b.Navigation("Receipt");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Store", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.User", "User")
+                        .WithOne("Store")
+                        .HasForeignKey("InventoryManagement.Models.Store", "UserID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.User", b =>
+                {
+                    b.HasOne("InventoryManagement.Models.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("InventoryManagement.Models.Category", b =>
                 {
                     b.Navigation("Goods");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Customer", b =>
+                {
+                    b.Navigation("Receipts");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Order", b =>
+                {
+                    b.Navigation("OrderDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Outbound", b =>
+                {
+                    b.Navigation("OutboundDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Receipt", b =>
+                {
+                    b.Navigation("ReceiptDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Role", b =>
+                {
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Store", b =>
+                {
+                    b.Navigation("Goods");
+
+                    b.Navigation("OrderDetails");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.Supplier", b =>
+                {
+                    b.Navigation("Goods");
+
+                    b.Navigation("Orders");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.User", b =>
+                {
+                    b.Navigation("Store");
                 });
 #pragma warning restore 612, 618
         }

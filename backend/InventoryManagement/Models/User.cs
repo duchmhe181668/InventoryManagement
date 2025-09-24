@@ -23,6 +23,7 @@ namespace InventoryManagement.Models
         [ForeignKey("Role")]
         public int RoleID { get; set; }
         public Role? Role { get; set; }
+        public Store? Store { get; set; }
     }
 }
 //
