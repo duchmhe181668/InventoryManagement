@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace InventoryManagement.Models
 {
-    public class ReceiptDetail
+    public class SaleLine
     {
-        [Key] public int ReceiptDetailID { get; set; }
+        [Key] public int SaleLineID { get; set; }
 
-        public int ReceiptID { get; set; }
-        public Receipt? Receipt { get; set; }
+        public int SaleID { get; set; }
+        public Sale? Sale { get; set; }
 
         public int GoodID { get; set; }
         public Good? Good { get; set; }
@@ -17,7 +17,7 @@ namespace InventoryManagement.Models
         public decimal Quantity { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal UnitCost { get; set; }
+        public decimal UnitPrice { get; set; }
 
         public int? BatchID { get; set; }
         public Batch? Batch { get; set; }

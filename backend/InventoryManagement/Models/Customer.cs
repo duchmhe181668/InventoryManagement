@@ -4,17 +4,12 @@ namespace InventoryManagement.Models
 {
     public class Customer
     {
-        [Key]
-        public int CustomerID { get; set; }
+        [Key] public int CustomerID { get; set; }
 
-        [Required]
+        [Required, MaxLength(200)]
         public string Name { get; set; } = string.Empty;
 
-        public string? PhoneNumber { get; set; }
-        public string? Email { get; set; }
-
-        public ICollection<Receipt>? Receipts { get; set; }
-
-        //
+        [MaxLength(50)] public string? PhoneNumber { get; set; }
+        [MaxLength(150)] public string? Email { get; set; }
     }
 }

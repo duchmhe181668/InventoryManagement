@@ -8,22 +8,26 @@ namespace InventoryManagement.Models
         [Key]
         public int UserID { get; set; }
 
-        [Required]
+        [Required, MaxLength(100)]
         public string Username { get; set; } = string.Empty;
 
         [Required]
-        public string Password { get; set; } = string.Empty;
+        public byte[] PasswordHash { get; set; } = Array.Empty<byte>();
 
-        [Required]
+        [Required, MaxLength(150)]
         public string Name { get; set; } = string.Empty;
 
+        [MaxLength(150)]
         public string? Email { get; set; }
+
+        [MaxLength(50)]
         public string? PhoneNumber { get; set; }
 
         [ForeignKey("Role")]
         public int RoleID { get; set; }
         public Role? Role { get; set; }
-        public Store? Store { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }
-//

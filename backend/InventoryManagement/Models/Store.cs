@@ -1,23 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace InventoryManagement.Models
 {
     public class Store
     {
-        [Key]
-        public int StoreID { get; set; }
+        [Key] public int StoreID { get; set; }
 
-        public string? PhoneNumber { get; set; }
-        public string? Address { get; set; }
-        public int UserID { get; set; }
+        public int LocationID { get; set; }
+        public Location? Location { get; set; }
 
-        [ForeignKey("UserID")]
-        public User? User { get; set; }
-            
-        public ICollection<Good>? Goods { get; set; }
-        public ICollection<OrderDetail>? OrderDetails { get; set; } //
+        [MaxLength(50)] public string? PhoneNumber { get; set; }
+        [MaxLength(300)] public string? Address { get; set; }
 
-
+        public ICollection<StorePrice>? StorePrices { get; set; }
     }
 }

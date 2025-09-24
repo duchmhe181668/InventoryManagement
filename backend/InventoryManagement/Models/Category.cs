@@ -7,10 +7,9 @@ namespace InventoryManagement.Models
         [Key]
         public int CategoryID { get; set; }
 
-        [Required]
+        [Required, MaxLength(120)]
         public string CategoryName { get; set; } = string.Empty;
 
         public ICollection<Good>? Goods { get; set; }
-        //
     }
 }
