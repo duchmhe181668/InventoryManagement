@@ -32,5 +32,8 @@ namespace InventoryManagement.Models
         [ForeignKey("Supplier")]
         public int? SupplierID { get; set; }
         public Supplier? Supplier { get; set; }
+        public ICollection<OutboundDetail> OutboundDetails { get; set; }
+        public ICollection<OrderDetail> OrderDetails { get; internal set; }
+        public ICollection<ReceiptDetail> ReceiptDetails { get; internal set; }
     }
 }
