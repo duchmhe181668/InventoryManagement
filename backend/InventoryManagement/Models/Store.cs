@@ -13,7 +13,7 @@ namespace InventoryManagement.Models
         public int UserID { get; set; }
 
         [ForeignKey("UserID")]
-        public User User { get; set; }
+        public User? User { get; set; }
             
         public ICollection<Good>? Goods { get; set; }
         public ICollection<OrderDetail>? OrderDetails { get; set; } //
