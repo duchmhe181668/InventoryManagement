@@ -260,6 +260,19 @@ namespace InventoryManagement.Data
                 e.HasNoKey();
                 e.ToView("v_StockByGood");
             });
+
+            model.Entity<Stock>()
+                .HasOne(s => s.Good)
+                .WithMany(g => g.Stocks)
+                .HasForeignKey(s => s.GoodID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            model.Entity<Stock>()
+                .HasOne(s => s.Batch)
+                .WithMany()
+                .HasForeignKey(s => s.BatchID)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

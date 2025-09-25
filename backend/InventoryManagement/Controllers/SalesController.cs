@@ -17,7 +17,6 @@ namespace InventoryManagement.Controllers
             public int GoodID { get; set; }
             public string Name { get; set; } = "";
             public string Unit { get; set; } = "";
-            public DateTime? DateIn { get; set; }
             public decimal Quantity { get; set; }
             public decimal PriceSell { get; set; }
             public string? CategoryName { get; set; }
