@@ -1,6 +1,5 @@
 ﻿using InventoryManagement.Data;
 using InventoryManagement.Models;
-using InventoryManagement.Models.Views; // StockByGoodView
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,10 +24,10 @@ namespace InventoryManagement.Controllers
             public decimal PriceCost { get; set; }
             public decimal PriceSell { get; set; }
             public string? CategoryName { get; set; }
-            public decimal Available { get; set; }      // tổng tồn khả dụng (sum(OnHand - Reserved))
-            public decimal OnHand { get; set; }         // tổng OnHand
-            public decimal Reserved { get; set; }       // tổng Reserved
-            public decimal InTransit { get; set; }      // tổng InTransit
+            public decimal Available { get; set; }      // sum(OnHand - Reserved)
+            public decimal OnHand { get; set; }
+            public decimal Reserved { get; set; }
+            public decimal InTransit { get; set; }
         }
 
         public sealed class PagedResult<T>
@@ -71,12 +70,10 @@ namespace InventoryManagement.Controllers
             public decimal PriceCost { get; set; }
             public decimal PriceSell { get; set; }
             public int? CategoryID { get; set; }
-            // Nếu bạn muốn dùng concurrency, mở khóa thuộc tính dưới và map RowVersion:
-            // public byte[]? RowVersion { get; set; }
+            // public byte[]? RowVersion { get; set; } // nếu dùng concurrency
         }
 
         // ===================== GET LIST (paged + search + filter + sort) =====================
-        // Có thể lọc theo categoryId và locationId (để tính tồn theo 1 địa điểm).
         // sort: name, -name, priceSell, -priceSell, available, -available
         [HttpGet]
         public async Task<ActionResult<PagedResult<GoodListItemDto>>> GetGoods(
@@ -99,39 +96,16 @@ namespace InventoryManagement.Controllers
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var s = search.Trim();
-                q = q.Where(g => g.Name.Contains(s) || g.SKU.Contains(s) || (g.Barcode != null && g.Barcode.Contains(s)));
+                q = q.Where(g =>
+                    g.Name.Contains(s) ||
+                    g.SKU.Contains(s) ||
+                    (g.Barcode != null && g.Barcode.Contains(s)));
             }
 
             if (categoryId.HasValue)
                 q = q.Where(g => g.CategoryID == categoryId.Value);
 
-            // Chuẩn bị nguồn tồn (sử dụng view v_StockByGood nếu có, nếu không fallback từ Stocks)
-            var stockAggQuery =
-                locationId is int locId
-                    ? _context.StockByGood    // view: đã SUM theo GoodID & LocationID
-                        .Where(v => v.LocationID == locId)
-                        .GroupBy(v => v.GoodID)
-                        .Select(g => new
-                        {
-                            GoodID = g.Key,
-                            OnHand = g.Sum(x => x.OnHand),
-                            Reserved = g.Sum(x => x.Reserved),
-                            InTransit = g.Sum(x => x.InTransit),
-                            Available = g.Sum(x => x.Available)
-                        })
-                    : _context.StockByGood
-                        .GroupBy(v => v.GoodID)
-                        .Select(g => new
-                        {
-                            GoodID = g.Key,
-                            OnHand = g.Sum(x => x.OnHand),
-                            Reserved = g.Sum(x => x.Reserved),
-                            InTransit = g.Sum(x => x.InTransit),
-                            Available = g.Sum(x => x.Available)
-                        });
-
-            // Nếu bạn CHƯA map view v_StockByGood, uncomment fallback dưới và comment block trên:
-            /*
+            // ---- Stock aggregate bằng LINQ thuần (không dùng view) ----
             var stockAggQuery =
                 locationId is int locId
                     ? _context.Stocks.Where(s => s.LocationID == locId)
@@ -154,7 +128,6 @@ namespace InventoryManagement.Controllers
                             InTransit = g.Sum(x => x.InTransit),
                             Available = g.Sum(x => x.OnHand - x.Reserved)
                         });
-            */
 
             // Join goods với tổng tồn
             var qJoined =
@@ -166,10 +139,10 @@ namespace InventoryManagement.Controllers
                     g,
                     Totals = new
                     {
-                        OnHand = (decimal?)(st != null ? st.OnHand : 0) ?? 0,
-                        Reserved = (decimal?)(st != null ? st.Reserved : 0) ?? 0,
-                        InTransit = (decimal?)(st != null ? st.InTransit : 0) ?? 0,
-                        Available = (decimal?)(st != null ? st.Available : 0) ?? 0
+                        OnHand = st != null ? st.OnHand : 0m,
+                        Reserved = st != null ? st.Reserved : 0m,
+                        InTransit = st != null ? st.InTransit : 0m,
+                        Available = st != null ? st.Available : 0m
                     }
                 };
 
@@ -214,7 +187,10 @@ namespace InventoryManagement.Controllers
 
         // ===================== GET BY ID =====================
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<object>> GetGood(int id, [FromQuery] int? locationId = null, CancellationToken ct = default)
+        public async Task<ActionResult<object>> GetGood(
+            int id,
+            [FromQuery] int? locationId = null,
+            CancellationToken ct = default)
         {
             var g = await _context.Goods
                 .AsNoTracking()
@@ -223,46 +199,25 @@ namespace InventoryManagement.Controllers
 
             if (g == null) return NotFound();
 
-            // Tổng tồn cho 1 hàng hóa (có thể theo location)
+            // Tổng tồn cho 1 hàng hóa (LINQ từ Stocks)
             var stockAgg =
                 locationId is int locId
-                    ? await _context.StockByGood
-                        .Where(v => v.GoodID == id && v.LocationID == locId)
-                        .GroupBy(v => v.GoodID)
-                        .Select(gr => new
+                    ? await _context.Stocks.Where(s => s.GoodID == id && s.LocationID == locId)
+                        .GroupBy(s => 1).Select(gr => new
                         {
                             OnHand = gr.Sum(x => x.OnHand),
                             Reserved = gr.Sum(x => x.Reserved),
                             InTransit = gr.Sum(x => x.InTransit),
-                            Available = gr.Sum(x => x.Available)
+                            Available = gr.Sum(x => x.OnHand - x.Reserved)
                         }).FirstOrDefaultAsync(ct)
-                    : await _context.StockByGood
-                        .Where(v => v.GoodID == id)
-                        .GroupBy(v => v.GoodID)
-                        .Select(gr => new
+                    : await _context.Stocks.Where(s => s.GoodID == id)
+                        .GroupBy(s => 1).Select(gr => new
                         {
                             OnHand = gr.Sum(x => x.OnHand),
                             Reserved = gr.Sum(x => x.Reserved),
                             InTransit = gr.Sum(x => x.InTransit),
-                            Available = gr.Sum(x => x.Available)
+                            Available = gr.Sum(x => x.OnHand - x.Reserved)
                         }).FirstOrDefaultAsync(ct);
-
-            // Fallback nếu chưa map view:
-            // var stockAgg = locationId is int locId
-            //     ? await _context.Stocks.Where(s => s.GoodID == id && s.LocationID == locId)
-            //         .GroupBy(s => 1).Select(gr => new {
-            //             OnHand = gr.Sum(x => x.OnHand),
-            //             Reserved = gr.Sum(x => x.Reserved),
-            //             InTransit = gr.Sum(x => x.InTransit),
-            //             Available = gr.Sum(x => x.OnHand - x.Reserved)
-            //         }).FirstOrDefaultAsync(ct)
-            //     : await _context.Stocks.Where(s => s.GoodID == id)
-            //         .GroupBy(s => 1).Select(gr => new {
-            //             OnHand = gr.Sum(x => x.OnHand),
-            //             Reserved = gr.Sum(x => x.Reserved),
-            //             InTransit = gr.Sum(x => x.InTransit),
-            //             Available = gr.Sum(x => x.OnHand - x.Reserved)
-            //         }).FirstOrDefaultAsync(ct);
 
             return Ok(new
             {
@@ -288,12 +243,10 @@ namespace InventoryManagement.Controllers
             if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name is required.");
             if (string.IsNullOrWhiteSpace(dto.Unit)) return BadRequest("Unit is required.");
 
-            // Validate FK
             if (dto.CategoryID is int catId &&
                 !await _context.Categories.AnyAsync(c => c.CategoryID == catId, ct))
                 return BadRequest("CategoryID not found.");
 
-            // Check unique
             if (await _context.Goods.AnyAsync(g => g.SKU == dto.SKU, ct))
                 return Conflict("SKU already exists.");
 
@@ -325,12 +278,10 @@ namespace InventoryManagement.Controllers
             var entity = await _context.Goods.FirstOrDefaultAsync(g => g.GoodID == id, ct);
             if (entity == null) return NotFound();
 
-            // Validate FK
             if (dto.CategoryID is int catId &&
                 !await _context.Categories.AnyAsync(c => c.CategoryID == catId, ct))
                 return BadRequest("CategoryID not found.");
 
-            // Unique checks (exclude current)
             if (await _context.Goods.AnyAsync(g => g.GoodID != id && g.SKU == dto.SKU, ct))
                 return Conflict("SKU already exists.");
 
@@ -347,7 +298,6 @@ namespace InventoryManagement.Controllers
             entity.PriceSell = dto.PriceSell;
             entity.CategoryID = dto.CategoryID;
 
-            // Nếu dùng concurrency RowVersion:
             // if (dto.RowVersion is not null)
             //     _context.Entry(entity).Property("RowVersion").OriginalValue = dto.RowVersion;
 
@@ -375,9 +325,7 @@ namespace InventoryManagement.Controllers
             [FromQuery] int? locationId = null,
             CancellationToken ct = default)
         {
-            // Lấy tồn chi tiết theo location/batch cho GoodID
             var q = _context.Stocks.AsNoTracking().Where(s => s.GoodID == id);
-
             if (locationId.HasValue) q = q.Where(s => s.LocationID == locationId.Value);
 
             var data = await q
