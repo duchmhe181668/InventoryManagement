@@ -43,7 +43,7 @@
 <body>
   <header>
     <h1>Goods Admin</h1>
-    <input id="txtApiBase" style="min-width:300px" placeholder="http://localhost:5000/api" />
+    <input id="txtApiBase" style="min-width:300px" placeholder="http://localhost:7225/api" />
     <button id="btnSaveApi" class="ghost">Lưu API</button>
     <span class="muted" id="apiHint"></span>
     <div class="right"><button id="btnCreate" class="primary">+ Thêm</button></div>
@@ -128,7 +128,7 @@
     // ====== CONFIG: theo Program.cs -> MapControllers() => /api/goods ======
     const txtApiBase = document.getElementById('txtApiBase');
     const saved = localStorage.getItem('api_base_goods');
-    txtApiBase.value = saved || 'http://localhost:5000/api'; // đổi nếu server của bạn dùng port khác
+    txtApiBase.value = saved || 'http://localhost:7225/api'; // đổi nếu server của bạn dùng port khác
     const apiHint = document.getElementById('apiHint');
     document.getElementById('btnSaveApi').onclick = () => { localStorage.setItem('api_base_goods', txtApiBase.value.trim()); apiHint.textContent = 'Đã lưu!'; setTimeout(()=>apiHint.textContent='',1500); };
 
