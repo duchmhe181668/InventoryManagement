@@ -73,13 +73,25 @@ namespace InventoryManagement.Controllers
             var token = _jwt.CreateToken(user.Username, user.Username, roles);
             var exp = _jwt.GetExpiry();
             var roleName = user.Role?.RoleName;
+
+            //Lấy SupplierID dựa trên Email của User
+            int? supplierId = null;
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                var supplier = await _db.Suppliers
+                    .FirstOrDefaultAsync(s => s.Email == user.Email);
+                supplierId = supplier?.SupplierID;
+            }
+            //--------------Trung------------------------
+
             return Ok(new LoginResponse
             {
                 AccessToken = token,
                 TokenType = "Bearer",
                 ExpiresInSeconds = (long)(exp - DateTimeOffset.UtcNow).TotalSeconds,
                 Username = user.Username,
-                Role = roleName
+                Role = roleName,
+                SupplierId = supplierId, //trung
             });
         }
 
@@ -96,5 +108,7 @@ namespace InventoryManagement.Controllers
                 Claims = User.Claims.Select(c => new { c.Type, c.Value })
             });
         }
+
+
     }
 }
