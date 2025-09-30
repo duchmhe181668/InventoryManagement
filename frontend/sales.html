@@ -45,12 +45,6 @@
 
         <!-- Right icons -->
         <div class="d-flex align-items-center">
-          <!-- <a class="nav-link text-white me-3" href="#"><i
-              class="fas fa-sync-alt"></i></a>
-          <a class="nav-link text-white me-3" href="#"><i
-              class="fas fa-undo"></i></a>
-          <a class="nav-link text-white me-3" href="#"><i
-              class="fas fa-qrcode"></i></a> -->
           <div class="dropdown">
             <button class="btn btn-outline-light dropdown-toggle"
               type="button" id="userDropdown"
@@ -59,10 +53,8 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end"
               aria-labelledby="userDropdown">
-              <li><a class="dropdown-item" href="#">Tài
-                  khoản</a></li>
-              <li><a class="dropdown-item" href="#">Đăng
-                  xuất</a></li>
+              <li><a class="dropdown-item" href="#">Tài khoản</a></li>
+              <li><a class="dropdown-item" href="#">Đăng xuất</a></li>
             </ul>
           </div>
         </div>
@@ -107,8 +99,7 @@
           </div>
           <hr />
           <div class="payment-methods text-center">
-            <p class="text-muted">Bạn chưa có tài khoản ngân
-              hàng</p>
+            <p class="text-muted">Bạn chưa có tài khoản ngân hàng</p>
             <a href="#" class="add-customer-btn"><i
                 class="fas fa-plus"></i> Thêm tài khoản</a>
           </div>
@@ -119,19 +110,12 @@
       </div>
     </div>
 
-    <div class="bottom-bar">
-      <!-- <div class="btn-group" role="group">
-      <button type="button" class="btn btn-outline-secondary"><i class="fas fa-bolt me-2"></i>Bán nhanh</button>
-      <button type="button" class="btn btn-outline-secondary"><i class="fas a-history me-2"></i>Bán thường</button>
-      <button type="button" class="btn btn-outline-secondary"><i class="fas fa-truck me-2"></i>Bán giao hàng</button>
-    </div> -->
-      <!-- <button class="btn btn-outline-secondary"><i class="fas fa-edit me-2"></i>Ghi chú đơn hàng</button> -->
-    </div>
+    <div class="bottom-bar"></div>
 
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    const API_URL = "https://localhost:7225/api/Sales";
+    const API_URL = "https://localhost:7225/api/sales";
 
     const productSearchInput = document.getElementById('product-search-input');
     const searchResultsDiv = document.getElementById('search-results');
@@ -193,13 +177,6 @@
       renderCart();
     }
 
-    function renameActiveInvoice(newName) {
-      const inv = getActiveInvoice();
-      if (!inv) return;
-      inv.name = newName || inv.name;
-      renderInvoiceTabs();
-    }
-
     function renderInvoiceTabs() {
       invoiceTabsUl.innerHTML = '';
       const sorted = [...invoices].sort((a,b) => a.num - b.num);
@@ -207,10 +184,10 @@
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = `
-          <a class="nav-link ${inv.id === activeInvoiceId ? 'active fw-semibold' : ''}" href="#" data-id="${inv.id}" title="Chuyển hóa đơn">
+          <a class="nav-link ${inv.id === activeInvoiceId ? 'active fw-semibold' : ''}" href="#" data-id="${inv.id}">
             <i class="fas fa-file-invoice me-1"></i>
             <span class="inv-title">${inv.name}</span>
-            <i class="fas fa-times ms-2 small text-white-50 btn-close-invoice" data-close-id="${inv.id}" title="Đóng hóa đơn"></i>
+            <i class="fas fa-times ms-2 small text-white-50 btn-close-invoice" data-close-id="${inv.id}"></i>
           </a>
         `;
         invoiceTabsUl.appendChild(li);
@@ -220,8 +197,7 @@
       invoiceTabsUl.querySelectorAll('a.nav-link').forEach(a => {
         a.addEventListener('click', (e) => {
           e.preventDefault();
-          const id = a.getAttribute('data-id');
-          switchInvoice(id);
+          switchInvoice(a.getAttribute('data-id'));
         });
 
         a.addEventListener('dblclick', (e) => {
@@ -240,12 +216,10 @@
       invoiceTabsUl.querySelectorAll('.btn-close-invoice').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const id = btn.getAttribute('data-close-id');
-          closeInvoice(id);
+          closeInvoice(btn.getAttribute('data-close-id'));
         });
       });
     }
-
 
     function debounce(func, delay) {
       let timeout;
@@ -262,7 +236,8 @@
         return;
       }
       try {
-        const response = await fetch(`${API_URL}/${encodeURIComponent(searchString)}`);
+        const locationId = 1; 
+        const response = await fetch(`${API_URL}/goods?q=${encodeURIComponent(searchString)}&locationId=${locationId}`);
         if (!response.ok) throw new Error("Không thể tìm sản phẩm.");
         const products = await response.json();
         displaySearchResults(products || []);
@@ -286,8 +261,8 @@
             <img src="${product.imageURL || 'https://via.placeholder.com/40'}" alt="${product.name}">
             <div class="search-results-item-info">
               <div class="search-results-item-name">${product.name}</div>
-              <small class="text-muted">Tồn: ${product.quantity} ${product.unit}</small>
-            </div>
+              <small class="text-muted">Tồn: ${product.quantityAvailable} ${product.unit}</small>
+            </div>s
             <span class="search-results-item-price">${Number(product.priceSell||0).toLocaleString('vi-VN')} VND</span>
           `;
           itemDiv.addEventListener('click', () => addProductToCart(product));
@@ -297,31 +272,28 @@
       searchResultsDiv.classList.remove('d-none');
     }
 
-    // Cart per Invoice 
     function addProductToCart(product) {
       const inv = getActiveInvoice(); if (!inv) return;
       const cart = inv.cart;
 
       const existingItem = cart.find(item => item.goodID === product.goodID);
       if (existingItem) {
-        if (existingItem.quantityInCart < product.quantity) {
+        if (existingItem.quantityInCart < product.quantityAvailable) {
           existingItem.quantityInCart++;
-          // alert('Đã thêm 1 vào số lượng sản phẩm ' + product.name + ' trong giỏ hàng.');
         } else {
           alert('Không thể thêm vì số lượng tồn kho của ' + product.name + ' không đủ.');
         }
       } else {
-        if (product.quantity > 0) {
+        if (product.quantityAvailable > 0) {
           cart.push({
             goodID: product.goodID,
             name: product.name,
             priceSell: product.priceSell,
             unit: product.unit,
             imageURL: product.imageURL,
-            quantity: product.quantity,
+            quantityAvailable: product.quantityAvailable,
             quantityInCart: 1
           });
-          // alert('Đã thêm sản phẩm ' + product.name + ' vào giỏ hàng.');
         } else {
           alert('Sản phẩm ' + product.name + ' đã hết hàng.');
         }
@@ -379,7 +351,7 @@
 
       if (item) {
         if (action === 'increase') {
-          if (item.quantityInCart < item.quantity) item.quantityInCart++;
+          if (item.quantityInCart < item.quantityAvailable) item.quantityInCart++;
           else alert('Số lượng tồn kho của sản phẩm này không đủ.');
         } else {
           if (item.quantityInCart > 1) item.quantityInCart--;
@@ -405,10 +377,10 @@
           newQuantity = 1;
           event.target.value = 1;
         }
-        if (newQuantity > item.quantity) {
-          alert(`Số lượng tồn kho của ${item.name} chỉ còn ${item.quantity}.`);
-          newQuantity = item.quantity;
-          event.target.value = item.quantity;
+        if (newQuantity > item.quantityAvailable) {
+          alert(`Số lượng tồn kho của ${item.name} chỉ còn ${item.quantityAvailable}.`);
+          newQuantity = item.quantityAvailable;
+          event.target.value = item.quantityAvailable;
         }
         item.quantityInCart = newQuantity;
         renderCart();
@@ -417,30 +389,23 @@
 
     function removeProductFromCart(event) {
       const inv = getActiveInvoice(); if (!inv) return;
-      const cart = inv.cart;
-
-      const goodId = parseInt(event.target.dataset.id);
-      const newCart = cart.filter(item => item.goodID !== goodId);
-      inv.cart = newCart;
+      inv.cart = inv.cart.filter(item => item.goodID !== parseInt(event.target.dataset.id));
       renderCart();
     }
 
     function updatePaymentSummary() {
       const inv = getActiveInvoice(); if (!inv) return;
-      const cart = inv.cart;
-
       let total = 0;
-      cart.forEach(item => total += Number(item.priceSell||0) * Number(item.quantityInCart||0));
+      inv.cart.forEach(item => total += Number(item.priceSell||0) * Number(item.quantityInCart||0));
       totalAmountSpan.textContent = total.toLocaleString('vi-VN');
       finalAmountSpan.textContent = total.toLocaleString('vi-VN');
     }
 
-    // Checkout 
     async function handleCheckout() {
       const inv = getActiveInvoice(); if (!inv) return;
       const cart = inv.cart;
 
-      if (cart.length === 0) { alert("Giỏ hàng trống. Vui lòng thêm sản phẩm để thanh toán."); return; }
+      if (cart.length === 0) { alert("Giỏ hàng trống."); return; }
       if (!confirm(`Xác nhận thanh toán cho "${inv.name}"?`)) return;
 
       try {
@@ -451,18 +416,18 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          const data = await response.json();
           if (!response.ok) {
+            const data = await response.json();
             alert(`Lỗi khi bán ${item.name}: ${data?.message || 'Không thể thực hiện giao dịch.'}`);
             return;
           }
         }
-        alert("Thanh toán thành công! Đơn hàng đã được xử lý.");
+        alert("Thanh toán thành công!");
         inv.cart = [];
         renderCart();
       } catch (error) {
-        console.error("Lỗi trong quá trình thanh toán:", error);
-        alert("Đã xảy ra lỗi khi kết nối đến server trong quá trình thanh toán.");
+        console.error("Lỗi thanh toán:", error);
+        alert("Đã xảy ra lỗi khi kết nối đến server.");
       }
     }
 
@@ -475,7 +440,6 @@
     });
     checkoutButton.addEventListener('click', handleCheckout);
 
-
     btnAddInvoice.addEventListener('click', createInvoice);
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key.toLowerCase() === 'n') {
@@ -485,6 +449,6 @@
     });
 
     createInvoice();
-  </script>
+    </script>
   </body>
 </html>
