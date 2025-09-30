@@ -235,7 +235,7 @@ namespace InventoryManagement.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Tuỳ UI, bạn có thể trả về dữ liệu hiện tại để client merge
+                // Tuỳ UI
                 return Conflict("The record was modified by another user. Please reload and try again.");
             }
 
