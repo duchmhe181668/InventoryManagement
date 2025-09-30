@@ -5,83 +5,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManagement.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class GoodsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly AppDbContext _context; // dùng AppDbContext để khớp project
         public GoodsController(AppDbContext context) => _context = context;
 
-        // ========= DTOs =========
-        public sealed class GoodListItemDto
-        {
-            public int GoodID { get; set; }
-            public string SKU { get; set; } = "";
-            public string Name { get; set; } = "";
-            public string Unit { get; set; } = "";
-            public string? Barcode { get; set; }
-            public string? ImageURL { get; set; }
-            public decimal PriceCost { get; set; }
-            public decimal PriceSell { get; set; }
-            public string? CategoryName { get; set; }
-        }
-
-        public sealed class PagedResult<T>
-        {
-            public IReadOnlyList<T> Items { get; }
-            public int Total { get; }
-            public int Page { get; }
-            public int PageSize { get; }
-            public int TotalPages { get; }
-
-            public PagedResult(IReadOnlyList<T> items, int total, int page, int pageSize)
-            {
-                Items = items;
-                Total = total;
-                Page = page < 1 ? 1 : page;
-                PageSize = pageSize < 1 ? 1 : pageSize;
-                TotalPages = (int)Math.Ceiling((double)Total / PageSize);
-            }
-        }
-
-        public sealed class CreateGoodDto
-        {
-            public string SKU { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string Unit { get; set; } = string.Empty;
-            public string? Barcode { get; set; }
-            public string? ImageURL { get; set; }
-            public decimal PriceCost { get; set; }
-            public decimal PriceSell { get; set; }
-            public int? CategoryID { get; set; }
-        }
-
-        public sealed class UpdateGoodDto
-        {
-            public string SKU { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string Unit { get; set; } = string.Empty;
-            public string? Barcode { get; set; }
-            public string? ImageURL { get; set; }
-            public decimal PriceCost { get; set; }
-            public decimal PriceSell { get; set; }
-            public int? CategoryID { get; set; }
-            public byte[]? RowVersion { get; set; } // nếu model Good có concurrency token
-        }
-
-        // ========= LIST (paged + search + sort) =========
-        // sort: name, -name, sku, -sku, priceSell, -priceSell
+        // GET: /api/goods?page=1&pageSize=20&sort=name|-name|sku|-sku|priceSell|-priceSell&search=...
         [HttpGet]
-        public async Task<ActionResult<PagedResult<GoodListItemDto>>> GetGoods(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] string? search = null,
-            [FromQuery] int? categoryId = null,
-            [FromQuery] string? sort = "name",
+        public async Task<IActionResult> GetPaged(
+            int page = 1,
+            int pageSize = 20,
+            string? sort = "name",
+            string? search = null,
             CancellationToken ct = default)
         {
             page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, 100);
+            pageSize = Math.Clamp(pageSize, 1, 200);
+            sort = (sort ?? "name").Trim().ToLowerInvariant();
+
+            // chỉ cho phép những khóa sort hợp lệ
+            if (sort is not ("name" or "-name" or "sku" or "-sku" or "pricesell" or "-pricesell"))
+                sort = "name";
 
             var q = _context.Goods
                 .AsNoTracking()
@@ -92,15 +38,11 @@ namespace InventoryManagement.Controllers
             {
                 var s = search.Trim();
                 q = q.Where(g =>
-                    EF.Functions.Like(g.Name, $"%{s}%") ||
-                    EF.Functions.Like(g.SKU, $"%{s}%") ||
-                    (g.Barcode != null && EF.Functions.Like(g.Barcode, $"%{s}%")));
+                    g.SKU.Contains(s) ||
+                    g.Name.Contains(s) ||
+                    (g.Barcode != null && g.Barcode.Contains(s)));
             }
 
-            if (categoryId.HasValue)
-                q = q.Where(g => g.CategoryID == categoryId.Value);
-
-            sort = (sort ?? "name").Trim().ToLowerInvariant();
             q = sort switch
             {
                 "name" => q.OrderBy(g => g.Name),
@@ -112,34 +54,43 @@ namespace InventoryManagement.Controllers
                 _ => q.OrderBy(g => g.Name)
             };
 
-            var total = await q.CountAsync(ct);
+            var totalItems = await q.CountAsync(ct);
 
             var items = await q
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(g => new GoodListItemDto
+                .Select(g => new
                 {
-                    GoodID = g.GoodID,
-                    SKU = g.SKU,
-                    Name = g.Name,
-                    Unit = g.Unit,
-                    Barcode = g.Barcode,
-                    ImageURL = g.ImageURL,
-                    PriceCost = g.PriceCost,
-                    PriceSell = g.PriceSell,
+                    g.GoodID,
+                    g.SKU,
+                    g.Name,
+                    g.Unit,
+                    g.Barcode,
+                    g.ImageURL,
+                    g.PriceCost,
+                    g.PriceSell,
+                    g.CategoryID,
                     CategoryName = g.Category != null ? g.Category.CategoryName : null
                 })
                 .ToListAsync(ct);
 
-            return Ok(new PagedResult<GoodListItemDto>(items, total, page, pageSize));
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            return Ok(new
+            {
+                items,
+                page,
+                pageSize,
+                totalPages,
+                totalItems
+            });
         }
 
-        // ========= GET BY ID =========
+        // GET: /api/goods/5
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<object>> GetGood(int id, CancellationToken ct = default)
+        public async Task<IActionResult> GetById(int id, CancellationToken ct = default)
         {
-            var g = await _context.Goods
-                .AsNoTracking()
+            var g = await _context.Goods.AsNoTracking()
                 .Include(x => x.Category)
                 .FirstOrDefaultAsync(x => x.GoodID == id, ct);
 
@@ -156,103 +107,78 @@ namespace InventoryManagement.Controllers
                 g.PriceCost,
                 g.PriceSell,
                 g.CategoryID,
-                CategoryName = g.Category?.CategoryName,
-                // RowVersion = g.RowVersion // nếu cần trả về để update concurrency
+                CategoryName = g.Category != null ? g.Category.CategoryName : null
+                // Nếu có RowVersion: RowVersion = g.RowVersion
             });
         }
 
-        // ========= CREATE =========
+        // POST: /api/goods
         [HttpPost]
-        public async Task<ActionResult<Good>> CreateGood([FromBody] CreateGoodDto dto, CancellationToken ct = default)
+        public async Task<IActionResult> Create([FromBody] Good dto, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(dto.SKU)) return BadRequest("SKU is required.");
-            if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name is required.");
-            if (string.IsNullOrWhiteSpace(dto.Unit)) return BadRequest("Unit is required.");
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            if (dto.CategoryID is int catId &&
-                !await _context.Categories.AnyAsync(c => c.CategoryID == catId, ct))
-                return BadRequest("CategoryID not found.");
+            // SKU unique
+            var exists = await _context.Goods.AnyAsync(x => x.SKU == dto.SKU, ct);
+            if (exists)
+                return Conflict(new ProblemDetails { Title = "SKU already exists." });
 
-            if (await _context.Goods.AnyAsync(g => g.SKU == dto.SKU, ct))
-                return Conflict("SKU already exists.");
-
-            if (!string.IsNullOrWhiteSpace(dto.Barcode) &&
-                await _context.Goods.AnyAsync(g => g.Barcode == dto.Barcode, ct))
-                return Conflict("Barcode already exists.");
-
-            var entity = new Good
-            {
-                SKU = dto.SKU.Trim(),
-                Name = dto.Name.Trim(),
-                Unit = dto.Unit.Trim(),
-                Barcode = string.IsNullOrWhiteSpace(dto.Barcode) ? null : dto.Barcode.Trim(),
-                ImageURL = dto.ImageURL,
-                PriceCost = dto.PriceCost,
-                PriceSell = dto.PriceSell,
-                CategoryID = dto.CategoryID
-            };
-
-            _context.Goods.Add(entity);
+            _context.Goods.Add(dto);
             await _context.SaveChangesAsync(ct);
 
-            return CreatedAtAction(nameof(GetGood), new { id = entity.GoodID }, entity);
+            return CreatedAtAction(nameof(GetById), new { id = dto.GoodID }, new
+            {
+                dto.GoodID,
+                dto.SKU,
+                dto.Name,
+                dto.Unit,
+                dto.Barcode,
+                dto.ImageURL,
+                dto.PriceCost,
+                dto.PriceSell,
+                dto.CategoryID
+            });
         }
 
-        // ========= UPDATE =========
+        // PUT: /api/goods/5
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateGood(int id, [FromBody] UpdateGoodDto dto, CancellationToken ct = default)
+        public async Task<IActionResult> Update(int id, [FromBody] Good dto, CancellationToken ct = default)
         {
-            var entity = await _context.Goods.FirstOrDefaultAsync(g => g.GoodID == id, ct);
+            // cho phép body không có ID; nếu có thì phải khớp route
+            if (dto.GoodID != 0 && dto.GoodID != id)
+                return BadRequest(new ProblemDetails { Title = "Mismatched GoodID." });
+
+            var entity = await _context.Goods.FirstOrDefaultAsync(x => x.GoodID == id, ct);
             if (entity == null) return NotFound();
 
-            if (dto.CategoryID is int catId &&
-                !await _context.Categories.AnyAsync(c => c.CategoryID == catId, ct))
-                return BadRequest("CategoryID not found.");
+            // SKU unique (exclude self)
+            var skuTaken = await _context.Goods.AnyAsync(x => x.SKU == dto.SKU && x.GoodID != id, ct);
+            if (skuTaken)
+                return Conflict(new ProblemDetails { Title = "SKU already exists." });
 
-            if (await _context.Goods.AnyAsync(g => g.GoodID != id && g.SKU == dto.SKU, ct))
-                return Conflict("SKU already exists.");
-
-            if (!string.IsNullOrWhiteSpace(dto.Barcode) &&
-                await _context.Goods.AnyAsync(g => g.GoodID != id && g.Barcode == dto.Barcode, ct))
-                return Conflict("Barcode already exists.");
-
-            // Concurrency (nếu sử dụng RowVersion)
-            if (dto.RowVersion is not null)
-                _context.Entry(entity).Property("RowVersion").OriginalValue = dto.RowVersion;
-
-            entity.SKU = dto.SKU.Trim();
-            entity.Name = dto.Name.Trim();
-            entity.Unit = dto.Unit.Trim();
-            entity.Barcode = string.IsNullOrWhiteSpace(dto.Barcode) ? null : dto.Barcode.Trim();
+            entity.SKU = dto.SKU;
+            entity.Name = dto.Name;
+            entity.Unit = dto.Unit;
+            entity.Barcode = dto.Barcode;
             entity.ImageURL = dto.ImageURL;
             entity.PriceCost = dto.PriceCost;
             entity.PriceSell = dto.PriceSell;
             entity.CategoryID = dto.CategoryID;
 
-            try
-            {
-                await _context.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                // Tuỳ UI
-                return Conflict("The record was modified by another user. Please reload and try again.");
-            }
-
+            await _context.SaveChangesAsync(ct);
             return NoContent();
         }
 
-        // ========= DELETE =========
+        // DELETE: /api/goods/5
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteGood(int id, CancellationToken ct = default)
+        public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
         {
-            var entity = await _context.Goods.FirstOrDefaultAsync(g => g.GoodID == id, ct);
+            var entity = await _context.Goods.FirstOrDefaultAsync(x => x.GoodID == id, ct);
             if (entity == null) return NotFound();
 
             _context.Goods.Remove(entity);
             await _context.SaveChangesAsync(ct);
             return NoContent();
         }
-        
     }
 }
