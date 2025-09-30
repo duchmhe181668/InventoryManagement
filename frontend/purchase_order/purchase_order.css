@@ -1,0 +1,31 @@
+:root{
+      --blue:#0d6efd;
+      --blue-50:#eaf2ff;
+    }
+    body{background:linear-gradient(180deg,#ffffff 0%,#f5f7fb 100%);min-height:100vh}
+    .container-narrow{max-width:1100px}
+    .card{border:none;border-radius:22px;box-shadow:0 12px 32px rgba(13,110,253,.10)}
+    .btn, .form-control, .form-select{border-radius:9999px}
+    .btn-primary{background:var(--blue);border-color:var(--blue)}
+    .btn-outline-secondary{border-color:#d0d7e2;color:#334155}
+    .btn-outline-secondary:hover{background:#f1f5ff;border-color:#c2d0ff;color:#1d4ed8}
+    .result-list{position:absolute;z-index:20;left:0;right:0;top:100%;margin-top:6px}
+    .result-list .list-group-item{cursor:pointer;border:0;border-radius:14px;margin-bottom:6px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+    .qty-input{width:110px}
+    .sticky-right{position:sticky; top:16px}
+    .table thead th{white-space:nowrap}
+    .pill-badge{background:var(--blue-50);color:#1e3a8a;border-radius:9999px;padding:.25rem .6rem;font-size:.78rem}
+    .input-group>.form-control{border-top-right-radius:0;border-bottom-right-radius:0}
+    .input-group .btn-append{border-top-left-radius:0;border-bottom-left-radius:0}
+    .icon-btn{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center}
+    .toast{border-radius:18px;box-shadow:0 12px 32px rgba(13,110,253,.15)}
+    .toast.border-primary{--bs-border-opacity:1}
+    .toast-container{ z-index:1080; }
+    #toastContainer .toast{
+    --bs-toast-max-width: calc(100vw - 2rem); 
+    width: fit-content;                        
+    max-width: calc(100vw - 2rem);           
+    }
+    #toastContainer .toast .toast-body{
+    white-space: nowrap;                     
+    }

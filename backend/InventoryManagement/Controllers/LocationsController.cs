@@ -31,7 +31,7 @@ namespace InventoryManagement.Controllers
         public async Task<IActionResult> LookupGoods([FromQuery] string? q, [FromQuery] int? locationId, [FromQuery] int top = 20)
         {
             var query = _db.Goods.AsNoTracking()
-                .Select(g => new { g.GoodID, g.Name, g.Barcode });
+                .Select(g => new { g.GoodID, g.Name, g.Barcode, g.Unit });
 
             if (!string.IsNullOrWhiteSpace(q))
             {
@@ -56,6 +56,7 @@ namespace InventoryManagement.Controllers
                 g.GoodID,
                 g.Name,
                 g.Barcode,
+                g.Unit,
                 Available = map.TryGetValue(g.GoodID, out var a) ? a : 0m
             });
 
@@ -543,9 +544,20 @@ namespace InventoryManagement.Controllers
                     x.CreatedBy,
                     x.CreatedAt,
                     x.Status,
-                    Lines = _db.PurchaseOrderLines.Where(l => l.POID == x.POID)
-                        .Select(l => new { l.POLineID, l.GoodID, l.Quantity, l.UnitPrice }).ToList()
-                }).FirstOrDefaultAsync();
+                    Lines = (from l in _db.PurchaseOrderLines
+                     join g in _db.Goods on l.GoodID equals g.GoodID
+                     where l.POID == x.POID
+                     select new {
+                         l.POLineID,
+                         l.GoodID,
+                         g.Name,
+                         g.Barcode,
+                         g.Unit,          
+                         l.Quantity,
+                         l.UnitPrice
+                     }).ToList()
+        })
+        .FirstOrDefaultAsync();
             return p == null ? NotFound() : Ok(p);
         }
 

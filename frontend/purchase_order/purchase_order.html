@@ -6,50 +6,17 @@
   <title>Tạo phiếu Request (Warehouse → Supplier)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-
-  <style>
-    :root{
-      --blue:#0d6efd;
-      --blue-50:#eaf2ff;
-    }
-    body{background:linear-gradient(180deg,#ffffff 0%,#f5f7fb 100%);min-height:100vh}
-    .container-narrow{max-width:1100px}
-    .card{border:none;border-radius:22px;box-shadow:0 12px 32px rgba(13,110,253,.10)}
-    .btn, .form-control, .form-select{border-radius:9999px}
-    .btn-primary{background:var(--blue);border-color:var(--blue)}
-    .btn-outline-secondary{border-color:#d0d7e2;color:#334155}
-    .btn-outline-secondary:hover{background:#f1f5ff;border-color:#c2d0ff;color:#1d4ed8}
-    .result-list{position:absolute;z-index:20;left:0;right:0;top:100%;margin-top:6px}
-    .result-list .list-group-item{cursor:pointer;border:0;border-radius:14px;margin-bottom:6px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    .qty-input{width:110px}
-    .sticky-right{position:sticky; top:16px}
-    .table thead th{white-space:nowrap}
-    .pill-badge{background:var(--blue-50);color:#1e3a8a;border-radius:9999px;padding:.25rem .6rem;font-size:.78rem}
-    .input-group>.form-control{border-top-right-radius:0;border-bottom-right-radius:0}
-    .input-group .btn-append{border-top-left-radius:0;border-bottom-left-radius:0}
-    .icon-btn{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center}
-    .toast{border-radius:18px;box-shadow:0 12px 32px rgba(13,110,253,.15)}
-    .toast.border-primary{--bs-border-opacity:1}
-    .toast-container{ z-index:1080; }
-    #toastContainer .toast{
-    --bs-toast-max-width: calc(100vw - 2rem); /* nới giới hạn Bootstrap (mặc định 350px) */
-    width: fit-content;                        /* dài theo nội dung */
-    max-width: calc(100vw - 2rem);             /* không tràn khỏi màn hình */
-    }
-    #toastContainer .toast .toast-body{
-    white-space: nowrap;                       /* không xuống dòng */
-    }
-    
-  </style>
+  <link href="purchase_order.css" rel="stylesheet">
+  
 </head>
 <body>
 <div class="container container-narrow py-4">
 
   <div class="d-flex align-items-center mb-3">
-    <button class="btn btn-outline-secondary icon-btn me-3" onclick="history.back()" title="Back">
+    <button class="btn btn-outline-secondary icon-btn me-3" onclick="location.href='../home.html'">
       <i class="fa-solid fa-arrow-left"></i>
     </button>
-    <h4 class="m-0 text-primary">Tạo phiếu Request (Warehouse → Supplier)</h4>
+    <h4 class="m-0 text-primary">Tạo phiếu danh sách hàng (Kho → Nhà Cung Cấp)</h4>
   </div>
 
   <div class="row g-3">
@@ -61,7 +28,7 @@
         <!-- Product search with "+" append -->
         <div class="position-relative mb-3">
           <div class="input-group">
-            <input id="goodSearch" class="form-control" placeholder="Nhập tên hoặc Barcode..." autocomplete="off">
+            <input id="goodSearch" class="form-control" placeholder="Nhập tên hoặc mã sản phẩm.." autocomplete="off">
             <button id="btnAddNewGood" class="btn btn-primary btn-append icon-btn" type="button" title="Thêm sản phẩm mới">
               <i class="fa-solid fa-plus"></i>
             </button>
@@ -77,7 +44,8 @@
               <tr>
                 <th style="width:60px">STT</th>
                 <th>Tên hàng</th>
-                <th>Code (Barcode)</th>
+                <th>Mã Sản Phẩm</th>
+                <th style="width:100px">Đơn vị</th>
                 <th style="width:160px">Số lượng</th>
                 <th style="width:80px" class="text-center">Thao tác</th>
               </tr>
@@ -93,7 +61,7 @@
       <div class="card p-3 p-lg-4 sticky-right">
         <div class="mb-2 fw-semibold text-primary">Chọn nhà cung cấp</div>
         <div class="position-relative mb-3">
-          <input id="supplierSearch" class="form-control" placeholder="Nhập tên nhà cung cấp..." autocomplete="off">
+          <input id="supplierSearch" class="form-control" placeholder="Nhập tên nhà cung cấp.." autocomplete="off">
           <div id="supplierResults" class="result-list d-none">
             <ul class="list-group"></ul>
           </div>
@@ -109,7 +77,7 @@
             <i class="fa-solid fa-trash-can me-2"></i>Xóa hết
           </button>
           <button class="btn btn-primary rounded-pill" id="btnConfirm">
-            <i class="fa-solid fa-check me-2"></i>Confirm
+            <i class="fa-solid fa-check me-2"></i>Gửi yêu cầu
           </button>
         </div>
       </div>
@@ -137,18 +105,20 @@
     items.forEach((it, idx)=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${idx+1}</td>
-        <td>${esc(it.name)}</td>
-        <td>${esc(it.barcode||'')}</td>
-        <td>
-          <input type="number" min="0.0001" step="0.0001" class="form-control form-control-sm qty-input"
-                 value="${it.qty}" data-idx="${idx}">
-        </td>
-        <td class="text-center">
-          <button class="btn btn-outline-danger icon-btn" data-del="${idx}" title="Xóa">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        </td>`;
+  <td>${idx+1}</td>
+  <td>${esc(it.name)}</td>
+  <td>${esc(it.barcode || '')}</td>
+  <td>${esc(it.unit || '')}</td>   <!-- thêm ô đơn vị ở đúng vị trí -->
+  <td>
+    <input type="number" min="0.0001" step="0.0001"
+           class="form-control form-control-sm qty-input"
+           value="${it.qty}" data-idx="${idx}">
+  </td>
+  <td class="text-center">
+    <button class="btn btn-outline-danger icon-btn" data-del="${idx}" title="Xóa">
+      <i class="fa-solid fa-trash-can"></i>
+    </button>
+  </td>`;
       tb.appendChild(tr);
     });
     document.getElementById('totalItems').textContent = items.length.toString();
@@ -198,7 +168,7 @@
         li.addEventListener('click', ()=>{
           const idx = items.findIndex(x=>x.goodId===g.goodID);
           if(idx>=0){ items[idx].qty = Number(items[idx].qty)+1; }
-          else { items.push({goodId:g.goodID, name:g.name, barcode:g.barcode, qty:1}); }
+          else { items.push({goodId:g.goodID, name:g.name, barcode:g.barcode,unit: g.unit, qty:1}); }
           renderItems();
           goodBox.classList.add('d-none'); goodUl.innerHTML=''; goodSearch.value='';
         });
@@ -211,7 +181,7 @@
     }
   }, 300));
 
-  // "+" button – UI only (no action yet)
+  // "+" button for adding new goods 
   document.getElementById('btnAddNewGood').addEventListener('click', (e)=>{ /* placeholder */ });
 
   // ===== Supplier search =====
