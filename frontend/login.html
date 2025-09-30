@@ -120,16 +120,19 @@
 
 
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
-
       // ---- Redirect theo role ----
-      const role = (result.role || '').toLowerCase();
+      // const role = (result.role || '').toLowerCase();
+      // !!!
+      const role = (result.role || '');
+
       let target = '/'; // trang mặc định
-      if (role === 'supplier') {
-        target = 'supplier.html';
-      } else if (role === 'storemanager') {
-        target = 'home.html';
-      }
-      setTimeout(() => { window.location.href = target; }, 400);
+      console.log(role);
+      if (role === 'Supplier') {
+        target = '/supplier.html';
+      } else if (role === 'StoreManager' || role === 'Administrator' || role === "WarehouseManager") {
+        target = '/home.html';
+      } 
+      setTimeout(() => { window.location.href = target; }, 500);
       // ----------------------------
    
     } catch (err) {
