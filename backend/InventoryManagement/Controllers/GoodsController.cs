@@ -12,7 +12,7 @@ namespace InventoryManagement.Controllers
         private readonly AppDbContext _context;
         public GoodsController(AppDbContext context) => _context = context;
 
-        // ===================== DTOs =====================
+        // ========= DTOs =========
         public sealed class GoodListItemDto
         {
             public int GoodID { get; set; }
@@ -24,10 +24,6 @@ namespace InventoryManagement.Controllers
             public decimal PriceCost { get; set; }
             public decimal PriceSell { get; set; }
             public string? CategoryName { get; set; }
-            public decimal Available { get; set; }      // sum(OnHand - Reserved)
-            public decimal OnHand { get; set; }
-            public decimal Reserved { get; set; }
-            public decimal InTransit { get; set; }
         }
 
         public sealed class PagedResult<T>
@@ -70,23 +66,22 @@ namespace InventoryManagement.Controllers
             public decimal PriceCost { get; set; }
             public decimal PriceSell { get; set; }
             public int? CategoryID { get; set; }
-            // public byte[]? RowVersion { get; set; } // nếu dùng concurrency
+            public byte[]? RowVersion { get; set; } // nếu model Good có concurrency token
         }
 
-        // ===================== GET LIST (paged + search + filter + sort) =====================
-        // sort: name, -name, priceSell, -priceSell, available, -available
+        // ========= LIST (paged + search + sort) =========
+        // sort: name, -name, sku, -sku, priceSell, -priceSell
         [HttpGet]
         public async Task<ActionResult<PagedResult<GoodListItemDto>>> GetGoods(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
             [FromQuery] int? categoryId = null,
-            [FromQuery] int? locationId = null,
             [FromQuery] string? sort = "name",
             CancellationToken ct = default)
         {
-            page = page < 1 ? 1 : page;
-            pageSize = pageSize <= 0 ? 20 : (pageSize > 100 ? 100 : pageSize);
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
 
             var q = _context.Goods
                 .AsNoTracking()
@@ -97,100 +92,51 @@ namespace InventoryManagement.Controllers
             {
                 var s = search.Trim();
                 q = q.Where(g =>
-                    g.Name.Contains(s) ||
-                    g.SKU.Contains(s) ||
-                    (g.Barcode != null && g.Barcode.Contains(s)));
+                    EF.Functions.Like(g.Name, $"%{s}%") ||
+                    EF.Functions.Like(g.SKU, $"%{s}%") ||
+                    (g.Barcode != null && EF.Functions.Like(g.Barcode, $"%{s}%")));
             }
 
             if (categoryId.HasValue)
                 q = q.Where(g => g.CategoryID == categoryId.Value);
 
-            // ---- Stock aggregate bằng LINQ thuần (không dùng view) ----
-            var stockAggQuery =
-                locationId is int locId
-                    ? _context.Stocks.Where(s => s.LocationID == locId)
-                        .GroupBy(s => s.GoodID)
-                        .Select(g => new
-                        {
-                            GoodID = g.Key,
-                            OnHand = g.Sum(x => x.OnHand),
-                            Reserved = g.Sum(x => x.Reserved),
-                            InTransit = g.Sum(x => x.InTransit),
-                            Available = g.Sum(x => x.OnHand - x.Reserved)
-                        })
-                    : _context.Stocks
-                        .GroupBy(s => s.GoodID)
-                        .Select(g => new
-                        {
-                            GoodID = g.Key,
-                            OnHand = g.Sum(x => x.OnHand),
-                            Reserved = g.Sum(x => x.Reserved),
-                            InTransit = g.Sum(x => x.InTransit),
-                            Available = g.Sum(x => x.OnHand - x.Reserved)
-                        });
-
-            // Join goods với tổng tồn
-            var qJoined =
-                from g in q
-                join st in stockAggQuery on g.GoodID equals st.GoodID into gst
-                from st in gst.DefaultIfEmpty()
-                select new
-                {
-                    g,
-                    Totals = new
-                    {
-                        OnHand = st != null ? st.OnHand : 0m,
-                        Reserved = st != null ? st.Reserved : 0m,
-                        InTransit = st != null ? st.InTransit : 0m,
-                        Available = st != null ? st.Available : 0m
-                    }
-                };
-
-            // Sort
             sort = (sort ?? "name").Trim().ToLowerInvariant();
-            qJoined = sort switch
+            q = sort switch
             {
-                "name" => qJoined.OrderBy(x => x.g.Name),
-                "-name" => qJoined.OrderByDescending(x => x.g.Name),
-                "pricesell" => qJoined.OrderBy(x => x.g.PriceSell),
-                "-pricesell" => qJoined.OrderByDescending(x => x.g.PriceSell),
-                "available" => qJoined.OrderBy(x => x.Totals.Available),
-                "-available" => qJoined.OrderByDescending(x => x.Totals.Available),
-                _ => qJoined.OrderBy(x => x.g.Name)
+                "name" => q.OrderBy(g => g.Name),
+                "-name" => q.OrderByDescending(g => g.Name),
+                "sku" => q.OrderBy(g => g.SKU),
+                "-sku" => q.OrderByDescending(g => g.SKU),
+                "pricesell" => q.OrderBy(g => g.PriceSell),
+                "-pricesell" => q.OrderByDescending(g => g.PriceSell),
+                _ => q.OrderBy(g => g.Name)
             };
 
-            var total = await qJoined.CountAsync(ct);
+            var total = await q.CountAsync(ct);
 
-            var items = await qJoined
+            var items = await q
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(x => new GoodListItemDto
+                .Select(g => new GoodListItemDto
                 {
-                    GoodID = x.g.GoodID,
-                    SKU = x.g.SKU,
-                    Name = x.g.Name,
-                    Unit = x.g.Unit,
-                    Barcode = x.g.Barcode,
-                    ImageURL = x.g.ImageURL,
-                    PriceCost = x.g.PriceCost,
-                    PriceSell = x.g.PriceSell,
-                    CategoryName = x.g.Category != null ? x.g.Category.CategoryName : null,
-                    OnHand = x.Totals.OnHand,
-                    Reserved = x.Totals.Reserved,
-                    InTransit = x.Totals.InTransit,
-                    Available = x.Totals.Available
+                    GoodID = g.GoodID,
+                    SKU = g.SKU,
+                    Name = g.Name,
+                    Unit = g.Unit,
+                    Barcode = g.Barcode,
+                    ImageURL = g.ImageURL,
+                    PriceCost = g.PriceCost,
+                    PriceSell = g.PriceSell,
+                    CategoryName = g.Category != null ? g.Category.CategoryName : null
                 })
                 .ToListAsync(ct);
 
             return Ok(new PagedResult<GoodListItemDto>(items, total, page, pageSize));
         }
 
-        // ===================== GET BY ID =====================
+        // ========= GET BY ID =========
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<object>> GetGood(
-            int id,
-            [FromQuery] int? locationId = null,
-            CancellationToken ct = default)
+        public async Task<ActionResult<object>> GetGood(int id, CancellationToken ct = default)
         {
             var g = await _context.Goods
                 .AsNoTracking()
@@ -198,26 +144,6 @@ namespace InventoryManagement.Controllers
                 .FirstOrDefaultAsync(x => x.GoodID == id, ct);
 
             if (g == null) return NotFound();
-
-            // Tổng tồn cho 1 hàng hóa (LINQ từ Stocks)
-            var stockAgg =
-                locationId is int locId
-                    ? await _context.Stocks.Where(s => s.GoodID == id && s.LocationID == locId)
-                        .GroupBy(s => 1).Select(gr => new
-                        {
-                            OnHand = gr.Sum(x => x.OnHand),
-                            Reserved = gr.Sum(x => x.Reserved),
-                            InTransit = gr.Sum(x => x.InTransit),
-                            Available = gr.Sum(x => x.OnHand - x.Reserved)
-                        }).FirstOrDefaultAsync(ct)
-                    : await _context.Stocks.Where(s => s.GoodID == id)
-                        .GroupBy(s => 1).Select(gr => new
-                        {
-                            OnHand = gr.Sum(x => x.OnHand),
-                            Reserved = gr.Sum(x => x.Reserved),
-                            InTransit = gr.Sum(x => x.InTransit),
-                            Available = gr.Sum(x => x.OnHand - x.Reserved)
-                        }).FirstOrDefaultAsync(ct);
 
             return Ok(new
             {
@@ -229,13 +155,13 @@ namespace InventoryManagement.Controllers
                 g.ImageURL,
                 g.PriceCost,
                 g.PriceSell,
-                CategoryID = g.CategoryID,
+                g.CategoryID,
                 CategoryName = g.Category?.CategoryName,
-                Stock = stockAgg ?? new { OnHand = 0m, Reserved = 0m, InTransit = 0m, Available = 0m }
+                // RowVersion = g.RowVersion // nếu cần trả về để update concurrency
             });
         }
 
-        // ===================== CREATE =====================
+        // ========= CREATE =========
         [HttpPost]
         public async Task<ActionResult<Good>> CreateGood([FromBody] CreateGoodDto dto, CancellationToken ct = default)
         {
@@ -268,10 +194,11 @@ namespace InventoryManagement.Controllers
 
             _context.Goods.Add(entity);
             await _context.SaveChangesAsync(ct);
+
             return CreatedAtAction(nameof(GetGood), new { id = entity.GoodID }, entity);
         }
 
-        // ===================== UPDATE =====================
+        // ========= UPDATE =========
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateGood(int id, [FromBody] UpdateGoodDto dto, CancellationToken ct = default)
         {
@@ -289,6 +216,10 @@ namespace InventoryManagement.Controllers
                 await _context.Goods.AnyAsync(g => g.GoodID != id && g.Barcode == dto.Barcode, ct))
                 return Conflict("Barcode already exists.");
 
+            // Concurrency (nếu sử dụng RowVersion)
+            if (dto.RowVersion is not null)
+                _context.Entry(entity).Property("RowVersion").OriginalValue = dto.RowVersion;
+
             entity.SKU = dto.SKU.Trim();
             entity.Name = dto.Name.Trim();
             entity.Unit = dto.Unit.Trim();
@@ -298,14 +229,20 @@ namespace InventoryManagement.Controllers
             entity.PriceSell = dto.PriceSell;
             entity.CategoryID = dto.CategoryID;
 
-            // if (dto.RowVersion is not null)
-            //     _context.Entry(entity).Property("RowVersion").OriginalValue = dto.RowVersion;
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Tuỳ UI, bạn có thể trả về dữ liệu hiện tại để client merge
+                return Conflict("The record was modified by another user. Please reload and try again.");
+            }
 
-            await _context.SaveChangesAsync(ct);
             return NoContent();
         }
 
-        // ===================== DELETE =====================
+        // ========= DELETE =========
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteGood(int id, CancellationToken ct = default)
         {
@@ -316,32 +253,6 @@ namespace InventoryManagement.Controllers
             await _context.SaveChangesAsync(ct);
             return NoContent();
         }
-
-        // ===================== STOCK BREAKDOWN (by location & batch) =====================
-        // GET: /api/goods/5/stock-breakdown?locationId=2
-        [HttpGet("{id:int}/stock-breakdown")]
-        public async Task<ActionResult<IEnumerable<object>>> GetStockBreakdown(
-            int id,
-            [FromQuery] int? locationId = null,
-            CancellationToken ct = default)
-        {
-            var q = _context.Stocks.AsNoTracking().Where(s => s.GoodID == id);
-            if (locationId.HasValue) q = q.Where(s => s.LocationID == locationId.Value);
-
-            var data = await q
-                .Select(s => new
-                {
-                    s.LocationID,
-                    s.BatchID,
-                    s.OnHand,
-                    s.Reserved,
-                    s.InTransit,
-                    Available = s.OnHand - s.Reserved
-                })
-                .OrderBy(x => x.LocationID).ThenBy(x => x.BatchID)
-                .ToListAsync(ct);
-
-            return Ok(data);
-        }
+        
     }
 }

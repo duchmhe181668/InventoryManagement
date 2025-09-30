@@ -1,301 +1,736 @@
-<!doctype html>
-<html lang="vi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Goods Admin (theo API của bạn)</title>
-  <style>
-    :root { --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --ok:#16a34a; --warn:#ef4444; }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    header{padding:14px 18px;border-bottom:1px solid #1f2937;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    header h1{font-size:18px;margin:0}
-    input,select,button{border:1px solid #334155;background:#0b1220;color:var(--text);border-radius:10px;padding:8px 10px}
-    input::placeholder{color:#64748b}
-    button{cursor:pointer}
-    button.primary{background:#14532d;border-color:#14532d}
-    button.primary:hover{background:#166534}
-    button.ghost{background:transparent}
-    button.danger{background:#7f1d1d;border-color:#7f1d1d}
-    button.danger:hover{background:#991b1b}
-    .container{padding:18px}
-    .card{background:var(--panel);border:1px solid #1f2937;border-radius:14px;padding:14px}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
-    th,td{padding:10px 12px;border-bottom:1px solid #1f2937;text-align:left}
-    th{color:#9ca3af;font-weight:600}
-    td.num{text-align:right}
-    .muted{color:var(--muted)}
-    .right{margin-left:auto}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Hàng Hóa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* Màu sắc */
+        :root {
+            --primary-color: #007bff; 
+            --secondary-color: #6c757d; 
+            --background-color: #f8f9fa; 
+            --text-color: #343a40; 
+            --white-color: #ffffff;
+            --border-color: #dee2e6;
+            --success-color: #28a745; 
+            --warning-color: #ffc107; 
+            --danger-color: #dc3545; 
+        }
 
-    dialog{border:1px solid #1f2937;border-radius:14px;background:var(--panel);color:var(--text);padding:0;max-width:760px;width:96%}
-    dialog::backdrop{background:rgba(0,0,0,.65)}
-    .modal-header{padding:14px 16px;border-bottom:1px solid #1f2937;display:flex;gap:8px;align-items:center}
-    .modal-body{padding:16px}
-    .modal-actions{padding:14px 16px;border-top:1px solid #1f2937;display:flex;gap:8px;justify-content:flex-end}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
-    .col-6{grid-column:span 6}
-    .col-4{grid-column:span 4}
-    .col-12{grid-column:span 12}
-    @media (max-width:900px){.col-6,.col-4{grid-column:span 12}}
-  </style>
+        /* Base Styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Arial', sans-serif; line-height: 1.6; background-color: var(--background-color); color: var(--text-color); }
+        .container { width: 90%; max-width: 1200px; margin: 0 auto; }
+        .header { background-color: var(--primary-color); color: var(--white-color); padding: 1.5rem 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .header h1 { font-size: 1.8rem; font-weight: 600; }
+        .header i { margin-right: 10px; }
+
+        /* Buttons */
+        .btn-primary { background-color: var(--primary-color); color: var(--white-color); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; font-weight: 500; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: var(--danger-color); color: var(--white-color); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; margin-left: 10px; }
+        .btn-danger:hover { background-color: #c82333; }
+
+        /* Controls */
+        .controls { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; flex-wrap: wrap; gap: 15px; }
+        .controls-left { display: flex; gap: 10px; }
+        .search-bar { display: flex; border: 1px solid var(--border-color); border-radius: 5px; overflow: hidden; }
+        .search-bar input { padding: 10px 15px; border: none; flex-grow: 1; font-size: 1rem; outline: none; min-width: 200px; }
+        .search-bar button { background-color: var(--primary-color); color: var(--white-color); border: none; padding: 10px 15px; cursor: pointer; transition: background-color 0.3s; }
+        .pagination button { background-color: var(--white-color); color: var(--primary-color); border: 1px solid var(--primary-color); padding: 8px 12px; margin-left: 5px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s, color 0.3s; }
+        .pagination button:hover:not(:disabled) { background-color: var(--primary-color); color: var(--white-color); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination span { margin-right: 15px; color: var(--secondary-color); }
+
+        /* Table */
+        .goods-list-container { background-color: var(--white-color); border-radius: 8px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); overflow-x: auto; margin-bottom: 30px; }
+        .goods-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .goods-table thead th { background-color: var(--primary-color); color: var(--white-color); padding: 12px 15px; text-align: left; font-weight: 500; position: sticky; top: 0; }
+        .goods-table tbody td { padding: 12px 15px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        .goods-table tbody tr:hover { background-color: #e9ecef; cursor: pointer; }
+        .goods-table tbody tr .action-cell:hover { background-color: transparent !important; }
+        .goods-table .action-cell button { padding: 5px 10px; font-size: 0.9em; }
+        .sortable { cursor: pointer; }
+        .sortable i { margin-left: 5px; font-size: 0.8em; }
+        .goods-table img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); }
+        .price-sell { font-weight: bold; color: var(--primary-color); }
+        
+        /* Modal & Form */
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: var(--white-color); margin: 10% auto; padding: 30px; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); position: relative; animation-name: animatetop; animation-duration: 0.4s }
+        @keyframes animatetop { from {top: -300px; opacity: 0} to {top: 0; opacity: 1} }
+        .close-button { color: var(--secondary-color); float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-button:hover, .close-button:focus { color: var(--primary-color); text-decoration: none; cursor: pointer; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+        .form-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Goods Admin</h1>
-    <input id="txtApiBase" style="min-width:300px" placeholder="http://localhost:7225/api" />
-    <button id="btnSaveApi" class="ghost">Lưu API</button>
-    <span class="muted" id="apiHint"></span>
-    <div class="right"><button id="btnCreate" class="primary">+ Thêm</button></div>
-  </header>
 
-  <div class="container">
-    <div class="card">
-      <div class="row" style="align-items:center">
-        <input id="txtSearch" placeholder="Tìm theo Name (search)" />
-        <input id="txtCategory" type="number" placeholder="CategoryID" style="width:130px" />
-        <input id="txtSupplier" type="number" placeholder="SupplierID" style="width:130px" />
-        <select id="selSort">
-          <option value="-dateIn" selected>-dateIn (mới nhất)</option>
-          <option value="dateIn">dateIn</option>
-          <option value="name">name</option>
-          <option value="-name">-name</option>
-          <option value="priceSell">priceSell</option>
-          <option value="-priceSell">-priceSell</option>
-          <option value="quantity">quantity</option>
-          <option value="-quantity">-quantity</option>
-        </select>
-        <select id="selPageSize">
-          <option>10</option><option>20</option><option>50</option><option>100</option>
-        </select>
-        <button id="btnSearch" class="ghost">Lọc</button>
-        <span class="muted right" id="lblTotal"></span>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th style="width:70px">GoodID</th>
-            <th>Name</th>
-            <th>Unit</th>
-            <th>Category</th>
-            <th>Supplier</th>
-            <th>DateIn</th>
-            <th class="num">Qty</th>
-            <th class="num">PriceSell</th>
-            <th style="width:180px"></th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-
-      <div class="row" style="margin-top:10px;justify-content:flex-end">
-        <button id="btnPrev" class="ghost">◀ Prev</button>
-        <span class="muted" id="lblPage"></span>
-        <button id="btnNext" class="ghost">Next ▶</button>
-      </div>
-    </div>
-  </div>
-
-  <dialog id="dlg">
-    <form method="dialog" id="goodForm">
-      <div class="modal-header">
-        <strong id="dlgTitle">Thêm Good</strong>
-        <span class="muted right" id="dlgErr"></span>
-      </div>
-      <div class="modal-body">
-        <div class="grid">
-          <div class="col-6"><label>Name<br><input id="f_Name" required></label></div>
-          <div class="col-6"><label>Unit<br><input id="f_Unit" required></label></div>
-          <div class="col-6"><label>DateIn<br><input id="f_DateIn" type="date"></label></div>
-          <div class="col-6"><label>ImageURL<br><input id="f_ImageURL"></label></div>
-          <div class="col-4"><label>Quantity<br><input id="f_Quantity" type="number" step="0.01" min="0" required></label></div>
-          <div class="col-4"><label>PriceCost<br><input id="f_PriceCost" type="number" step="0.01" min="0" required></label></div>
-          <div class="col-4"><label>PriceSell<br><input id="f_PriceSell" type="number" step="0.01" min="0" required></label></div>
-          <div class="col-4"><label>StoreID<br><input id="f_StoreID" type="number" min="1" required></label></div>
-          <div class="col-4"><label>CategoryID<br><input id="f_CategoryID" type="number" min="1"></label></div>
-          <div class="col-4"><label>SupplierID<br><input id="f_SupplierID" type="number" min="1"></label></div>
+    <header class="header">
+        <div class="container">
+            <h1><i class="fas fa-boxes"></i> Quản Lý Hàng Hóa</h1>
         </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" id="btnCancel">Hủy</button>
-        <button class="primary" id="btnSave">Lưu</button>
-      </div>
-    </form>
-  </dialog>
+    </header>
 
-  <script>
-    // ====== CONFIG: theo Program.cs -> MapControllers() => /api/goods ======
-    const txtApiBase = document.getElementById('txtApiBase');
-    const saved = localStorage.getItem('api_base_goods');
-    txtApiBase.value = saved || 'http://localhost:7225/api'; // đổi nếu server của bạn dùng port khác
-    const apiHint = document.getElementById('apiHint');
-    document.getElementById('btnSaveApi').onclick = () => { localStorage.setItem('api_base_goods', txtApiBase.value.trim()); apiHint.textContent = 'Đã lưu!'; setTimeout(()=>apiHint.textContent='',1500); };
+    <main class="container">
+        <section class="controls">
+            <div class="controls-left">
+                <button id="add-new-button" class="btn-primary"><i class="fas fa-plus"></i> Thêm mới</button>
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Tìm kiếm Tên, SKU, Barcode...">
+                    <button id="search-button"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            
+            <div class="pagination">
+                <span id="page-info">Trang 1 / Tổng ?</span>
+                <button id="prev-page-button" disabled><i class="fas fa-chevron-left"></i></button>
+                <button id="next-page-button"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </section>
 
-    // ====== STATE ======
-    let state = { page:1, pageSize:10, search:'', categoryId:'', supplierId:'', sort:'-dateIn', total:0, totalPages:1, items:[], editingId:null };
+        <section class="goods-list-container">
+            <table class="goods-table">
+                <thead>
+                    <tr>
+                        <th>Ảnh</th>
+                        <th data-sort-key="name" class="sortable">Tên SP <i class="fas fa-sort"></i></th>
+                        <th data-sort-key="sku" class="sortable">SKU <i class="fas fa-sort"></i></th>
+                        <th>Đơn vị</th>
+                        <th>Giá vốn</th>
+                        <th data-sort-key="pricesell" class="sortable">Giá Bán <i class="fas fa-sort"></i></th>
+                        <th>Danh mục</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="goods-list-body">
+                    <tr>
+                        <td colspan="8" style="text-align: center;">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+    
+    <div id="good-form-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="goodFormModal.style.display='none';">&times;</span>
+            <h2 id="form-modal-title">Tạo Mới Sản Phẩm</h2>
+            
+            <form id="good-form">
+                <input type="hidden" id="good-id-field">
+                <input type="hidden" id="row-version-field">
+                <input type="hidden" id="current-category-id-field"> 
 
-    // ====== ELs ======
-    const tbody = document.getElementById('tbody');
-    const txtSearch = document.getElementById('txtSearch');
-    const txtCategory = document.getElementById('txtCategory');
-    const txtSupplier = document.getElementById('txtSupplier');
-    const selSort = document.getElementById('selSort');
-    const selPageSize = document.getElementById('selPageSize');
-    const lblTotal = document.getElementById('lblTotal');
-    const lblPage = document.getElementById('lblPage');
-    const btnPrev = document.getElementById('btnPrev');
-    const btnNext = document.getElementById('btnNext');
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Tên Sản Phẩm (*)</label>
+                        <input type="text" id="name" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="sku">SKU (*)</label>
+                        <input type="text" id="sku" required maxlength="50">
+                    </div>
+                </div>
 
-    // form
-    const dlg = document.getElementById('dlg');
-    const dlgTitle = document.getElementById('dlgTitle');
-    const dlgErr = document.getElementById('dlgErr');
-    const f = (id)=>document.getElementById(id);
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="priceCost">Giá Vốn (*)</label>
+                        <input type="number" id="priceCost" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="priceSell">Giá Bán (*)</label>
+                        <input type="number" id="priceSell" step="0.01" min="0" required>
+                    </div>
+                </div>
 
-    // ====== API helpers ======
-    const base = ()=> txtApiBase.value.replace(/\/$/,'');
-    async function apiList(){
-      const p = new URLSearchParams();
-      if(state.search) p.set('search', state.search);
-      if(state.categoryId) p.set('categoryId', state.categoryId);
-      if(state.supplierId) p.set('supplierId', state.supplierId);
-      if(state.sort) p.set('sort', state.sort);
-      p.set('page', state.page);
-      p.set('pageSize', state.pageSize);
-      const res = await fetch(`${base()}/goods?${p}`);
-      if(!res.ok) throw new Error(await res.text());
-      return res.json(); // PagedResult<GoodListItemDto>
-    }
-    async function apiGet(id){
-      const res = await fetch(`${base()}/goods/${id}`);
-      if(!res.ok) throw new Error(await res.text());
-      return res.json(); // Good
-    }
-    async function apiCreate(payload){
-      const res = await fetch(`${base()}/goods`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-      if(!res.ok) throw new Error(await res.text());
-      return res.json();
-    }
-    async function apiUpdate(id, payload){
-      const res = await fetch(`${base()}/goods/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-      if(!res.ok) throw new Error(await res.text());
-      return true;
-    }
-    async function apiDelete(id){
-      const res = await fetch(`${base()}/goods/${id}`, {method:'DELETE'});
-      if(!res.ok) throw new Error(await res.text());
-      return true;
-    }
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="unit">Đơn Vị (*)</label>
+                        <input type="text" id="unit" required value="Cái" maxlength="20">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="categoryNameInput">Danh mục (Nhập hoặc Chọn)</label>
+                        <input type="text" id="categoryNameInput" list="category-datalist" maxlength="100" 
+                               placeholder="Đang tải danh mục...">
+                        
+                        <datalist id="category-datalist">
+                            </datalist>
+                    </div>
+                </div>
 
-    // ====== UI ======
-    function fmtDate(d){ if(!d) return ''; const dt = new Date(d); if(isNaN(dt)) return d; return dt.toISOString().slice(0,10); }
-    function fmtNum(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
+                <div class="form-group">
+                    <label for="barcode">Barcode</label>
+                    <input type="text" id="barcode" maxlength="50">
+                </div>
 
-    function render(){
-      lblTotal.textContent = `${state.total} items`;
-      lblPage.textContent = `Trang ${state.page}/${state.totalPages}`;
-      btnPrev.disabled = state.page<=1; btnNext.disabled = state.page>=state.totalPages;
+                <div class="form-group">
+                    <label for="imageURL">Image URL</label>
+                    <input type="url" id="imageURL">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="delete-button" class="btn-danger" style="display:none;"><i class="fas fa-trash"></i> Xóa</button>
+                    <button type="submit" id="submit-button" class="btn-primary"><i class="fas fa-save"></i> Lưu</button>
+                </div>
+            </form>
+            <p id="form-message" style="margin-top: 10px; text-align: right;"></p>
+        </div>
+    </div>
 
-      tbody.innerHTML = '';
-      if(!state.items || state.items.length===0){
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="9" class="muted">Không có dữ liệu — thử bấm \"+ Thêm\" để tạo item mới.</td>`;
-        tbody.appendChild(tr);
-      } else {
-        for(const g of state.items){
-          const id = g.GoodID ?? g.goodID ?? g.goodId ?? g.id;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${id ?? ''}</td>
-            <td>${(g.Name ?? g.name) ?? ''}</td>
-            <td>${(g.Unit ?? g.unit) ?? ''}</td>
-            <td>${(g.CategoryName ?? g.categoryName) ?? ''}</td>
-            <td>${(g.SupplierName ?? g.supplierName) ?? ''}</td>
-            <td>${fmtDate(g.DateIn ?? g.dateIn)}</td>
-            <td class="num">${fmtNum(g.Quantity ?? g.quantity)}</td>
-            <td class="num">${fmtNum(g.PriceSell ?? g.priceSell)}</td>
-            <td>
-              <button class="ghost" data-act="edit" data-id="${id}">Sửa</button>
-              <button class="danger" data-act="del" data-id="${id}">Xóa</button>
-            </td>`;
-          tbody.appendChild(tr);
-        }
-      }
-    }
 
-    async function reload(){
-      try{
-        state.pageSize = Number(selPageSize.value);
-        const data = await apiList();
-        console.log('[Goods] response:', data);
-        state.items = (data.Items || data.items) || [];
-        state.total = (data.Total ?? data.total) ?? 0;
-        state.page = (data.Page ?? data.page) ?? state.page;
-        state.totalPages = (data.TotalPages ?? data.totalPages) ?? Math.max(1, Math.ceil(state.total/state.pageSize));
-        render();
-      }catch(e){ alert(e.message||e); }
-    }
+    <script>
+        const API_GOODS_URL = 'https://localhost:7225/api/Goods';
+        const API_CATEGORIES_URL = 'https://localhost:7225/api/Categories';
+        
+        // Base64 Placeholder Image (giúp tránh lỗi vòng lặp 404)
+        const PLACEHOLDER_IMG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%23cccccc%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-size%3D%2230%22%20fill%3D%22%23333333%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%3E?%3C%2Ftext%3E%3C%2Fsvg%3E';
 
-    // ====== Events ======
-    document.getElementById('btnSearch').onclick = ()=>{ state.search=txtSearch.value.trim(); state.categoryId=txtCategory.value; state.supplierId=txtSupplier.value; state.sort=selSort.value; state.page=1; reload(); };
-    selPageSize.onchange = ()=>{ state.page=1; reload(); };
-    btnPrev.onclick = ()=>{ if(state.page>1){ state.page--; reload(); }};
-    btnNext.onclick = ()=>{ state.page++; reload(); };
 
-    document.getElementById('btnCreate').onclick = ()=> openForm();
-    document.getElementById('btnCancel').onclick = ()=> dlg.close();
+        const goodsListBody = document.getElementById('goods-list-body');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const prevPageButton = document.getElementById('prev-page-button');
+        const nextPageButton = document.getElementById('next-page-button');
+        const pageInfoSpan = document.getElementById('page-info');
+        
+        // Form Modal Elements
+        const addNewButton = document.getElementById('add-new-button');
+        const goodFormModal = document.getElementById('good-form-modal');
+        const formModalTitle = document.getElementById('form-modal-title');
+        const goodForm = document.getElementById('good-form');
+        const submitButton = document.getElementById('submit-button');
+        const deleteButton = document.getElementById('delete-button');
+        const formMessage = document.getElementById('form-message');
 
-    tbody.addEventListener('click', async (e)=>{
-      const t = e.target.closest('button'); if(!t) return;
-      const id = Number(t.dataset.id);
-      if(t.dataset.act==='edit'){ const full = await apiGet(id); openForm(full); }
-      if(t.dataset.act==='del'){
-        if(confirm('Xóa Good #' + id + '?')){ try{ await apiDelete(id); reload(); } catch(err){ alert(err.message||err); } }
-      }
-    });
+        // Form Fields
+        const goodIdField = document.getElementById('good-id-field');
+        const rowVersionField = document.getElementById('row-version-field'); 
+        const currentCategoryIdField = document.getElementById('current-category-id-field'); // NEW: Lưu CategoryID khi sửa
+        const nameField = document.getElementById('name');
+        const skuField = document.getElementById('sku');
+        const priceCostField = document.getElementById('priceCost');
+        const priceSellField = document.getElementById('priceSell');
+        const unitField = document.getElementById('unit');
+        const barcodeField = document.getElementById('barcode');
+        const imageURLField = document.getElementById('imageURL');
+        
+        // CATEGORY SPECIFIC (Sử dụng Map để tra cứu nhanh CategoryName -> CategoryID)
+        let categoriesMap = new Map(); 
+        const categoryNameInput = document.getElementById('categoryNameInput');
+        const categoryDatalist = document.getElementById('category-datalist');
 
-    function openForm(obj){
-      state.editingId = obj?.GoodID ?? null;
-      dlgTitle.textContent = state.editingId ? ('Sửa Good #' + state.editingId) : 'Thêm Good';
-      dlgErr.textContent = '';
-      // gán giá trị
-      f('f_Name').value = obj?.Name ?? '';
-      f('f_Unit').value = obj?.Unit ?? '';
-      f('f_DateIn').value = obj?.DateIn ? fmtDate(obj.DateIn) : '';
-      f('f_ImageURL').value = obj?.ImageURL ?? '';
-      f('f_Quantity').value = obj?.Quantity ?? '';
-      f('f_PriceCost').value = obj?.PriceCost ?? '';
-      f('f_PriceSell').value = obj?.PriceSell ?? '';
-      f('f_StoreID').value = obj?.StoreID ?? '';
-      f('f_CategoryID').value = obj?.CategoryID ?? '';
-      f('f_SupplierID').value = obj?.SupplierID ?? '';
-      dlg.showModal();
-    }
+        let currentPage = 1;
+        let pageSize = 20;
+        let currentSort = 'name'; 
 
-    document.getElementById('btnSave').onclick = async (ev)=>{
-      ev.preventDefault();
-      const payload = {
-        Name: f('f_Name').value.trim(),
-        Unit: f('f_Unit').value.trim(),
-        DateIn: f('f_DateIn').value ? new Date(f('f_DateIn').value).toISOString() : null,
-        ImageURL: f('f_ImageURL').value.trim() || null,
-        Quantity: Number(f('f_Quantity').value||0),
-        PriceCost: Number(f('f_PriceCost').value||0),
-        PriceSell: Number(f('f_PriceSell').value||0),
-        StoreID: Number(f('f_StoreID').value||0),
-        CategoryID: f('f_CategoryID').value ? Number(f('f_CategoryID').value) : null,
-        SupplierID: f('f_SupplierID').value ? Number(f('f_SupplierID').value) : null
-      };
-      try{
-        if(state.editingId){ await apiUpdate(state.editingId, payload); }
-        else { await apiCreate(payload); }
-        dlg.close(); reload();
-      }catch(err){ dlgErr.textContent = err.message || err; }
-    };
+        /**
+         * Hàm định dạng số thành tiền tệ
+         */
+        const formatCurrency = (amount) => {
+            if (amount === undefined || amount === null) return 'N/A';
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount).replace('₫', '').trim();
+        };
+        
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch(API_CATEGORIES_URL); 
+                if (!response.ok) throw new Error('Không thể tải danh mục.');
+                
+                const categories = await response.json();
+                categoriesMap.clear();
+                categoryDatalist.innerHTML = '';
+                
+                categories.forEach(cat => {
+                    const name = cat.categoryName.trim();
+                    categoriesMap.set(name, cat.categoryID);
+                    
+                    const option = document.createElement('option');
+                    option.value = name; 
+                    categoryDatalist.appendChild(option);
+                });
+                categoryNameInput.placeholder = 'Nhập tên danh mục hoặc chọn từ danh sách';
 
-    // kick
-    reload();
-  </script>
+            } catch (error) {
+                console.error("Lỗi khi tải danh mục:", error);
+                categoryNameInput.placeholder = 'Lỗi tải danh mục. Vẫn có thể nhập mới.';
+            }
+        };
+
+        /**
+         * Xử lý tìm ID hoặc tạo Danh mục mới
+         * @param {string} categoryName - Tên danh mục người dùng nhập/chọn
+         * @returns {number | null} - CategoryID
+         */
+        const createOrGetCategoryId = async (categoryName) => {
+            const name = categoryName.trim();
+            if (!name) return null; 
+            
+            // 1. Kiểm tra nếu danh mục đã tồn tại trong Map (đã được tải)
+            if (categoriesMap.has(name)) {
+                return categoriesMap.get(name);
+            }
+            
+            // 2. Nếu chưa tồn tại, gọi API POST để tạo mới
+            try {
+                const response = await fetch(API_CATEGORIES_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categoryName: name })
+                });
+
+                if (response.status === 201) {
+                    const newCategory = await response.json();
+                    
+                    // Cập nhật Map và Datalist
+                    categoriesMap.set(name, newCategory.categoryID);
+                    const option = document.createElement('option');
+                    option.value = name;
+                    categoryDatalist.appendChild(option);
+                    
+                    console.log(`[Category] Created successfully: ${name}`);
+
+                    return newCategory.categoryID;
+                    
+                } else {
+                    const errorText = await response.text();
+                    let errorMessage = `Lỗi ${response.status} khi tạo danh mục.`;
+                    try {
+                        const errorData = JSON.parse(errorText); 
+                        errorMessage = errorData.title || errorData.Message || errorMessage;
+                    } catch {}
+                    
+                    throw new Error(errorMessage);
+                }
+
+            } catch (error) {
+                formMessage.textContent = `LỖI TẠO DANH MỤC: ${error.message}`;
+                formMessage.style.color = 'red';
+                throw error; 
+            }
+        };
+
+
+        // ==============================================
+        // 2. GOODS CRUD LOGIC
+        // ==============================================
+        
+        /**
+         * Hiển thị danh sách sản phẩm lên bảng
+         */
+        const renderGoodsList = (items) => {
+            goodsListBody.innerHTML = ''; 
+
+            if (!items || items.length === 0) {
+                goodsListBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Không tìm thấy sản phẩm nào.</td></tr>';
+                return;
+            }
+
+            items.forEach(good => {
+                const row = goodsListBody.insertRow();
+                
+                row.innerHTML = `
+                    <td>
+                        <img 
+                            src="${good.imageURL || PLACEHOLDER_IMG}" 
+                            alt="${good.name}" 
+                            onerror="this.onerror=null; this.src='${PLACEHOLDER_IMG}'" 
+                            style="width: 40px; height: 40px;"
+                        >
+                    </td>
+                    <td>${good.name}</td>
+                    <td>${good.sku}</td>
+                    <td>${good.unit}</td>
+                    <td>${formatCurrency(good.priceCost)}</td>
+                    <td class="price-sell">${formatCurrency(good.priceSell)}</td>
+                    <td>${good.categoryName || 'Không có'}</td>
+                    <td class="action-cell">
+                        <button class="btn-primary" style="padding: 5px 10px;" onclick="event.stopPropagation(); openUpdateForm(${good.goodID});">
+                            <i class="fas fa-edit"></i> Sửa
+                        </button>
+                    </td>
+                `;
+            });
+        };
+
+        /**
+         * Gọi API và tải dữ liệu
+         */
+        const fetchGoods = async () => {
+            goodsListBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</td></tr>';
+            
+            const search = searchInput.value.trim();
+            
+            let url = `${API_GOODS_URL}?page=${currentPage}&pageSize=${pageSize}&sort=${currentSort}`;
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const pagedResult = await response.json();
+
+                renderGoodsList(pagedResult.items);
+                
+                updatePaginationInfo(pagedResult);
+
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu:", error);
+                goodsListBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red; padding: 20px;">Không thể tải dữ liệu. Vui lòng kiểm tra API.</td></tr>';
+            }
+        };
+
+        /**
+         * Cập nhật trạng thái phân trang
+         */
+        const updatePaginationInfo = (pagedResult) => {
+            const { total, page, totalPages } = pagedResult;
+            
+            const actualTotalPages = totalPages > 0 ? totalPages : 1;
+            const actualPage = page > actualTotalPages ? actualTotalPages : page;
+            
+            pageInfoSpan.textContent = `Trang ${actualPage} / Tổng ${actualTotalPages} (Số lượng: ${total})`;
+            
+            prevPageButton.disabled = actualPage <= 1;
+            nextPageButton.disabled = actualPage >= actualTotalPages;
+            
+            currentPage = actualPage;
+        };
+
+        /**
+         * Mở modal form ở chế độ Tạo mới
+         */
+        const openCreateForm = () => {
+            goodForm.reset();
+            goodIdField.value = '';
+            rowVersionField.value = '';
+            currentCategoryIdField.value = ''; // Reset ID
+            
+            categoryNameInput.value = ''; 
+            unitField.value = 'Cái'; 
+
+            formModalTitle.textContent = 'Tạo Mới Sản Phẩm';
+            submitButton.innerHTML = '<i class="fas fa-save"></i> Tạo Mới';
+            deleteButton.style.display = 'none'; 
+            formMessage.textContent = '';
+            formMessage.style.color = 'var(--text-color)';
+            
+            goodFormModal.style.display = 'block';
+        };
+
+        /**
+         * Mở modal form ở chế độ Cập nhật (ĐÃ SỬA: Lưu Category ID)
+         * @param {number} id - GoodID
+         */
+        const openUpdateForm = async (id) => {
+            formMessage.textContent = 'Đang tải dữ liệu sản phẩm...';
+            formMessage.style.color = 'var(--primary-color)';
+            goodFormModal.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_GOODS_URL}/${id}`);
+                if (!response.ok) throw new Error('Không tìm thấy sản phẩm.');
+                const good = await response.json();
+
+                // Điền dữ liệu vào Form
+                goodIdField.value = good.goodID;
+                rowVersionField.value = good.rowVersion ? btoa(String.fromCharCode.apply(null, good.rowVersion)) : ''; 
+                
+                nameField.value = good.name;
+                skuField.value = good.sku;
+                priceCostField.value = good.priceCost;
+                priceSellField.value = good.priceSell;
+                unitField.value = good.unit;
+                barcodeField.value = good.barcode || '';
+                imageURLField.value = good.imageURL || '';
+                
+                // Gán Tên Danh mục
+                const categoryName = good.categoryName || '';
+                categoryNameInput.value = categoryName; 
+                
+                // LƯU CategoryID HIỆN TẠI (Dùng Map để tra cứu hoặc từ API nếu có)
+                if (good.categoryID) {
+                    currentCategoryIdField.value = good.categoryID;
+                } else if (categoryName && categoriesMap.has(categoryName)) {
+                    currentCategoryIdField.value = categoriesMap.get(categoryName);
+                } else {
+                    currentCategoryIdField.value = '';
+                }
+
+                formModalTitle.textContent = `Cập Nhật SP: ${good.name}`;
+                submitButton.innerHTML = '<i class="fas fa-save"></i> Cập Nhật';
+                deleteButton.style.display = 'inline-block'; 
+                deleteButton.onclick = () => handleDelete(good.goodID);
+                
+                formMessage.textContent = '';
+            } catch (error) {
+                formMessage.textContent = `Lỗi tải dữ liệu: ${error.message}`;
+                formMessage.style.color = 'red';
+            }
+        };
+
+        /**
+         * Xử lý sự kiện Submit Form (Tạo mới hoặc Cập nhật)
+         */
+        const handleFormSubmit = async (e) => {
+            e.preventDefault();
+            formMessage.textContent = 'Đang xử lý...';
+            formMessage.style.color = 'var(--primary-color)';
+            submitButton.disabled = true;
+
+            const id = goodIdField.value;
+            const isUpdating = !!id; 
+
+            // BƯỚC 1: Xử lý Danh mục
+            let finalCategoryId = null;
+            const inputCategoryName = categoryNameInput.value.trim();
+            const existingCategoryId = currentCategoryIdField.value;
+            
+            if (inputCategoryName) {
+                // Nếu tên danh mục khớp với ID hiện tại (chưa thay đổi)
+                if (isUpdating && categoriesMap.has(inputCategoryName) && categoriesMap.get(inputCategoryName).toString() === existingCategoryId) {
+                    finalCategoryId = parseInt(existingCategoryId);
+                }
+                // Nếu tên danh mục khớp với một tên đã tồn tại trong Map
+                else if (categoriesMap.has(inputCategoryName)) {
+                    finalCategoryId = categoriesMap.get(inputCategoryName);
+                }
+                // Nếu không khớp hoặc là tên mới, tiến hành tạo mới
+                else {
+                    try {
+                        finalCategoryId = await createOrGetCategoryId(inputCategoryName);
+                    } catch (error) {
+                        submitButton.disabled = false;
+                        return; // Dừng nếu không thể tạo hoặc lấy ID danh mục
+                    }
+                }
+            } else {
+                // Nếu người dùng xóa tên danh mục, CategoryID sẽ là null
+                finalCategoryId = null; 
+            }
+
+
+            // BƯỚC 2: Gửi dữ liệu Hàng hóa
+            const url = isUpdating ? `${API_GOODS_URL}/${id}` : API_GOODS_URL;
+            const method = isUpdating ? 'PUT' : 'POST';
+            
+            const dto = {
+                sku: skuField.value,
+                name: nameField.value,
+                unit: unitField.value,
+                barcode: barcodeField.value || null,
+                imageURL: imageURLField.value || null,
+                priceCost: parseFloat(priceCostField.value),
+                priceSell: parseFloat(priceSellField.value),
+                
+                // Gán CategoryID đã xử lý (có thể là ID cũ, ID mới, hoặc null)
+                categoryId: finalCategoryId 
+            };
+            
+            if (isUpdating && rowVersionField.value) {
+                const binaryString = atob(rowVersionField.value);
+                dto.rowVersion = Array.from(binaryString, char => char.charCodeAt(0));
+            }
+
+            try {
+                formMessage.textContent = isUpdating ? `Đang cập nhật Hàng hóa...` : `Đang tạo mới Hàng hóa...`;
+                formMessage.style.color = 'var(--primary-color)';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (response.ok || response.status === 201 || response.status === 204) {
+                    formMessage.textContent = isUpdating ? 'Cập nhật Hàng hóa thành công!' : 'Tạo mới Hàng hóa thành công!';
+                    formMessage.style.color = 'var(--success-color)';
+                    
+                    setTimeout(() => {
+                        goodFormModal.style.display = 'none';
+                        currentPage = 1; 
+                        fetchGoods();
+                        fetchCategories(); // Cập nhật lại danh sách danh mục (phòng trường hợp tạo mới)
+                    }, 1000);
+
+                } else if (response.status === 400 || response.status === 409 || response.status === 404) {
+                    const errorText = await response.text(); 
+                    let errorMessage = errorText || `Lỗi ${response.status}.`;
+                    try {
+                        const errorData = JSON.parse(errorText); 
+                        if (errorData.title) errorMessage = errorData.title; 
+                        else if (errorData.Message) errorMessage = errorData.Message;
+                        else if (response.status === 409) errorMessage = "SKU hoặc Barcode đã tồn tại.";
+                        else if (response.status === 404) errorMessage = "Không tìm thấy sản phẩm.";
+                    } catch {}
+                    formMessage.textContent = errorMessage;
+                    formMessage.style.color = 'red';
+                } else {
+                    throw new Error(`Lỗi ${response.status}: Vui lòng kiểm tra console.`);
+                }
+
+            } catch (error) {
+                formMessage.textContent = `Lỗi kết nối/mạng: ${error.message}`;
+                formMessage.style.color = 'red';
+            } finally {
+                submitButton.disabled = false;
+            }
+        };
+
+        /**
+         * Xử lý Xóa sản phẩm
+         */
+        const handleDelete = async (id) => {
+            if (!confirm('Bạn có chắc chắn muốn XÓA sản phẩm này không? Thao tác này không thể hoàn tác.')) {
+                return;
+            }
+
+            formMessage.textContent = 'Đang xóa...';
+            formMessage.style.color = 'var(--danger-color)';
+            submitButton.disabled = true;
+            deleteButton.disabled = true;
+
+            try {
+                const response = await fetch(`${API_GOODS_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok || response.status === 204) {
+                    formMessage.textContent = 'Xóa thành công';
+                    formMessage.style.color = 'var(--success-color)';
+                    
+                    setTimeout(() => {
+                        goodFormModal.style.display = 'none';
+                        currentPage = 1; 
+                        fetchGoods();
+                    }, 1000);
+                } else if (response.status === 404) {
+                    formMessage.textContent = 'Không tìm thấy sản phẩm để xóa.';
+                    formMessage.style.color = 'red';
+                } else {
+                    throw new Error(`Lỗi ${response.status}: Không thể xóa.`);
+                }
+            } catch (error) {
+                formMessage.textContent = `Lỗi: ${error.message}`;
+                formMessage.style.color = 'red';
+            } finally {
+                submitButton.disabled = false;
+                deleteButton.disabled = false;
+            }
+        };
+
+        /**
+         * Xử lý logic Sắp xếp
+         */
+        const handleSort = (key) => {
+            let newSort;
+            
+            if (currentSort.replace('-', '') === key) {
+                newSort = currentSort.startsWith('-') ? key : `-${key}`;
+            } else {
+                newSort = key;
+            }
+            
+            currentSort = newSort;
+            currentPage = 1; 
+            
+            document.querySelectorAll('.sortable i').forEach(icon => icon.className = 'fas fa-sort');
+            const currentHeader = document.querySelector(`[data-sort-key="${key}"] i`);
+            if (currentHeader) {
+                currentHeader.className = currentSort.startsWith('-') ? 'fas fa-sort-down' : 'fas fa-sort-up';
+            }
+
+            fetchGoods();
+        };
+
+        /**
+         * Thiết lập các sự kiện và tải dữ liệu lần đầu
+         */
+        const setupEventListeners = () => {
+            // Sắp xếp
+            document.querySelectorAll('.goods-table th.sortable').forEach(header => {
+                header.addEventListener('click', () => handleSort(header.getAttribute('data-sort-key')));
+            });
+
+            // Tìm kiếm
+            searchButton.addEventListener('click', () => {
+                currentPage = 1; 
+                fetchGoods();
+            });
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentPage = 1;
+                    fetchGoods();
+                }
+            });
+
+            // Phân trang
+            prevPageButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    fetchGoods(); 
+                }
+            });
+            nextPageButton.addEventListener('click', () => {
+                nextPageButton.disabled = true; 
+                currentPage++;
+                fetchGoods(); 
+            });
+
+            // Mở Form Tạo mới
+            addNewButton.addEventListener('click', openCreateForm);
+
+            // Xử lý Submit Form
+            goodForm.addEventListener('submit', handleFormSubmit);
+
+            // Đóng Modal khi click ra ngoài
+            window.onclick = (event) => {
+                if (event.target === goodFormModal) {
+                    goodFormModal.style.display = 'none';
+                }
+            };
+        };
+
+
+        // Chạy ứng dụng
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            
+            // 1. TẢI DANH MỤC TRƯỚC (QUAN TRỌNG)
+            fetchCategories(); 
+            
+            // Cài đặt icon sắp xếp mặc định
+            const initialHeader = document.querySelector(`[data-sort-key="name"] i`);
+            if (initialHeader) {
+                initialHeader.className = 'fas fa-sort-up'; 
+            }
+            
+            // 2. Tải dữ liệu Hàng hóa
+            fetchGoods(); 
+        });
+    </script>
 </body>
 </html>
