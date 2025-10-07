@@ -272,7 +272,25 @@ namespace InventoryManagement.Data
                 .WithMany()
                 .HasForeignKey(s => s.BatchID)
                 .OnDelete(DeleteBehavior.Restrict);
+            // Store.LocationID 1–1
+            model.Entity<Store>()
+                .HasOne(s => s.Location).WithOne()
+                .HasForeignKey<Store>(s => s.LocationID)
+                .OnDelete(DeleteBehavior.Cascade);
+            model.Entity<Store>()
+                .HasIndex(s => s.LocationID).IsUnique();
 
+            // 👇 NEW: Store.UserID 1–1 (nullable, unique khi có giá trị)
+            model.Entity<Store>()
+                .HasOne(s => s.User)
+                .WithOne(u => u.Store)              // nếu bạn thêm navigation ngược trong User
+                .HasForeignKey<Store>(s => s.UserID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            model.Entity<Store>()
+                .HasIndex(s => s.UserID)
+                .IsUnique()
+                .HasFilter("[UserID] IS NOT NULL"); // unique chỉ khi có UserID
         }
     }
 }

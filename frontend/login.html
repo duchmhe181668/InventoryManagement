@@ -56,7 +56,7 @@
 
 <script>
 (function () {
-  const API_URL = 'https://localhost:7225/api/Auth/login'; // <- API của bạn
+  const API_URL = 'https://localhost:7225/api/Auth/login'; // API của bạn
 
   const form = document.getElementById('loginForm');
   const alertBox = document.getElementById('alert');
@@ -85,15 +85,39 @@
   async function login(username, password) {
     const res = await fetch(API_URL, {
       method: 'POST',
-      mode: 'cors', // cần nếu gọi khác origin
+      mode: 'cors',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ username, password })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại'));
+      const msg = typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại');
+      throw new Error(msg);
     }
-    return data; // { accessToken, tokenType, expiresInSeconds, username }
+    // Kỳ vọng: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
+    return data;
+  }
+
+  function persistAuth(result, remember) {
+    const store = remember ? localStorage : sessionStorage;
+
+    // Lưu đầy đủ payload để các trang khác dùng
+    try { store.setItem('authUser', JSON.stringify(result)); } catch {}
+
+    // Các key lẻ (tương thích code cũ)
+    try { store.setItem('accessToken', result.accessToken || ''); } catch {}
+    try { store.setItem('tokenType', result.tokenType || 'Bearer'); } catch {}
+    if (result.storeId !== undefined && result.storeId !== null) {
+      try { store.setItem('storeId', String(result.storeId)); } catch {}
+    }
+    if (result.supplierId !== undefined && result.supplierId !== null) {
+      try { store.setItem('supplierId', String(result.supplierId)); } catch {}
+    }
+    // Có thể lưu thời điểm hết hạn để auto logout (tuỳ bạn):
+    if (typeof result.expiresInSeconds === 'number') {
+      const expireAt = Date.now() + (result.expiresInSeconds * 1000);
+      try { store.setItem('tokenExpireAt', String(expireAt)); } catch {}
+    }
   }
 
   form.addEventListener('submit', async (e) => {
@@ -108,33 +132,24 @@
     setLoading(true);
     const username = document.getElementById('username').value.trim();
     const password = pwd.value;
+    const remember = document.getElementById('remember').checked;
 
     try {
       const result = await login(username, password);
 
-      // Tuỳ chọn: lưu token nếu cần dùng tiếp (có thể bỏ nếu không cần)
-      const store = document.getElementById('remember').checked ? localStorage : sessionStorage;
-      store.setItem('authToken', result.accessToken);
-      store.setItem('authUser', result.username);
-      store.setItem('supplierId', result.supplierId);
-
+      persistAuth(result, remember);
 
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
-      // ---- Redirect theo role ----
-      // const role = (result.role || '').toLowerCase();
-      // !!!
-      const role = (result.role || '');
 
-      let target = '/'; // trang mặc định
-      console.log(role);
+      const role = (result.role || '').toString();
+      let target = '/';
       if (role === 'Supplier') {
         target = '/supplier.html';
-      } else if (role === 'StoreManager' || role === 'Administrator' || role === "WarehouseManager") {
+      } else if (role === 'StoreManager' || role === 'Administrator' || role === 'WarehouseManager') {
         target = '/home.html';
-      } 
-      setTimeout(() => { window.location.href = target; }, 500);
-      // ----------------------------
-   
+      }
+      setTimeout(() => { window.location.href = target; }, 400);
+
     } catch (err) {
       showAlert((err && err.message) ? err.message : 'Đăng nhập thất bại', 'danger');
     } finally {

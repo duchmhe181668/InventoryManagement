@@ -27,7 +27,7 @@ namespace InventoryManagement.Controllers
             public decimal InTransit { get; set; }
         }
 
-
+        // -------------------- Search goods (giữ nguyên) --------------------
         [HttpGet("goods")]
         public async Task<ActionResult<IEnumerable<GoodSearchDto>>> SearchGoods(
             [FromQuery] string q,
@@ -43,7 +43,10 @@ namespace InventoryManagement.Controllers
             var goodsQ = _context.Goods
                 .AsNoTracking()
                 .Include(g => g.Category)
-                .Where(g => (parsedId && g.GoodID == idNum) || EF.Functions.Like(g.SKU, $"%{s}%") || (g.Barcode != null && EF.Functions.Like(g.Barcode, $"%{s}%")) || EF.Functions.Like(g.Name, $"%{s}%"))
+                .Where(g => (parsedId && g.GoodID == idNum)
+                            || EF.Functions.Like(g.SKU, $"%{s}%")
+                            || (g.Barcode != null && EF.Functions.Like(g.Barcode, $"%{s}%"))
+                            || EF.Functions.Like(g.Name, $"%{s}%"))
                 .Select(g => new
                 {
                     g.GoodID,
@@ -90,7 +93,6 @@ namespace InventoryManagement.Controllers
                     .FirstOrDefaultAsync(ct);
             }
 
-
             var priceDict = new Dictionary<int, decimal>();
             if (storeId.HasValue)
             {
@@ -99,8 +101,8 @@ namespace InventoryManagement.Controllers
                     .Where(sp => sp.StoreID == storeId.Value && goodIds.Contains(sp.GoodID))
                     .GroupBy(sp => sp.GoodID)
                     .Select(g => g.OrderByDescending(x => x.EffectiveFrom)
-                    .Select(x => new { x.GoodID, x.PriceSell })
-                    .FirstOrDefault()!)
+                                  .Select(x => new { x.GoodID, x.PriceSell })
+                                  .FirstOrDefault()!)
                     .ToListAsync(ct);
 
                 priceDict = latestStorePrices
@@ -125,6 +127,153 @@ namespace InventoryManagement.Controllers
             }).ToList();
 
             return Ok(result);
+        }
+
+        // -------------------- Map storeId -> locationId --------------------
+        [HttpGet("store-location")]
+        public async Task<ActionResult<int>> GetLocationIdByStore(
+            [FromQuery] int storeId,
+            CancellationToken ct)
+        {
+            var locId = await _context.Stores
+                .AsNoTracking()
+                .Where(st => st.StoreID == storeId)
+                .Select(st => (int?)st.LocationID)
+                .FirstOrDefaultAsync(ct);
+
+            if (!locId.HasValue) return NotFound("Store has no LocationID configured.");
+            return locId.Value;
+        }
+
+        // ========================= THANH TOÁN ==============================
+        public sealed class SellDto
+        {
+            public int GoodID { get; set; }
+            public decimal QuantitySold { get; set; }
+        }
+
+        public sealed class CheckoutDto
+        {
+            public int LocationId { get; set; }
+            public List<SellDto> Items { get; set; } = new();
+            // (tuỳ mở rộng) public string? PaymentMethod { get; set; }
+            // (tuỳ mở rộng) public decimal? DiscountAmount { get; set; }
+            // (tuỳ mở rộng) public string? Note { get; set; }
+        }
+
+        private static decimal AvailableOf(InventoryManagement.Models.Stock s)
+            => s.OnHand - s.Reserved;
+
+        // --- Bán từng mặt hàng (tương thích FE cũ): /api/sales/sell?locationId=1 ---
+        [HttpPost("sell")]
+        public async Task<IActionResult> SellOne(
+            [FromBody] SellDto dto,
+            [FromQuery] int locationId,
+            CancellationToken ct)
+        {
+            if (dto == null || dto.GoodID <= 0 || dto.QuantitySold <= 0)
+                return BadRequest("Invalid payload.");
+
+            // Lấy 1 dòng stock của Good + Location
+            var stock = await _context.Stocks
+                .FirstOrDefaultAsync(s => s.GoodID == dto.GoodID && s.LocationID == locationId, ct);
+
+            if (stock == null)
+                return NotFound($"Stock not found for GoodID={dto.GoodID} at LocationID={locationId}.");
+
+            var available = AvailableOf(stock);
+            if (available < dto.QuantitySold)
+                return BadRequest($"Insufficient stock for GoodID={dto.GoodID}. Available={available}, required={dto.QuantitySold}.");
+
+            // Trừ tồn
+            stock.OnHand -= dto.QuantitySold;
+
+            await _context.SaveChangesAsync(ct);
+
+            return Ok(new
+            {
+                dto.GoodID,
+                LocationID = locationId,
+                NewOnHand = stock.OnHand,
+                NewReserved = stock.Reserved,
+                NewAvailable = AvailableOf(stock)
+            });
+        }
+
+        // --- Thanh toán cả giỏ: /api/sales/checkout ---
+        [HttpPost("checkout")]
+        public async Task<IActionResult> Checkout([FromBody] CheckoutDto request, CancellationToken ct)
+        {
+            if (request == null || request.LocationId <= 0 || request.Items == null || request.Items.Count == 0)
+                return BadRequest("locationId and items are required.");
+
+            // Gom list GoodID
+            var goodIds = request.Items
+                .Where(i => i.GoodID > 0 && i.QuantitySold > 0)
+                .Select(i => i.GoodID)
+                .Distinct()
+                .ToList();
+            if (goodIds.Count == 0) return BadRequest("No valid item.");
+
+            // Lấy tất cả stock liên quan
+            var stocks = await _context.Stocks
+                .Where(s => s.LocationID == request.LocationId && goodIds.Contains(s.GoodID))
+                .ToListAsync(ct);
+
+            // Kiểm tra thiếu dòng stock
+            var missing = goodIds.Except(stocks.Select(s => s.GoodID)).ToList();
+            if (missing.Count > 0)
+                return NotFound($"Stock not found for goods: {string.Join(", ", missing)} at LocationID={request.LocationId}.");
+
+            // Kiểm tra tồn khả dụng
+            foreach (var item in request.Items)
+            {
+                var s = stocks.First(x => x.GoodID == item.GoodID);
+                var available = AvailableOf(s);
+                if (available < item.QuantitySold)
+                    return BadRequest($"Insufficient stock for GoodID={item.GoodID}. Available={available}, required={item.QuantitySold}.");
+            }
+
+            // Transaction để trừ tồn đồng bộ
+            using var trx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                foreach (var item in request.Items)
+                {
+                    var s = stocks.First(x => x.GoodID == item.GoodID);
+                    s.OnHand -= item.QuantitySold;
+                }
+
+                // TODO (nếu có entity hoá đơn/chi tiết):
+                // var sale = new Sale { ... };
+                // _context.Sales.Add(sale);
+                // foreach(var item in request.Items) _context.SaleLines.Add(new SaleLine{...});
+                // v.v... (đặt trong cùng transaction)
+
+                await _context.SaveChangesAsync(ct);
+                await trx.CommitAsync(ct);
+            }
+            catch
+            {
+                await trx.RollbackAsync(ct);
+                throw;
+            }
+
+            // Trả về tồn mới
+            var result = stocks.Select(s => new
+            {
+                s.GoodID,
+                LocationID = s.LocationID,
+                NewOnHand = s.OnHand,
+                NewReserved = s.Reserved,
+                NewAvailable = AvailableOf(s)
+            }).ToList();
+
+            return Ok(new
+            {
+                LocationID = request.LocationId,
+                Items = result
+            });
         }
     }
 }

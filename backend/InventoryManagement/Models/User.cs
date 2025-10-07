@@ -29,5 +29,7 @@ namespace InventoryManagement.Models
 
         [Timestamp]
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+        public Store? Store { get; set; }
     }
 }

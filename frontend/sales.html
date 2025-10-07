@@ -10,12 +10,6 @@
     <link rel="stylesheet" href="css/sales.css"/>
   </head>
 
-  <script src="js/auth.js"></script>
-  <script>
-    // Chỉ cho StoreManager vào, sai role -> về login
-    allowOnlyLogout(['StoreManager'], 'login.html');
-  </script>
-
   <body>
     <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
       <div class="container-fluid">
@@ -51,7 +45,7 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
               <li><a class="dropdown-item" href="#">Tài khoản</a></li>
-              <li><a class="dropdown-item" href="#" onclick="logout(); return false;">Đăng xuất</a></li>
+              <li><a class="dropdown-item" href="#" id="btn-logout">Đăng xuất</a></li>
             </ul>
           </div>
         </div>
@@ -115,8 +109,81 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+      // ====== Config ======
       const API_URL = "https://localhost:7225/api/sales";
+      const IMG_FALLBACK_40 = "https://placehold.co/40x40";
+      const IMG_FALLBACK_50 = "https://placehold.co/50x50";
 
+      // ====== Auth helpers (đọc từ storage + decode JWT) ======
+      function base64UrlDecode(str){
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = str.length % 4;
+        if (pad) str += '='.repeat(4 - pad);
+        const decoded = atob(str);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+      function parseJwt(token){
+        try{
+          const parts = token.split('.');
+          if (parts.length !== 3) return null;
+          return JSON.parse(base64UrlDecode(parts[1]));
+        }catch{ return null; }
+      }
+      function getAuthPayload() {
+        const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+        if (raw) { try { return JSON.parse(raw); } catch {} }
+
+        const accessToken =
+          localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") ||
+          localStorage.getItem("authToken")   || sessionStorage.getItem("authToken")   || "";
+        const tokenType =
+          localStorage.getItem("tokenType")   || sessionStorage.getItem("tokenType")   || "Bearer";
+        const storeIdStr =
+          localStorage.getItem("storeId")     || sessionStorage.getItem("storeId");
+
+        const payload = { accessToken, tokenType };
+        if (storeIdStr != null && storeIdStr !== "") payload.storeId = Number(storeIdStr);
+
+        if (accessToken && payload.storeId == null){
+          const claims = parseJwt(accessToken) || {};
+          const keys = ["storeId", "store_id", "sid", "store", "StoreId", "StoreID"];
+          for (const k of keys){
+            if (claims[k] != null && claims[k] !== ""){
+              const v = Number(claims[k]);
+              if (!Number.isNaN(v)){
+                payload.storeId = v;
+                try { sessionStorage.setItem("storeId", String(v)); } catch {}
+                break;
+              }
+            }
+          }
+        }
+        return accessToken ? payload : null;
+      }
+      function getAccessToken(){ return getAuthPayload()?.accessToken || ""; }
+      function getTokenType(){ return getAuthPayload()?.tokenType || "Bearer"; }
+      function getStoreId(){ 
+        const v = getAuthPayload()?.storeId;
+        return (typeof v === "number" && !Number.isNaN(v)) ? v : null;
+      }
+      function authHeaders(extra = {}) {
+        const h = { "Content-Type": "application/json", ...extra };
+        const t = getAccessToken(); const ty = getTokenType();
+        if (t) h["Authorization"] = `${ty} ${t}`;
+        return h;
+      }
+      function logout() {
+        try { localStorage.clear(); sessionStorage.clear(); }
+        finally { window.location.href = "login.html"; }
+      }
+      function handleAuthError(res){
+        if (res.status === 401 || res.status === 403) { alert("Phiên hết hạn. Đăng nhập lại."); logout(); return true; }
+        return false;
+      }
+      document.getElementById("btn-logout").addEventListener("click", (e)=>{ e.preventDefault(); logout(); });
+
+      // ====== UI shortcuts ======
       const VND = new Intl.NumberFormat("vi-VN");
       const $ = (sel, root = document) => root.querySelector(sel);
       const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -135,21 +202,10 @@
       const btnClearInvoice     = $("#btn-clear-invoice");
       const btnHoldInvoice      = $("#btn-hold-invoice");
 
+      // ====== Invoices ======
       let invoices = [];
       let activeInvoiceId = null;
 
-      // --- LOGOUT ---
-      function logout() {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("authUser");
-        localStorage.removeItem("supplierId");
-        sessionStorage.removeItem("authToken");
-        sessionStorage.removeItem("authUser");
-        sessionStorage.removeItem("supplierId");
-        window.location.href = "login.html";
-      }
-
-      // Helpers
       function getSmallestAvailableInvoiceNumber() {
         const used = new Set(invoices.map(x => x.num));
         let n = 1; while (used.has(n)) n++; return n;
@@ -157,15 +213,9 @@
       function fmt(n){ return VND.format(n || 0) }
       function debounce(func, delay){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>func.apply(this,args),delay); } }
 
-      // Invoices
       function createInvoice() {
         const nextNum = getSmallestAvailableInvoiceNumber();
-        const inv = {
-          id: crypto.randomUUID(),
-          num: nextNum,
-          name: `Hóa đơn ${nextNum}`,
-          cart: [], // {goodID,name,priceSell,unit,imageURL,quantityAvailable,quantityInCart,discountPercent}
-        };
+        const inv = { id: crypto.randomUUID(), num: nextNum, name: `Hóa đơn ${nextNum}`, cart: [] };
         invoices.push(inv);
         activeInvoiceId = inv.id;
         renderInvoiceTabs();
@@ -183,7 +233,6 @@
         if(activeInvoiceId===id) activeInvoiceId = invoices[0].id;
         renderInvoiceTabs(); renderCart();
       }
-
       function renderInvoiceTabs(){
         invoiceTabsUl.innerHTML = "";
         [...invoices].sort((a,b)=>a.num-b.num).forEach(inv=>{
@@ -197,7 +246,6 @@
             </a>`;
           invoiceTabsUl.appendChild(li);
         });
-
         $$(".nav-link", invoiceTabsUl).forEach(a=>{
           a.addEventListener("click", e=>{ e.preventDefault(); switchInvoice(a.dataset.id) });
           a.addEventListener("dblclick", e=>{
@@ -213,21 +261,56 @@
         });
       }
 
-      // Search Products
+      // ====== Resolve locationId từ storeId trong payload/JWT ======
+      let CURRENT_LOCATION_ID = null;
+      async function resolveLocationIdFromStore() {
+        const sid = getStoreId();
+        console.log("Auth payload:", getAuthPayload());
+        if (sid == null) {
+          console.warn("Không tìm thấy storeId trong payload; không thể lấy đúng tồn kho. BE sẽ cộng tất cả location nếu không truyền locationId.");
+          return;
+        }
+        try {
+          const res = await fetch(`${API_URL}/store-location?storeId=${sid}`, { headers: authHeaders() });
+          if (handleAuthError(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+          const text = await res.text();
+          CURRENT_LOCATION_ID = Number(text);
+          console.log("locationId:", CURRENT_LOCATION_ID);
+        } catch (err) {
+          console.error("Không lấy được locationId:", err);
+          alert("Không lấy được Location của store. Tồn kho có thể sai.");
+        }
+      }
+
+      // ====== Search Products (truyền locationId để tồn kho chính xác) ======
       async function searchProducts(q){
-        if(!q || !q.trim()){ searchResultsDiv.classList.add("d-none"); return; }
+        if(!q || !q.trim()){
+          searchResultsDiv.classList.add("d-none");
+          return;
+        }
         try{
-          const locationId = 1;
-          const res = await fetch(`${API_URL}/goods?q=${encodeURIComponent(q)}&locationId=${locationId}`);
-          if(!res.ok) throw new Error("Không thể tìm sản phẩm.");
-          const products = await res.json();
+          const qs = new URLSearchParams({ q: q.trim() });
+          if (CURRENT_LOCATION_ID != null) qs.set("locationId", String(CURRENT_LOCATION_ID));
+
+          const url = `${API_URL}/goods?${qs.toString()}`;
+          const res = await fetch(url, { headers: authHeaders() });
+          if (handleAuthError(res)) return;
+
+          const text = await res.text();
+          if(!res.ok){
+            console.error("API error:", res.status, text);
+            throw new Error(text || `HTTP ${res.status}`);
+          }
+          const products = text ? JSON.parse(text) : [];
           displaySearchResults(products || []);
         }catch(err){
           console.error("Lỗi tìm kiếm:", err);
-          searchResultsDiv.innerHTML = `<div class="p-2 text-danger">Không tìm thấy sản phẩm hoặc lỗi kết nối.</div>`;
+          searchResultsDiv.innerHTML = `<div class="p-2 text-danger">Lỗi API: ${err?.message || err}</div>`;
           searchResultsDiv.classList.remove("d-none");
         }
       }
+
       function displaySearchResults(products){
         searchResultsDiv.innerHTML = "";
         if(products.length===0){
@@ -238,7 +321,7 @@
             itemDiv.classList.add("search-results-item");
             itemDiv.dataset.goodId = p.goodID;
             itemDiv.innerHTML = `
-              <img src="${p.imageURL || "https://via.placeholder.com/40"}" alt="${p.name}">
+              <img src="${p.imageURL || IMG_FALLBACK_40}" alt="${p.name}">
               <div class="search-results-item-info">
                 <div class="search-results-item-name">${p.name}</div>
                 <small class="text-muted">Tồn: ${p.quantityAvailable} ${p.unit}</small>
@@ -252,7 +335,7 @@
         searchResultsDiv.classList.remove("d-none");
       }
 
-      // Cart
+      // ====== Cart ======
       function addProductToCart(p){
         const inv = getActiveInvoice(); if(!inv) return;
         const cart = inv.cart;
@@ -298,7 +381,7 @@
             row.className = "cart-item";
             row.dataset.goodId = item.goodID;
             row.innerHTML = `
-              <img src="${item.imageURL || "https://via.placeholder.com/50"}" alt="${item.name}">
+              <img src="${item.imageURL || IMG_FALLBACK_50}" alt="${item.name}">
               <div class="cart-item-details">
                 <div class="cart-item-name" title="${item.name}">${item.name}</div>
                 <small>${fmt(item.priceSell)} VND / ${item.unit}</small>
@@ -323,13 +406,10 @@
             cartItemsContainer.appendChild(row);
           });
 
-          // quantity buttons + input
           $$(".decrease-quantity").forEach(btn=> btn.addEventListener("click", updateCartQuantity));
           $$(".increase-quantity").forEach(btn=> btn.addEventListener("click", updateCartQuantity));
           $$(".quantity-in-cart").forEach(inp=> inp.addEventListener("change", updateCartQuantityManual));
           $$(".cart-item-remove").forEach(icon=> icon.addEventListener("click", removeProductFromCart));
-
-          // price & discount inputs
           $$(".price-input").forEach(inp=> inp.addEventListener("change", onPriceChange));
           $$(".discount-input").forEach(inp=> inp.addEventListener("change", onDiscountChange));
         }
@@ -372,6 +452,7 @@
         }
         renderCart();
       }
+
       function updateCartQuantityManual(e){
         const inv = getActiveInvoice(); if(!inv) return;
         const id = Number(e.target.dataset.id);
@@ -386,6 +467,7 @@
         item.quantityInCart = q;
         renderCart();
       }
+
       function removeById(id){
         const inv = getActiveInvoice(); if(!inv) return;
         inv.cart = inv.cart.filter(i=>i.goodID!==id);
@@ -412,7 +494,7 @@
         invoiceMeta.textContent = `${items} mặt hàng • ${lines} dòng`;
       }
 
-      // Checkout
+      // ====== Checkout ======
       async function handleCheckout(){
         const inv = getActiveInvoice(); if(!inv) return;
         const cart = inv.cart;
@@ -424,9 +506,10 @@
             const payload = { goodID: item.goodID, quantitySold: item.quantityInCart };
             const res = await fetch(`${API_URL}/sell`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: authHeaders(),
               body: JSON.stringify(payload),
             });
+            if (handleAuthError(res)) return;
             if(!res.ok){
               let msg="Không thể thực hiện giao dịch.";
               try{ const data=await res.json(); msg = data?.message || msg; }catch{}
@@ -442,31 +525,33 @@
         }
       }
 
-      // Keyboard & Events
-      productSearchInput.addEventListener("input", debounce(e=> searchProducts(e.target.value), 250));
-      // Enter để chọn sản phẩm đầu tiên trong list
+      // ====== Events & init ======
+      const hideIfEmpty = ()=>{ if (!productSearchInput.value.trim()) searchResultsDiv.classList.add("d-none"); };
+      productSearchInput.addEventListener("input", debounce(e=> { searchProducts(e.target.value); if (!e.target.value) hideIfEmpty(); }, 250));
       productSearchInput.addEventListener("keydown", e=>{
         if(e.key==="Enter"){
-          const first = $(".search-results-item");
+          const first = document.querySelector(".search-results-item");
           if(first){ first.click(); e.preventDefault(); }
         }
       });
       document.addEventListener("click", e=>{
-        if(!productSearchInput.contains(e.target) && !searchResultsDiv.contains(e.target)){
-          searchResultsDiv.classList.add("d-none");
+        const box = document.getElementById("search-results");
+        const input = document.getElementById("product-search-input");
+        if(!input.contains(e.target) && !box.contains(e.target)){
+          box.classList.add("d-none");
         }
       });
-
       checkoutButton.addEventListener("click", handleCheckout);
       btnAddInvoice.addEventListener("click", createInvoice);
-      btnClearInvoice.addEventListener("click", ()=>{ const inv=getActiveInvoice(); if(!inv) return; if(inv.cart.length===0) return; if(confirm("Xóa toàn bộ giỏ hàng hiện tại?")){ inv.cart=[]; renderCart(); }});
+      btnClearInvoice.addEventListener("click", ()=>{
+        const inv=getActiveInvoice(); if(!inv) return;
+        if(inv.cart.length===0) return;
+        if(confirm("Xóa toàn bộ giỏ hàng hiện tại?")){ inv.cart=[]; renderCart(); }
+      });
       btnHoldInvoice.addEventListener("click", ()=> alert("Tính năng giữ hóa đơn (park invoice) sẽ lưu ở localStorage hoặc API (nếu có)."));
 
-      // Phím tắt
       document.addEventListener("keydown", e=>{
-        // Tạo hóa đơn mới
         if(e.ctrlKey && e.key.toLowerCase()==="n"){ e.preventDefault(); createInvoice(); }
-        // Xóa dòng đang focus bằng Delete
         if(e.key==="Delete"){
           const active = document.activeElement;
           const wrapper = active?.closest?.(".cart-item");
@@ -477,8 +562,10 @@
         }
       });
 
-      // Init
-      createInvoice();
+      (async () => {
+        await resolveLocationIdFromStore();  
+        createInvoice();
+      })();
     </script>
   </body>
 </html>

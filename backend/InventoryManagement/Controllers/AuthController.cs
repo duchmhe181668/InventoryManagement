@@ -40,7 +40,7 @@ namespace InventoryManagement.Controllers
             if (string.IsNullOrWhiteSpace(usernameInput) || string.IsNullOrWhiteSpace(passwordInput))
                 return BadRequest("Username/Password is required.");
 
-            // 1) Lấy user + role bằng LINQ (case-insensitive)
+            // 1) Lấy user + role (case-insensitive)
             var user = await _db.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == usernameInput.ToLower());
@@ -48,15 +48,14 @@ namespace InventoryManagement.Controllers
             if (user is null || user.PasswordHash is null || user.PasswordHash.Length == 0)
                 return Unauthorized("Invalid username or password.");
 
-            // 2) Chuyển byte[] -> chuỗi bcrypt an toàn (UTF8, fallback UTF-16LE)
+            // 2) Giải mã varbinary -> chuỗi bcrypt (UTF8, fallback Unicode)
             string hash = Encoding.UTF8.GetString(user.PasswordHash).Trim();
             if (!(hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || hash.StartsWith("$2y$")))
             {
-                // có thể bạn đã lưu bằng NVARCHAR -> bytes UTF-16LE
                 hash = Encoding.Unicode.GetString(user.PasswordHash).Trim();
             }
 
-            // 3) Kiểm tra định dạng và verify
+            // 3) Verify BCrypt
             if (!(hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || hash.StartsWith("$2y$")))
                 return BadRequest("PasswordHash is not a valid BCrypt string. Please update the user with a BCrypt hash.");
 
@@ -65,24 +64,37 @@ namespace InventoryManagement.Controllers
             catch { return BadRequest("PasswordHash is not a valid BCrypt string. Please update the user with a BCrypt hash."); }
             if (!ok) return Unauthorized("Invalid username or password.");
 
-            // 4) Lấy role name (nếu có) và phát JWT
-            var roles = string.IsNullOrWhiteSpace(user.Role?.RoleName)
+            // 4) Roles + token
+            var roleName = user.Role?.RoleName;
+            var roles = string.IsNullOrWhiteSpace(roleName)
                 ? Enumerable.Empty<string>()
-                : new[] { user.Role!.RoleName };
+                : new[] { roleName! };
 
             var token = _jwt.CreateToken(user.Username, user.Username, roles);
             var exp = _jwt.GetExpiry();
-            var roleName = user.Role?.RoleName;
 
-            //Lấy SupplierID dựa trên Email của User
+            // 5) SupplierId theo Email (nếu có)
             int? supplierId = null;
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var supplier = await _db.Suppliers
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(s => s.Email == user.Email);
                 supplierId = supplier?.SupplierID;
             }
-            //--------------Trung------------------------
+
+            // 6) StoreId theo quan hệ 1-1: Stores.UserID = Users.UserID
+            int? storeId = await _db.Stores
+                .AsNoTracking()
+                .Where(s => s.UserID == user.UserID)
+                .Select(s => (int?)s.StoreID)
+                .FirstOrDefaultAsync();
+
+            // Nếu muốn nhét store_id vào token, thêm overload IJwtService:
+            // var extraClaims = new Dictionary<string,string>();
+            // if (supplierId.HasValue) extraClaims["supplier_id"] = supplierId.Value.ToString();
+            // if (storeId.HasValue)    extraClaims["store_id"]    = storeId.Value.ToString();
+            // var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
 
             return Ok(new LoginResponse
             {
@@ -91,10 +103,10 @@ namespace InventoryManagement.Controllers
                 ExpiresInSeconds = (long)(exp - DateTimeOffset.UtcNow).TotalSeconds,
                 Username = user.Username,
                 Role = roleName,
-                SupplierId = supplierId, //trung
+                SupplierId = supplierId,
+                StoreId = storeId
             });
         }
-
 
         /// <summary>Test token: trả lại danh tính & claims</summary>
         [HttpGet("me")]
@@ -108,7 +120,5 @@ namespace InventoryManagement.Controllers
                 Claims = User.Claims.Select(c => new { c.Type, c.Value })
             });
         }
-
-
     }
 }

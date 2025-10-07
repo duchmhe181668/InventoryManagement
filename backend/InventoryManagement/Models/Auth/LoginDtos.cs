@@ -15,6 +15,7 @@
         public string? Role { get; set; }
 
         //Trung
-        public int? SupplierId { get; set; } 
+        public int? SupplierId { get; set; }
+        public int? StoreId { get; set; }
     }
 }

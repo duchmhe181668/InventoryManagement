@@ -14,5 +14,7 @@ namespace InventoryManagement.Models
         [MaxLength(300)] public string? Address { get; set; }
 
         public ICollection<StorePrice>? StorePrices { get; set; }
+        public int? UserID { get; set; }
+        public User? User { get; set; }
     }
 }
