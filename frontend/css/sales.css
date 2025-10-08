@@ -27,20 +27,45 @@ body {
 
 .search-box { max-width: 420px; }
 
-/* Tabs hóa đơn */
+/* Tabs hóa đơn (Đã chuyển ra ngoài Navbar) */
+.invoice-tabs-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding: 0 10px;
+    height: 40px; /* Độ cao cố định */
+    display: flex;
+    align-items: center;
+}
+.invoice-tabs-wrapper::-webkit-scrollbar { display: none; } /* Ẩn scrollbar */
+
+#invoice-tabs {
+  flex-wrap: nowrap;
+  border-bottom: none;
+  list-style: none; /* Đảm bảo là list */
+  padding-left: 0;
+  margin-bottom: 0;
+}
 #invoice-tabs .nav-link {
-  padding: .25rem .5rem;
-  border-radius: .5rem;
-  border: 1px solid rgba(255,255,255,.25);
+  padding: .35rem .75rem;
+  border-radius: .375rem;
+  border: 1px solid transparent;
   display: inline-flex;
   align-items: center;
   gap: .25rem;
+  color: #495057; /* Màu chữ */
+  background-color: #f8f9fa; /* Màu nền */
+  margin-right: 5px; /* Khoảng cách giữa các tab */
 }
 #invoice-tabs .nav-link.active {
-  background: rgba(255,255,255,.15);
-  border-color: rgba(255,255,255,.4);
+  background: #fff;
+  color: #0d6efd;
+  font-weight: 600;
+  border-color: #dee2e6 #dee2e6 #fff;
+  border-bottom-color: transparent;
 }
-#invoice-tabs .tab-close { cursor: pointer; }
+#invoice-tabs .tab-close { cursor: pointer; opacity: .6; transition: opacity .15s; }
+#invoice-tabs .tab-close:hover { opacity: 1; }
 
 /* Main content */
 .main-content {
@@ -48,18 +73,21 @@ body {
   display: flex;
   overflow: hidden;
 }
-.left-panel, .right-panel {
+
+.left-panel {
   background: #fff;
   padding: 20px;
   box-shadow: 0 0 10px rgba(0,0,0,.06);
-}
-.left-panel {
   flex-grow: 1;
   border-right: 1px solid #eee;
   position: relative;
-  overflow-y: auto;
+  overflow: hidden; /* Để cart-items-container xử lý scroll */
+  display: flex;
+  flex-direction: column;
 }
 .right-panel {
+  background: #fff;
+  padding: 20px;
   width: 350px;
   display: flex;
   flex-direction: column;
@@ -69,17 +97,30 @@ body {
 /* Dropdown tìm kiếm */
 .search-results-dropdown {
   position: absolute;
-  width: calc(100% - 40px);
+  top: 0;
+  left: 15px; /* Căn chỉnh với input trong Navbar */
+  max-width: 420px;
+  width: calc(100% - 30px); /* Tối đa bằng Navbar width, trừ padding */
+  
   max-height: 320px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid #ccc;
   border-top: none;
+  border-radius: 0 0 5px 5px;
   z-index: 1000;
-  left: 20px;
-  right: 20px;
   box-shadow: 0 4px 8px rgba(0,0,0,.1);
 }
+.search-results-dropdown {
+    /* Đảm bảo nằm ngay dưới Navbar */
+    top: 48px; /* Chiều cao Navbar khoảng 48px */
+    z-index: 1050;
+    max-width: 420px;
+    left: 10px; /* Căn chỉnh lề */
+    margin-left: 0; 
+}
+
+
 .search-results-item {
   padding: 10px;
   cursor: pointer;
@@ -97,6 +138,28 @@ body {
 .search-results-item-price { color: #0d6efd; }
 
 /* Cart */
+.cart-header {
+  padding: 10px 0;
+  border-bottom: 1px solid #dee2e6;
+  background: #fff;
+  margin: 0 !important;
+  display: none; /* Mặc định ẩn, JS sẽ hiện khi có item */
+}
+.cart-header > div {
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+}
+.cart-header > div:nth-child(2) { justify-content: flex-end; } /* Giá & CK */
+.cart-header > div:nth-child(3) { justify-content: center; } /* SL & Xóa */
+
+
+.cart-items-container {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 0;
+  padding-top: 10px;
+}
 .cart-item {
   display: flex;
   align-items: center;
@@ -176,4 +239,7 @@ body {
 @media (max-width: 992px){
   .right-panel { width: 100%; border-top: 1px solid #eee; }
   .left-panel { border-right: none; }
+  .invoice-tabs-wrapper { padding: 0 5px; }
+  .main-content { flex-direction: column; }
+  .right-panel { order: -1; } /* Đẩy cột phải lên đầu trên mobile */
 }

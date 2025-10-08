@@ -17,8 +17,8 @@
           <i class="fas fa-home me-1"></i> Trang chủ
         </a>
 
-        <div class="d-flex align-items-center flex-grow-1 mx-3 gap-2 flex-wrap">
-          <div class="input-group search-box">
+        <div class="d-flex align-items-center flex-grow-1 mx-3 gap-2">
+          <div class="input-group search-box position-relative">
             <span class="input-group-text bg-white border-0" id="search-addon">
               <i class="fas fa-search text-muted"></i>
             </span>
@@ -30,30 +30,35 @@
               aria-label="Search"
               aria-describedby="search-addon"/>
           </div>
-
-          <ul class="nav nav-pills align-items-center flex-wrap gap-1" id="invoice-tabs"></ul>
-
-          <button class="btn btn-outline-light btn-sm" id="btn-add-invoice" type="button" title="Thêm hóa đơn (Ctrl+N)">
-            <i class="fas fa-plus me-1"></i> Hóa đơn
-          </button>
         </div>
 
-        <div class="d-flex align-items-center">
-          <div class="dropdown">
-            <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-bars"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-              <li><a class="dropdown-item" href="#">Tài khoản</a></li>
-              <li><a class="dropdown-item" href="#" id="btn-logout">Đăng xuất</a></li>
-            </ul>
-          </div>
+        <div class="dropdown">
+          <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản và Cài đặt">
+            <i class="fas fa-user-circle"></i> 
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i> Tài khoản</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="btn-logout">
+              <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
+            </a></li>
+          </ul>
         </div>
       </div>
     </nav>
+    <div class="invoice-tabs-wrapper bg-light border-bottom">
+        <ul class="nav nav-tabs nav-pills align-items-center flex-nowrap" id="invoice-tabs">
+            <li class="nav-item">
+                </li>
+        </ul>
+    </div>
+
+    <div class="container-fluid position-relative g-0">
+        <div id="search-results" class="search-results-dropdown d-none"></div>
+    </div>
 
     <div class="main-content row g-0">
-      <div class="left-panel col-md-8">
+      <div class="left-panel col-lg-8">
         <div class="search-customer mb-3">
           <div class="input-group">
             <span class="input-group-text"><i class="fas fa-user"></i></span>
@@ -63,49 +68,169 @@
             </button>
           </div>
         </div>
+        
+        <div class="cart-header row text-muted small fw-semibold">
+          <div class="col-md-5">Sản phẩm</div>
+          <div class="col-md-3 text-end">Giá & Chiết khấu</div>
+          <div class="col-md-4 text-center">SL & Xóa</div>
+        </div>
 
-        <div id="search-results" class="search-results-dropdown d-none"></div>
-
-        <div id="cart-items-container">
-          <p id="empty-cart-message" class="text-center text-muted mt-5">Chưa có sản phẩm nào trong giỏ hàng.</p>
+        <div id="cart-items-container" class="cart-items-container">
+          <div id="empty-cart-message" class="text-center text-muted p-5 d-none">
+            <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+            <h5>Giỏ hàng trống</h5>
+            <p>Tìm và thêm sản phẩm từ thanh tìm kiếm.</p>
+          </div>
         </div>
       </div>
 
-      <div class="right-panel col-md-4">
-        <div>
-          <div class="payment-summary">
-            <div><span>Tổng tiền hàng</span><span id="total-amount">0</span></div>
-            <div><span>Giảm giá</span><span id="discount-amount">0</span></div>
-            <div><span>Khách cần trả</span><span class="total-amount" id="final-amount">0</span></div>
-          </div>
-          <hr />
-          <div class="payment-methods text-center">
-            <p class="text-muted mb-2">Phương thức</p>
-            <div class="btn-group w-100" role="group">
-              <button class="btn btn-outline-secondary btn-sm active" id="pm-cash">Tiền mặt</button>
-              <button class="btn btn-outline-secondary btn-sm" id="pm-card">Thẻ</button>
-              <button class="btn btn-outline-secondary btn-sm" id="pm-qr">Chuyển khoản</button>
+      <div class="right-panel col-lg-4">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header fw-semibold"><i class="fas fa-file-invoice-dollar me-2"></i> Tóm tắt Thanh toán</div>
+          <div class="card-body payment-summary">
+            <div>
+              <span>Tổng tiền hàng (trước CK):</span>
+              <span id="total-amount">0</span> VND
+            </div>
+            <div class="text-danger">
+              <span>Giảm giá:</span>
+              <span id="discount-amount">0</span> VND
+            </div>
+            <hr class="my-2"/>
+            <div class="total-amount">
+              <span>Khách cần trả:</span>
+              <span class="fw-bold text-primary" id="final-amount">0</span> VND
             </div>
           </div>
+          <div class="card-footer">
+            <button class="btn btn-lg btn-success w-100 fw-bold" id="checkout-button">
+              THANH TOÁN
+              <i class="fas fa-chevron-right ms-2"></i>
+            </button>
+          </div>
         </div>
-
-        <button class="btn btn-primary btn-lg w-100 mt-3" id="checkout-button">
-          THANH TOÁN
-        </button>
       </div>
     </div>
 
     <div class="bottom-bar">
       <div class="text-muted" id="invoice-meta">0 mặt hàng • 0 dòng</div>
       <div class="btn-group">
-        <button class="btn btn-outline-secondary btn-sm" id="btn-clear-invoice">
-          <i class="fas fa-trash-alt me-1"></i> Xóa giỏ
+        <button class="btn btn-outline-warning btn-sm" id="btn-hold-invoice" title="Giữ hóa đơn (chưa thanh toán)">
+          <i class="fas fa-pause me-1"></i> Giữ hóa đơn
         </button>
-        <button class="btn btn-outline-secondary btn-sm" id="btn-hold-invoice" title="Giữ hóa đơn (chưa thanh toán)">
-          <i class="fas fa-bookmark me-1"></i> Giữ hóa đơn
+        <button class="btn btn-outline-danger btn-sm" id="btn-clear-invoice">
+          <i class="fas fa-trash-alt me-1"></i> Xóa giỏ
         </button>
       </div>
     </div>
+    
+    <div class="modal fade" id="paymentMethodModal" tabindex="-1" aria-labelledby="paymentMethodModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="paymentMethodModalLabel">Chọn Phương Thức Thanh Toán</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="pmethod" id="pmCash" value="CASH" checked>
+              <label class="form-check-label" for="pmCash">
+                <i class="fas fa-money-bill-wave me-2"></i> Tiền mặt
+              </label>
+            </div>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="radio" name="pmethod" id="pmBank" value="BANK">
+              <label class="form-check-label" for="pmBank">
+                <i class="fas fa-university me-2"></i> Chuyển khoản ngân hàng
+              </label>
+            </div>
+
+            <div id="pm-bank-area" class="mt-3 p-3 border rounded d-none">
+              <div class="mb-2">
+                <label for="pm-bank" class="form-label small text-muted">Ngân hàng nhận:</label>
+                <select id="pm-bank" class="form-select form-select-sm">
+                  <option value="VIETCOMBANK">Vietcombank</option>
+                  <option value="ACB">ACB</option>
+                  <option value="TECHCOMBANK">Techcombank</option>
+                  <option value="MBBANK">MBBank</option>
+                  <option value="OTHER">Khác</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label for="pm-account" class="form-label small text-muted">Số tài khoản:</label>
+                <input type="text" class="form-control form-control-sm" id="pm-account" placeholder="VD: 0011001234567">
+              </div>
+              <div>
+                <label for="pm-tx" class="form-label small text-muted">Mã giao dịch/Tham chiếu (nếu có):</label>
+                <input type="text" class="form-control form-control-sm" id="pm-tx" placeholder="Mã tham chiếu giao dịch">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+            <button type="button" class="btn btn-primary" id="pm-next">Tiếp tục <i class="fas fa-arrow-right ms-1"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="invoicePreviewModal" tabindex="-1" aria-labelledby="invoicePreviewModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="invoicePreviewModalLabel">Xem Trước Hóa Đơn & Xác Nhận</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-1">Phương thức thanh toán: <span id="invoice-payment-summary" class="fw-semibold">Tiền mặt</span></p>
+
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Sản phẩm</th>
+                    <th class="text-end">SL</th>
+                    <th class="text-end">Đơn giá</th>
+                    <th class="text-end">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody id="invoice-preview-rows">
+                  </tbody>
+                <tfoot>
+                  <tr>
+                    <th colspan="3" class="text-end">TỔNG CỘNG (Chưa chiết khấu)</th>
+                    <th class="text-end fw-bold text-primary" id="invoice-preview-total">0 VND</th>
+                  </tr>
+                  <tr>
+                    <th colspan="4" class="text-end">
+                      <small>Khách cần trả: <span class="fw-bold text-danger" id="invoice-preview-final">0 VND</span> (Đã chiết khấu)</small>
+                    </th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div class="mt-3 border p-3 rounded">
+              <label for="invoice-email" class="form-label small text-muted">Gửi hóa đơn qua Email (tùy chọn):</label>
+              <div class="input-group">
+                <input type="email" class="form-control form-control-sm" id="invoice-email" placeholder="email@khachhang.com">
+                <button class="btn btn-outline-secondary btn-sm" type="button" id="btn-send-invoice-email" title="Gửi hóa đơn">
+                  <i class="fas fa-envelope"></i>
+                </button>
+              </div>
+            </div>
+            
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Quay lại/Hủy</button>
+            <button type="button" class="btn btn-success fw-bold" id="btn-confirm-checkout">
+              <i class="fas fa-check-circle me-1"></i> Xác nhận Thanh toán
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -197,7 +322,7 @@
       const finalAmountSpan     = $("#final-amount");
       const checkoutButton      = $("#checkout-button");
       const invoiceTabsUl       = $("#invoice-tabs");
-      const btnAddInvoice       = $("#btn-add-invoice");
+      // const btnAddInvoice       = $("#btn-add-invoice"); // Đã xóa khỏi HTML cũ, sẽ tạo lại trong JS
       const invoiceMeta         = $("#invoice-meta");
       const btnClearInvoice     = $("#btn-clear-invoice");
       const btnHoldInvoice      = $("#btn-hold-invoice");
@@ -215,37 +340,90 @@
 
       function createInvoice() {
         const nextNum = getSmallestAvailableInvoiceNumber();
-        const inv = { id: crypto.randomUUID(), num: nextNum, name: `Hóa đơn ${nextNum}`, cart: [] };
+        // Cố gắng load hóa đơn từ localStorage nếu có
+        let inv = null;
+        try {
+          const stored = JSON.parse(localStorage.getItem(`pos_invoice_${nextNum}`));
+          if (stored && stored.cart) {
+            inv = stored;
+            inv.id = crypto.randomUUID(); // Dùng ID mới để không trùng với các session khác
+          }
+        } catch {}
+
+        if (!inv) {
+          inv = { id: crypto.randomUUID(), num: nextNum, name: `Hóa đơn ${nextNum}`, cart: [] };
+        }
+        
         invoices.push(inv);
         activeInvoiceId = inv.id;
         renderInvoiceTabs();
         renderCart();
       }
       function getActiveInvoice(){ return invoices.find(x => x.id === activeInvoiceId) }
-      function switchInvoice(id){ if(id!==activeInvoiceId){ activeInvoiceId=id; renderInvoiceTabs(); renderCart(); } }
+      function switchInvoice(id){ 
+        if(id!==activeInvoiceId){ 
+          // Lưu trạng thái hóa đơn cũ vào localStorage trước khi switch
+          const oldInv = getActiveInvoice();
+          if (oldInv) {
+            try { localStorage.setItem(`pos_invoice_${oldInv.num}`, JSON.stringify(oldInv)); } catch {}
+          }
+          activeInvoiceId=id; 
+          renderInvoiceTabs(); 
+          renderCart(); 
+        } 
+      }
       function closeInvoice(id){
         if(invoices.length===1){ alert("Phải còn ít nhất một hóa đơn."); return; }
         const inv = invoices.find(x=>x.id===id);
         if(inv && inv.cart.length>0){
           if(!confirm(`${inv.name} đang có sản phẩm. Đóng vẫn tiếp tục?`)) return;
         }
+        // Lấy hóa đơn kế tiếp để kích hoạt
+        const invIndex = invoices.findIndex(x => x.id === id);
+        let nextActiveId = null;
+        if (activeInvoiceId === id) {
+          if (invIndex === 0) { // Nếu xóa cái đầu tiên
+            nextActiveId = invoices[1]?.id;
+          } else { // Nếu xóa cái khác
+            nextActiveId = invoices[invIndex - 1]?.id;
+          }
+        }
+
         invoices = invoices.filter(x=>x.id!==id);
-        if(activeInvoiceId===id) activeInvoiceId = invoices[0].id;
-        renderInvoiceTabs(); renderCart();
+        
+        if(activeInvoiceId===id) activeInvoiceId = nextActiveId || invoices[0].id;
+        
+        renderInvoiceTabs(); 
+        renderCart();
+        // Xóa hóa đơn khỏi localStorage nếu nó tồn tại
+        if (inv) { try { localStorage.removeItem(`pos_invoice_${inv.num}`); } catch {} }
       }
       function renderInvoiceTabs(){
         invoiceTabsUl.innerHTML = "";
         [...invoices].sort((a,b)=>a.num-b.num).forEach(inv=>{
           const li = document.createElement("li");
-          li.className = "nav-item";
+          li.className = "nav-item me-1";
           li.innerHTML = `
-            <a class="nav-link ${inv.id===activeInvoiceId ? "active fw-semibold":""}" href="#" data-id="${inv.id}" title="Nhấp để chuyển, double-click để đổi tên">
+            <a class="nav-link ${inv.id===activeInvoiceId ? "active fw-semibold":""}" href="#" data-id="${inv.id}" data-num="${inv.num}" title="Nhấp để chuyển, double-click để đổi tên">
               <i class="fas fa-file-invoice me-1"></i>
               <span class="inv-title">${inv.name}</span>
+              ${inv.cart.length > 0 ? `<span class="badge bg-danger ms-1 badge-custom">${inv.cart.length}</span>` : ''}
               <i class="fas fa-times ms-2 small tab-close" data-close-id="${inv.id}"></i>
             </a>`;
           invoiceTabsUl.appendChild(li);
         });
+
+        // Thêm nút Thêm hóa đơn
+        const liAdd = document.createElement("li");
+        liAdd.className = "nav-item ms-1";
+        liAdd.innerHTML = `
+          <button class="btn btn-outline-primary btn-sm" id="btn-add-invoice" type="button" title="Thêm hóa đơn (Ctrl+N)">
+            <i class="fas fa-plus"></i>
+          </button>`;
+        invoiceTabsUl.appendChild(liAdd);
+        
+        document.getElementById("btn-add-invoice").addEventListener("click", createInvoice);
+
         $$(".nav-link", invoiceTabsUl).forEach(a=>{
           a.addEventListener("click", e=>{ e.preventDefault(); switchInvoice(a.dataset.id) });
           a.addEventListener("dblclick", e=>{
@@ -257,6 +435,7 @@
           });
         });
         $$(".tab-close", invoiceTabsUl).forEach(btn=>{
+          // Sửa lỗi: dùng "closeId" thay vì "close-id"
           btn.addEventListener("click", e=>{ e.stopPropagation(); closeInvoice(btn.dataset.closeId) });
         });
       }
@@ -265,9 +444,9 @@
       let CURRENT_LOCATION_ID = null;
       async function resolveLocationIdFromStore() {
         const sid = getStoreId();
-        console.log("Auth payload:", getAuthPayload());
+        // console.log("Auth payload:", getAuthPayload());
         if (sid == null) {
-          console.warn("Không tìm thấy storeId trong payload; không thể lấy đúng tồn kho. BE sẽ cộng tất cả location nếu không truyền locationId.");
+          console.warn("Không tìm thấy storeId trong payload; không thể lấy đúng tồn kho.");
           return;
         }
         try {
@@ -339,19 +518,23 @@
       function addProductToCart(p){
         const inv = getActiveInvoice(); if(!inv) return;
         const cart = inv.cart;
-        const exist = cart.find(i=>i.goodID===p.goodID);
+        const pID = Number(p.goodID || p.GoodID);
+        const exist = cart.find(i=>Number(i.goodID || i.GoodID)===pID);
+        
+        const available = Number(p.quantityAvailable || 0);
+
         if(exist){
-          if(exist.quantityInCart < p.quantityAvailable) exist.quantityInCart++;
+          if(exist.quantityInCart < available) exist.quantityInCart++;
           else alert("Không thể thêm vì số lượng tồn kho của "+p.name+" không đủ.");
         }else{
-          if(p.quantityAvailable>0){
+          if(available>0){
             cart.push({
-              goodID: p.goodID,
+              goodID: pID,
               name: p.name,
               priceSell: Number(p.priceSell || 0),
               unit: p.unit,
               imageURL: p.imageURL,
-              quantityAvailable: Number(p.quantityAvailable || 0),
+              quantityAvailable: available,
               quantityInCart: 1,
               discountPercent: 0
             });
@@ -367,7 +550,8 @@
       function lineFinal(item){ return lineGross(item) - lineDiscount(item) }
 
       function renderCart(){
-        const inv = getActiveInvoice(); if(!inv) return;
+        const inv = getActiveInvoice(); 
+        if(!inv) return;
         const cart = inv.cart;
         cartItemsContainer.innerHTML = "";
 
@@ -376,20 +560,27 @@
           cartItemsContainer.appendChild(emptyCartMessage);
         }else{
           emptyCartMessage.classList.add("d-none");
+          const cartHeader = document.querySelector('.cart-header');
+          if(cartHeader) cartHeader.style.display = 'flex'; // Hiện header nếu có item
+          
           cart.forEach(item=>{
             const row = document.createElement("div");
             row.className = "cart-item";
             row.dataset.goodId = item.goodID;
+            
+            const itemPriceSell = Number(item.priceSell || 0);
+            const itemDiscountPercent = Number(item.discountPercent || 0);
+
             row.innerHTML = `
               <img src="${item.imageURL || IMG_FALLBACK_50}" alt="${item.name}">
               <div class="cart-item-details">
                 <div class="cart-item-name" title="${item.name}">${item.name}</div>
-                <small>${fmt(item.priceSell)} VND / ${item.unit}</small>
+                <small>${fmt(itemPriceSell)} VND / ${item.unit}</small>
               </div>
 
               <div class="cart-item-pricing">
-                <input type="number" class="form-control form-control-sm price-input" min="0" step="100" value="${item.priceSell}" data-id="${item.goodID}" title="Đơn giá">
-                <input type="number" class="form-control form-control-sm discount-input" min="0" max="100" step="0.5" value="${item.discountPercent||0}" data-id="${item.goodID}" title="Giảm giá %">
+                <input type="number" class="form-control form-control-sm price-input" min="0" step="100" value="${itemPriceSell}" data-id="${item.goodID}" title="Đơn giá">
+                <input type="number" class="form-control form-control-sm discount-input" min="0" max="100" step="0.5" value="${itemDiscountPercent}" data-id="${item.goodID}" title="Giảm giá %">
                 <div class="text-end small">
                   <span class="text-muted">Thành tiền:</span>
                   <span class="fw-semibold line-total" data-id="${item.goodID}">${fmt(lineFinal(item))}</span>
@@ -413,8 +604,14 @@
           $$(".price-input").forEach(inp=> inp.addEventListener("change", onPriceChange));
           $$(".discount-input").forEach(inp=> inp.addEventListener("change", onDiscountChange));
         }
+
+        // Ẩn header nếu cart trống
+        const cartHeader = document.querySelector('.cart-header');
+        if(cartHeader) cartHeader.style.display = cart.length === 0 ? 'none' : 'flex';
+        
         updatePaymentSummary();
         updateInvoiceMeta();
+        renderInvoiceTabs(); // Cập nhật badge
       }
 
       function onPriceChange(e){
@@ -493,39 +690,101 @@
         const items = inv.cart.reduce((s,i)=> s + Number(i.quantityInCart||0), 0);
         invoiceMeta.textContent = `${items} mặt hàng • ${lines} dòng`;
       }
+      
+      // Khôi phục logic Modal và Checkout
+      let pmModal, invoicePrevModal;
+      let chosenPayment = { method: 'CASH', bank: null, account: null, tx: null };
+      let _checkoutSnapshot = null;
 
-      // ====== Checkout ======
-      async function handleCheckout(){
-        const inv = getActiveInvoice(); if(!inv) return;
-        const cart = inv.cart;
-        if(cart.length===0){ alert("Giỏ hàng trống."); return; }
-        if(!confirm(`Xác nhận thanh toán cho "${inv.name}"?`)) return;
+      function cloneDeep(obj){ try { return JSON.parse(JSON.stringify(obj)); } catch { return null; } }
+
+      function buildInvoicePreview() {
+        const inv = _checkoutSnapshot; if (!inv) return;
+        const tbody = document.getElementById('invoice-preview-rows');
+        const totalEl = document.getElementById('invoice-preview-total');
+        const finalEl = document.getElementById('invoice-preview-final');
+        const paySum = document.getElementById('invoice-payment-summary');
+        
+        if (!tbody || !totalEl || !finalEl || !paySum) return;
+
+        tbody.innerHTML = '';
+        let totalGross = 0;
+        let totalFinal = 0;
+        for (const it of inv.cart) {
+          const gross = lineGross(it);
+          const final = lineFinal(it);
+          totalGross += gross;
+          totalFinal += final;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${it.name}</td>
+            <td class="text-end">${it.quantityInCart}</td>
+            <td class="text-end">${VND.format(it.priceSell || 0)}</td>
+            <td class="text-end">${VND.format(gross)}</td>`;
+          tbody.appendChild(tr);
+        }
+        totalEl.textContent = VND.format(totalGross) + ' VND';
+        finalEl.textContent = VND.format(totalFinal) + ' VND'; // Hiển thị số tiền cuối cùng
+
+        paySum.textContent = chosenPayment.method === 'BANK'
+          ? `Chuyển khoản (${chosenPayment.bank || '---'}${chosenPayment.account ? ' • ' + chosenPayment.account : ''}${chosenPayment.tx ? ' • Ref ' + chosenPayment.tx : ''})`
+          : 'Tiền mặt';
+      }
+
+      async function finalConfirmCheckout() {
+        if(!_checkoutSnapshot) { alert("Không tìm thấy thông tin hóa đơn."); return; }
+        const inv = _checkoutSnapshot;
+        const locationId = CURRENT_LOCATION_ID;
 
         try{
-          for(const item of cart){
-            const payload = { goodID: item.goodID, quantitySold: item.quantityInCart };
+          for (const it of inv.cart){
+            const payload = {
+              goodID: it.goodID,
+              quantitySold: it.quantityInCart,
+              locationId: locationId,
+              unitPrice: it.priceSell, 
+              discountPercent: it.discountPercent
+              // Thêm thông tin thanh toán nếu cần thiết cho BE
+            };
+
             const res = await fetch(`${API_URL}/sell`, {
               method: "POST",
               headers: authHeaders(),
               body: JSON.stringify(payload),
             });
+
             if (handleAuthError(res)) return;
+
             if(!res.ok){
               let msg="Không thể thực hiện giao dịch.";
               try{ const data=await res.json(); msg = data?.message || msg; }catch{}
-              alert(`Lỗi khi bán ${item.name}: ${msg}`); return;
+              throw new Error(`Lỗi khi bán ${it.name}: ${msg}`);
             }
           }
+
+          // Thành công: Xóa giỏ hàng hiện tại (LIVE)
+          const live = getActiveInvoice();
+          if (live) {
+            live.cart = [];
+            renderCart();
+            // Xóa khỏi localStorage
+            try { localStorage.removeItem(`pos_invoice_${live.num}`); } catch {}
+          }
+
+          // Đóng modal và thông báo
+          invoicePrevModal?.hide();
           alert("Thanh toán thành công!");
-          inv.cart = [];
-          renderCart();
+
         }catch(err){
           console.error("Lỗi thanh toán:", err);
-          alert("Đã xảy ra lỗi khi kết nối đến server.");
+          alert('Có lỗi khi thanh toán: ' + (err?.message || err));
+        }finally{
+          _checkoutSnapshot = null;
         }
       }
+      // END: Khôi phục logic Modal và Checkout
 
-      // ====== Events & init ======
+
+      // ====== Events & init (Cần giữ nguyên vì nó đã hoạt động) ======
       const hideIfEmpty = ()=>{ if (!productSearchInput.value.trim()) searchResultsDiv.classList.add("d-none"); };
       productSearchInput.addEventListener("input", debounce(e=> { searchProducts(e.target.value); if (!e.target.value) hideIfEmpty(); }, 250));
       productSearchInput.addEventListener("keydown", e=>{
@@ -537,18 +796,24 @@
       document.addEventListener("click", e=>{
         const box = document.getElementById("search-results");
         const input = document.getElementById("product-search-input");
-        if(!input.contains(e.target) && !box.contains(e.target)){
+        if(box && input && !input.contains(e.target) && !box.contains(e.target)){
           box.classList.add("d-none");
         }
       });
-      checkoutButton.addEventListener("click", handleCheckout);
-      btnAddInvoice.addEventListener("click", createInvoice);
+      
+      // btnAddInvoice.addEventListener("click", createInvoice); // Đã chuyển vào renderInvoiceTabs
       btnClearInvoice.addEventListener("click", ()=>{
         const inv=getActiveInvoice(); if(!inv) return;
         if(inv.cart.length===0) return;
         if(confirm("Xóa toàn bộ giỏ hàng hiện tại?")){ inv.cart=[]; renderCart(); }
       });
-      btnHoldInvoice.addEventListener("click", ()=> alert("Tính năng giữ hóa đơn (park invoice) sẽ lưu ở localStorage hoặc API (nếu có)."));
+      btnHoldInvoice.addEventListener("click", ()=>{
+        const inv = getActiveInvoice();
+        if(inv) {
+          try { localStorage.setItem(`pos_invoice_${inv.num}`, JSON.stringify(inv)); } catch {}
+          alert(`Đã lưu trạng thái Hóa đơn ${inv.num} vào bộ nhớ cục bộ.`);
+        }
+      });
 
       document.addEventListener("keydown", e=>{
         if(e.ctrlKey && e.key.toLowerCase()==="n"){ e.preventDefault(); createInvoice(); }
@@ -562,6 +827,74 @@
         }
       });
 
+      // Khởi tạo Modal Events và gán lại listener cho nút THANH TOÁN
+      document.addEventListener('DOMContentLoaded', () => {
+        const pmModalEl = document.getElementById('paymentMethodModal');
+        const invoicePrevModalEl = document.getElementById('invoicePreviewModal');
+        if (pmModalEl && invoicePrevModalEl) {
+          pmModal = new bootstrap.Modal(pmModalEl);
+          invoicePrevModal = new bootstrap.Modal(invoicePrevModalEl);
+        } else {
+          console.error("Missing modal elements!");
+          // Nếu thiếu modal, gán logic checkout trực tiếp (FALLBACK)
+          checkoutButton.addEventListener('click', async (e) => {
+             e.preventDefault();
+             const inv = getActiveInvoice();
+             if(!inv || inv.cart.length===0){ alert("Giỏ hàng trống. Không thể thanh toán."); return; }
+             const snapshot = cloneDeep(inv);
+             snapshot.locationId = CURRENT_LOCATION_ID;
+             await finalConfirmCheckout(snapshot);
+          });
+          return;
+        }
+
+        // Xử lý chuyển đổi phương thức thanh toán
+        pmModalEl.addEventListener('change', (e) => {
+          if (e.target && e.target.name === 'pmethod') {
+            const v = e.target.value;
+            const area = pmModalEl.querySelector('#pm-bank-area');
+            if (area) area.classList.toggle('d-none', v !== 'BANK');
+            chosenPayment.method = v;
+          }
+        });
+
+        // Nút "Tiếp tục" trong modal thanh toán
+        const pmNext = pmModalEl.querySelector('#pm-next');
+        if (pmNext) {
+          pmNext.addEventListener('click', () => {
+            if (chosenPayment.method === 'BANK') {
+              chosenPayment.bank = (pmModalEl.querySelector('#pm-bank')?.value) || null;
+              chosenPayment.account = (pmModalEl.querySelector('#pm-account')?.value || '').trim() || null;
+              chosenPayment.tx = (pmModalEl.querySelector('#pm-tx')?.value || '').trim() || null;
+            } else {
+              chosenPayment.bank = chosenPayment.account = chosenPayment.tx = null;
+            }
+            
+            pmModal?.hide();
+            buildInvoicePreview();
+            invoicePrevModal?.show();
+          });
+        }
+
+        // Nút "Xác nhận thanh toán" trong modal xem trước
+        const confirmBtn = document.getElementById('btn-confirm-checkout');
+        if (confirmBtn) {
+          confirmBtn.addEventListener('click', finalConfirmCheckout);
+        }
+        
+        // Gán lại listener cho nút THANH TOÁN (chỉ mở modal)
+        checkoutButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          const inv = getActiveInvoice();
+          if(!inv || inv.cart.length===0){ alert("Giỏ hàng trống."); return; }
+          
+          _checkoutSnapshot = cloneDeep(inv);
+          _checkoutSnapshot.locationId = CURRENT_LOCATION_ID; // Gắn locationId vào snapshot
+          pmModal?.show();
+        });
+
+      });
+      
       (async () => {
         await resolveLocationIdFromStore();  
         createInvoice();
