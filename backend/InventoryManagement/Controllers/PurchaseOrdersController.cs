@@ -1,6 +1,7 @@
 ﻿using InventoryManagement.Data;
 using InventoryManagement.Dto.PurchaseOrders;
 using InventoryManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,5 +83,32 @@ namespace InventoryManagement.Controllers
             if (po == null) return NotFound($"PO {poid} không tồn tại");
             return Ok(po);
         }
+
+        [HttpPost("{id:int}/confirm")]
+        public async Task<IActionResult> Confirm(int id)
+        {
+            var po = await _context.PurchaseOrders.FindAsync(id);
+            if (po == null) return NotFound();
+            if (!string.Equals(po.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Chỉ xác nhận đơn ở trạng thái Draft.");
+
+            po.Status = "Submitted";
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPost("{id:int}/receive")]
+        public async Task<IActionResult> Submitted(int id)
+        {
+            var po = await _context.PurchaseOrders.FindAsync(id);
+            if (po == null) return NotFound();
+            if (!string.Equals(po.Status, "Submitted", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Chỉ xác nhận đơn ở trạng thái Submitted.");
+
+            po.Status = "Received";
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
     }
 }
