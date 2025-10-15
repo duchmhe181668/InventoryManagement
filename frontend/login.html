@@ -7,17 +7,16 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body{min-height:100vh;background:#f5f7fb;display:flex;align-items:center;justify-content:center}
-    .card{width:100%;max-width:420px;border:none;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .card{width:100%;max-width:460px;border:none;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
     .brand{font-weight:700;letter-spacing:.5px}
     .form-control:focus{box-shadow:none;border-color:#0d6efd}
-    .spinner{display:none}
     .toggle-pw{cursor:pointer}
   </style>
 </head>
 <body>
   <div class="card p-4">
     <div class="mb-3 text-center">
-      <div class="brand fs-4">InventoryManagement</div>
+      <div class="brand fs-4">Hệ thống Quản lý Kho Hàng</div>
       <div class="text-muted">Đăng nhập hệ thống</div>
     </div>
 
@@ -25,16 +24,23 @@
 
     <form id="loginForm" novalidate>
       <div class="mb-3">
-        <label class="form-label">Username</label>
+        <label class="form-label">Tài Khoản</label>
         <input id="username" class="form-control" autocomplete="username" required />
         <div class="invalid-feedback">Nhập username</div>
       </div>
 
-      <div class="mb-3">
+      <div class="mb-2">
         <label class="form-label">Mật khẩu</label>
         <div class="input-group">
           <input id="password" type="password" class="form-control" autocomplete="current-password" required />
-          <span class="input-group-text toggle-pw" title="Hiện/ẩn mật khẩu">👁️</span>
+          <span class="input-group-text toggle-pw" title="Show/Hide password" role="button" aria-label="Show/Hide password">
+            <!-- Icon mắt 2D đơn giản -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </span>
           <div class="invalid-feedback">Nhập mật khẩu</div>
         </div>
       </div>
@@ -44,31 +50,43 @@
           <input id="remember" class="form-check-input" type="checkbox">
           <label class="form-check-label" for="remember">Ghi nhớ</label>
         </div>
-        <a class="small text-decoration-none" href="#" onclick="alert('Liên hệ quản trị để đặt lại mật khẩu');return false;">Quên mật khẩu?</a>
+        <a class="small text-decoration-none" href="forgot.html">Quên mật khẩu?</a>
       </div>
 
-      <button id="btnLogin" type="submit" class="btn btn-primary w-100">
-        <span class="spinner-border spinner-border-sm me-2 spinner" role="status" aria-hidden="true"></span>
-        Đăng nhập
-      </button>
-    </form>
-  </div>
+      <!-- ĐĂNG KÝ & ĐĂNG NHẬP cạnh nhau -->
+      <div class="d-flex gap-2">
+        <a href="register.html" class="btn btn-outline-primary flex-fill">Đăng ký</a>
+        <button id="btnLogin" type="submit" class="btn btn-primary flex-fill">
+          <span id="spnLoad" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+          Đăng nhập
+        </button>
+      </div>
+
 
 <script>
 (function () {
-  const API_URL = 'https://localhost:7225/api/Auth/login'; // API của bạn
+  // Ưu tiên https (Kestrel), fallback sang http (IISExpress/Profiles khác)
+  const ENDPOINTS = [
+    'https://localhost:7225/api/Auth/login',
+    'http://localhost:5146/api/Auth/login'
+  ];
 
   const form = document.getElementById('loginForm');
   const alertBox = document.getElementById('alert');
-  const spinnerEls = document.getElementsByClassName('spinner');
   const btnLogin = document.getElementById('btnLogin');
-  const toggle = document.querySelector('.toggle-pw');
+  const spnLoad = document.getElementById('spnLoad');
   const pwd = document.getElementById('password');
+  const toggle = document.querySelector('.toggle-pw');
 
+  const lnkUserMgr = document.getElementById('lnkUserMgr');
+  const lnkProfile = document.getElementById('lnkProfile');
+
+  // Eye toggle
   toggle.addEventListener('click', () => {
     pwd.type = (pwd.type === 'password') ? 'text' : 'password';
   });
 
+  // UI helpers
   function showAlert(msg, type='danger') {
     alertBox.textContent = msg;
     alertBox.className = 'alert alert-' + type;
@@ -77,46 +95,85 @@
     alertBox.className = 'alert d-none';
     alertBox.textContent = '';
   }
-  function setLoading(b) {
-    [...spinnerEls].forEach(s => s.style.display = b ? 'inline-block' : 'none');
+  function setBusy(b) {
     btnLogin.disabled = b;
+    spnLoad.classList.toggle('d-none', !b);
   }
 
+  // Đăng nhập: thử lần lượt các endpoint cho tới khi OK
   async function login(username, password) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại');
-      throw new Error(msg);
+    let lastError;
+    for (const url of ENDPOINTS) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại');
+          throw new Error(msg);
+        }
+        // Kỳ vọng payload: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
+        return data;
+      } catch (err) {
+        lastError = err;
+        // thử endpoint tiếp theo
+      }
     }
-    // Kỳ vọng: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
-    return data;
+    // nếu tất cả endpoint đều fail
+    throw lastError || new Error('Không thể gọi API đăng nhập');
   }
 
+  // Lưu phiên: giữ cả key cũ (authToken) để tương thích
   function persistAuth(result, remember) {
     const store = remember ? localStorage : sessionStorage;
 
-    // Lưu đầy đủ payload để các trang khác dùng
+    // Payload đầy đủ
     try { store.setItem('authUser', JSON.stringify(result)); } catch {}
 
-    // Các key lẻ (tương thích code cũ)
-    try { store.setItem('accessToken', result.accessToken || ''); } catch {}
+    // Các key lẻ để code khác có thể dùng trực tiếp
+    const token = result.accessToken || '';
+    try { store.setItem('accessToken', token); } catch {}
+    try { store.setItem('authToken',  token); } catch {}       // key cũ
     try { store.setItem('tokenType', result.tokenType || 'Bearer'); } catch {}
-    if (result.storeId !== undefined && result.storeId !== null) {
-      try { store.setItem('storeId', String(result.storeId)); } catch {}
-    }
-    if (result.supplierId !== undefined && result.supplierId !== null) {
-      try { store.setItem('supplierId', String(result.supplierId)); } catch {}
-    }
-    // Có thể lưu thời điểm hết hạn để auto logout (tuỳ bạn):
+    try { store.setItem('authRole',  result.role || ''); } catch {}
+    try { store.setItem('authUserName', result.username || ''); } catch {}
+
+    if (result.storeId != null)    try { store.setItem('storeId',    String(result.storeId)); } catch {}
+    if (result.supplierId != null) try { store.setItem('supplierId', String(result.supplierId)); } catch {}
+
     if (typeof result.expiresInSeconds === 'number') {
       const expireAt = Date.now() + (result.expiresInSeconds * 1000);
       try { store.setItem('tokenExpireAt', String(expireAt)); } catch {}
+    }
+  }
+
+  // Điều hướng theo vai trò
+  function redirectByRole(role) {
+    const r = (role || '').toString().toLowerCase();
+    if (['administrator', 'warehousemanager', 'storemanager'].includes(r)) {
+      window.location.href = 'home.html';
+    } else if (r === 'supplier') {
+      window.location.href = 'supplier.html';
+    } else {
+      // role lạ → về home cho an toàn (hoặc logout tuỳ bạn)
+      window.location.href = 'home.html';
+    }
+  }
+
+  // Hiện link nhanh sau khi đã có phiên
+  function updateQuickLinksIfLogged() {
+    const store = localStorage.getItem('authToken') ? localStorage : sessionStorage;
+    const token = store.getItem('authToken') || store.getItem('accessToken');
+    if (!token) return;
+
+    const role = (store.getItem('authRole') || '').toLowerCase();
+    lnkProfile.classList.remove('d-none');         // ai đăng nhập cũng thấy Edit Profile
+    if (role === 'administrator') {
+      lnkUserMgr.classList.remove('d-none');       // chỉ admin thấy User Manager
     }
   }
 
@@ -129,33 +186,27 @@
       return;
     }
 
-    setLoading(true);
     const username = document.getElementById('username').value.trim();
-    const password = pwd.value;
+    const password = document.getElementById('password').value;
     const remember = document.getElementById('remember').checked;
 
+    setBusy(true);
     try {
       const result = await login(username, password);
-
       persistAuth(result, remember);
 
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
-
-      const role = (result.role || '').toString();
-      let target = '/';
-      if (role === 'Supplier') {
-        target = '/supplier.html';
-      } else if (role === 'StoreManager' || role === 'Administrator' || role === 'WarehouseManager') {
-        target = '/home.html';
-      }
-      setTimeout(() => { window.location.href = target; }, 400);
-
+      // Điều hướng tuỳ role
+      setTimeout(() => redirectByRole(result.role), 350);
     } catch (err) {
-      showAlert((err && err.message) ? err.message : 'Đăng nhập thất bại', 'danger');
+      showAlert(err?.message || 'Đăng nhập thất bại', 'danger');
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   });
+
+  // Khi tải trang: nếu đã đăng nhập trước đó → bật link tiện ích
+  updateQuickLinksIfLogged();
 })();
 </script>
 </body>
