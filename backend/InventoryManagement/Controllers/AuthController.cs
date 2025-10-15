@@ -70,9 +70,6 @@ namespace InventoryManagement.Controllers
                 ? Enumerable.Empty<string>()
                 : new[] { roleName! };
 
-            var token = _jwt.CreateToken(user.Username, user.Username, roles);
-            var exp = _jwt.GetExpiry();
-
             // 5) SupplierId theo Email (nếu có)
             int? supplierId = null;
             if (!string.IsNullOrWhiteSpace(user.Email))
@@ -89,6 +86,17 @@ namespace InventoryManagement.Controllers
                 .Where(s => s.UserID == user.UserID)
                 .Select(s => (int?)s.StoreID)
                 .FirstOrDefaultAsync();
+
+            // 7) Thêm extra claims và tạo token
+            var extraClaims = new Dictionary<string, string>();
+            if (supplierId.HasValue)
+                extraClaims["supplier_id"] = supplierId.Value.ToString();
+            if (storeId.HasValue)
+                extraClaims["store_id"] = storeId.Value.ToString();
+
+
+            var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
+            var exp = _jwt.GetExpiry();
 
             // Nếu muốn nhét store_id vào token, thêm overload IJwtService:
             // var extraClaims = new Dictionary<string,string>();
@@ -120,5 +128,6 @@ namespace InventoryManagement.Controllers
                 Claims = User.Claims.Select(c => new { c.Type, c.Value })
             });
         }
+
     }
 }

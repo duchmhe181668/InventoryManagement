@@ -14,7 +14,7 @@ namespace InventoryManagement.Services
 
         public JwtService(IOptions<JwtOptions> options) => _opt = options.Value;
 
-        public string CreateToken(string subject, string name, IEnumerable<string> roles)
+        public string CreateToken(string subject, string name, IEnumerable<string> roles, IDictionary<string, string>? extraClaims = null)
         {
             var claims = new List<Claim> {
                 new Claim(JwtRegisteredClaimNames.Sub, subject),
@@ -23,6 +23,12 @@ namespace InventoryManagement.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
             };
             if (roles != null) foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
+
+            if (extraClaims != null)
+            {
+                foreach (var kv in extraClaims)
+                    claims.Add(new Claim(kv.Key, kv.Value));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opt.Key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
