@@ -63,9 +63,7 @@ namespace InventoryManagement.Controllers
                 ? Enumerable.Empty<string>()
                 : new[] { roleName! };
 
-            var token = _jwt.CreateToken(user.Username, user.Username, roles);
-            var exp = _jwt.GetExpiry();
-
+            // 5) SupplierId theo Email (nếu có)
             int? supplierId = null;
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
@@ -80,6 +78,23 @@ namespace InventoryManagement.Controllers
                 .Where(s => s.UserID == user.UserID)
                 .Select(s => (int?)s.StoreID)
                 .FirstOrDefaultAsync();
+
+            // 7) Thêm extra claims và tạo token
+            var extraClaims = new Dictionary<string, string>();
+            if (supplierId.HasValue)
+                extraClaims["supplier_id"] = supplierId.Value.ToString();
+            if (storeId.HasValue)
+                extraClaims["store_id"] = storeId.Value.ToString();
+
+
+            var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
+            var exp = _jwt.GetExpiry();
+
+            // Nếu muốn nhét store_id vào token, thêm overload IJwtService:
+            // var extraClaims = new Dictionary<string,string>();
+            // if (supplierId.HasValue) extraClaims["supplier_id"] = supplierId.Value.ToString();
+            // if (storeId.HasValue)    extraClaims["store_id"]    = storeId.Value.ToString();
+            // var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
 
             return Ok(new LoginResponse
             {
@@ -182,78 +197,5 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// <summary>
-        /// Cập nhật thông tin người dùng
-        /// </summary>
-        [HttpPut("update/{userId}")]
-        [Authorize(Roles = "Administrator")]
-        [Consumes("application/json")]
-        [Produces("application/json")]
-        public async Task<ActionResult> UpdateUser(int userId, [FromBody] UpdateUserRequest req)
-        {
-            var user = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == userId);
-
-            if (user == null)
-                return NotFound("User not found.");
-
-            user.Username = req.Username?.Trim() ?? user.Username;
-            user.Name = req.Name?.Trim() ?? user.Name;
-            user.Email = req.Email?.Trim() ?? user.Email;
-            user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
-
-            if (!string.IsNullOrWhiteSpace(req.RoleName))
-            {
-                var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
-                if (role != null)
-                    user.RoleID = role.RoleID;
-            }
-
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
-
-        /// <summary>
-        /// Xóa người dùng
-        /// </summary>
-        [HttpDelete("delete/{userId}")]
-        [Authorize(Roles = "Administrator")]
-        [Produces("application/json")]
-        public async Task<ActionResult> DeleteUser(int userId)
-        {
-            var user = await _db.Users.FindAsync(userId);
-            if (user == null)
-                return NotFound("User not found.");
-
-            _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
-
-        /// <summary>
-        /// Lấy tất cả người dùng
-        /// </summary>
-        [HttpGet("users")]
-        //[Authorize(Roles = "Administrator")]
-        [Produces("application/json")]
-        public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
-        {
-            var users = await _db.Users.Include(u => u.Role).ToListAsync();
-            return Ok(users);
-        }
-
-        /// <summary>
-        /// Lấy thông tin chi tiết người dùng
-        /// </summary>
-        [HttpGet("user/{userId}")]
-        [Authorize(Roles = "Administrator")]
-        [Produces("application/json")]
-        public async Task<ActionResult<User>> GetUserById(int userId)
-        {
-            var user = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == userId);
-            if (user == null)
-                return NotFound("User not found.");
-
-            return Ok(user);
-        }
     }
 }

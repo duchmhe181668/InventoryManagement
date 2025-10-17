@@ -191,7 +191,7 @@
   <script>
     // ==== Cấu hình & state ====
     const API_BASE = "https://localhost:7225";
-    const token = sessionStorage.getItem("authToken") || localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
     const supplierId = sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId");
 
     let currentOpenRowId = null;
@@ -397,11 +397,6 @@
           <div>
             SupplierID: <b>${po.supplierID}</b> — Status: <b>${po.status ?? ""}</b><br/>
             <span class="muted">Note: ${po.note ?? ""}</span>
-          </div>
-          <div class="text-nowrap">
-            <a class="btn btn-sm btn-outline-primary" href="po-detail.html?poid=${po.purchaseOrderID}" onclick="event.stopPropagation()">
-              Mở trang chi tiết
-            </a>
           </div>
         </div>
         <div class="mt-2">
