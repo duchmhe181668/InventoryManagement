@@ -15,7 +15,7 @@
     .toolbar .form-control,.toolbar .form-select{ border-radius:var(--btn-radius); background:#83858f; color:#e7e9ee; border:1px solid #273054; }
     .table thead th{ border-bottom-color:#2a335b; color:#aeb6d9; font-weight:600; }
     .table tbody td{ border-top-color:#1a2247; vertical-align:middle; }
-    .badge-soft{ background:#18214a; color:#c7cff5; border:1px solid #2a335b; }
+    .badge-soft{ background:#0d6efd; color:#c7cff5; border:1px solid #2a335b; }
     .pagination .page-link{ background:#0e1430; color:#c7cff5; border-color:#2a335b; }
     .pagination .active .page-link{ background:#3758f9; border-color:#3758f9; }
     .btn-smooth{ border-radius:var(--btn-radius); }
@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-<div id="sidebar"></div>
+  <div id="sidebar"></div>
 
 <div class="container py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
@@ -56,7 +56,7 @@
         <div class="col-6 col-md-2">
           <!-- Ẩn nhưng vẫn dùng để đồng bộ giá trị 10 -->
           <select id="pageSize" class="form-select" hidden>
-            <option selected>10</option><option>20</option><option>50</option><option>100</option>
+            <option selected>7</option><option>20</option><option>50</option><option>100</option>
           </select>
         </div>
         <div class="col-6 col-md-1 d-grid">
@@ -74,9 +74,9 @@
             <th style="min-width:220px">Nhà cung cấp</th>
             <th>Liên hệ</th>
             <th class="text-center">PO</th>
-            <th class="text-center">Receipts</th>
+            <th class="text-center">Biên lai</th>
             <th class="text-end">Tổng chi tiêu</th>
-            <th style="width:120px" class="text-end">Actions</th>
+            <th style="width:120px" class="text-end">Hành động</th>
           </tr>
         </thead>
         <tbody id="tbody">

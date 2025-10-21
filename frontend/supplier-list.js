@@ -130,7 +130,7 @@ function renderPagerMain(totalItems, page, pageSize){
   html += mk(Math.min(totalPages, page+1), '&raquo;', false, page===totalPages);
   pager.innerHTML = html;
   const from = (page-1)*pageSize + 1, to = Math.min(page*pageSize, totalItems);
-  summary.textContent = `${from}-${to} / ${totalItems} supplier`;
+  summary.textContent = `${from}-${to} / ${totalItems} `;
 }
 window.gotoPage = function(p){ State.page = p; loadSuppliers(); };
 
