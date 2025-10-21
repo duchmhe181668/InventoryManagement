@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Quản lý Kho Hàng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
-
 </head>
 <body>
   <div id="sidebar"></div>
@@ -20,7 +20,7 @@
 
     <div class="row g-4">
       <!-- Quản lý sản phẩm -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card h-100 shadow-lg border-0 rounded-3">
           <div class="text-center mt-3">
             <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="img-fluid" alt="Quản lý sản phẩm" style="width:100px;">
@@ -36,7 +36,7 @@
       </div>
 
       <!-- Nhập kho -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card h-100 shadow-lg border-0 rounded-3">
           <div class="text-center mt-3">
             <img src="https://cdn-icons-png.flaticon.com/512/126/126515.png" class="img-fluid" alt="Nhập kho" style="width:100px;">
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Xuất kho -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card h-100 shadow-lg border-0 rounded-3">
           <div class="text-center mt-3">
             <img src="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" class="img-fluid" alt="Xuất kho" style="width:100px;">
@@ -66,30 +66,591 @@
           </div>
         </div>
       </div>
+
+      <!-- Báo cáo -->
+      <div class="col-md-3">
+        <div class="card h-100 shadow-lg border-0 rounded-3">
+          <div class="text-center mt-3">
+            <img src="https://cdn-icons-png.flaticon.com/512/1828/1828884.png" class="img-fluid" alt="Báo cáo" style="width:100px;">
+          </div>
+          <div class="card-body text-center">
+            <h5 class="card-title fw-bold">Báo cáo</h5>
+            <p class="card-text text-muted">Sales, Margin & Stock.</p>
+          </div>
+          <div class="card-footer bg-transparent text-center">
+            <button class="btn btn-outline-primary px-4" id="btn-open-reports">
+              <i class="bi bi-graph-up me-1"></i> Mở báo cáo
+            </button>
+          </div>
+        </div>
+      </div>
     </div> 
   </div>
 
+  <!-- Modal: Reports -->
+  <div class="modal fade" id="reportsModal" tabindex="-1" aria-labelledby="reportsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-graph-up-arrow me-2"></i>Báo cáo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <div class="modal-body">
+
+          <!-- Store picker (chỉ hiển thị với WarehouseManager) -->
+          <div id="store-picker" class="mb-3 d-none">
+            <div class="row g-2 align-items-center">
+              <div class="col-auto"><span class="small text-muted">Cửa hàng:</span></div>
+              <div class="col-auto">
+                <select id="store-select" class="form-select form-select-sm"></select>
+              </div>
+              <div class="col-auto">
+                <button id="store-apply" class="btn btn-sm btn-outline-primary">Áp dụng</button>
+              </div>
+              <div class="col-auto small text-muted">
+                Đang xem: <span id="store-address-current" class="fw-semibold"></span>
+              </div>
+            </div>
+          </div>
+
+          <ul class="nav nav-tabs mb-3" id="rptTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rpt-sales-pane" type="button">Sales</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-margin-pane" type="button">Margin</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-stock-pane" type="button">Stock</button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- SALES -->
+            <div class="tab-pane fade show active" id="rpt-sales-pane">
+              <div class="row g-2 align-items-end mb-2">
+                <div class="col-12 col-sm-3">
+                  <label class="form-label small text-muted">Từ ngày</label>
+                  <input type="date" id="rpt-sales-from" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-3">
+                  <label class="form-label small text-muted">Đến ngày</label>
+                  <input type="date" id="rpt-sales-to" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-6 text-sm-end">
+                  <button class="btn btn-primary btn-sm" id="rpt-sales-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
+                  <button class="btn btn-outline-secondary btn-sm" id="rpt-sales-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+                </div>
+              </div>
+              <div class="small text-muted mb-2" id="rpt-sales-summary">—</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Ngày</th>
+                      <th class="text-end">Số HĐ</th>
+                      <th class="text-end">Doanh thu</th>
+                      <!-- <th class="text-end">AOV</th> -->
+                    </tr>
+                  </thead>
+                  <tbody id="rpt-sales-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- MARGIN -->
+            <div class="tab-pane fade" id="rpt-margin-pane">
+              <div class="row g-2 align-items-end mb-2">
+                <div class="col-12 col-sm-3">
+                  <label class="form-label small text-muted">Từ ngày</label>
+                  <input type="date" id="rpt-margin-from" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-3">
+                  <label class="form-label small text-muted">Đến ngày</label>
+                  <input type="date" id="rpt-margin-to" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-6 text-sm-end">
+                  <button class="btn btn-primary btn-sm" id="rpt-margin-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
+                  <button class="btn btn-outline-secondary btn-sm" id="rpt-margin-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+                </div>
+              </div>
+              <div class="small text-muted mb-2" id="rpt-margin-summary">—</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Sản phẩm</th>
+                      <th class="text-end">SL</th>
+                      <th class="text-end">Doanh thu</th>
+                      <th class="text-end">Giá vốn</th>
+                      <th class="text-end">Lợi nhuận</th>
+                      <th class="text-end">Margin %</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rpt-margin-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- STOCK -->
+            <div class="tab-pane fade" id="rpt-stock-pane">
+              <div class="d-flex justify-content-between align-items-end mb-2">
+                <div class="small text-muted">
+                  Tồn kho tại: <span id="current-store-address" class="fw-semibold"></span>
+                </div>
+                <div>
+                  <button class="btn btn-primary btn-sm" id="rpt-stock-run"><i class="bi bi-arrow-repeat me-1"></i>Nạp</button>
+                  <button class="btn btn-outline-secondary btn-sm" id="rpt-stock-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+                </div>
+              </div>
+              <div class="small text-muted mb-2" id="rpt-stock-summary">—</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Sản phẩm</th>
+                      <th>ĐVT</th>
+                      <th class="text-end">Tồn</th>
+                      <th class="text-end">Giá vốn</th>
+                      <th class="text-end">Giá bán</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rpt-stock-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- load sidebar -->
   <script>
     fetch("sidebar.html")
       .then(res => res.text())
-      .then(data => {
-        document.getElementById("sidebar").innerHTML = data;
-      });
+      .then(data => { document.getElementById("sidebar").innerHTML = data; });
   </script>
-  <script> 
-   function logout(redirect = 'login.html') {
-    try {
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('authUser');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-    } finally {
-      window.location.href = redirect;
+
+  <!-- logout helper -->
+  <script>
+    function logout(redirect = 'login.html') {
+      try {
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('authUser');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('tokenType');
+        localStorage.removeItem('storeId');
+      } finally {
+        window.location.href = redirect;
+      }
+    }
+  </script>
+
+  <!-- REPORT LOGIC -->
+  <script>
+  // ===== API endpoints =====
+  const API_BASE   = "https://localhost:7225";
+  const API_REPORT = API_BASE + "/api/Report";         // ?type=sales|margin|stock&storeId=&from=&to=
+  const API_STORES = API_BASE + "/api/Report/stores";  // danh sách cửa hàng (address)
+
+  // ===== Store cache =====
+  let STORES_CACHE = []; // [{storeId,address,locationId}]
+
+  // ===== Auth helpers =====
+  function base64UrlDecode(str){
+    str = (str || "").replace(/-/g, '+').replace(/_/g, '/');
+    const pad = str.length % 4; if (pad) str += '='.repeat(4 - pad);
+    const decoded = atob(str);
+    const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  function parseJwt(token){
+    try{
+      const parts = (token || "").split('.');
+      if (parts.length !== 3) return null;
+      return JSON.parse(base64UrlDecode(parts[1]));
+    }catch{ return null; }
+  }
+  function getAuthPayload() {
+  // Gộp dữ liệu thay vì return sớm
+  const payload = {};
+  try {
+    const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+    if (raw) Object.assign(payload, JSON.parse(raw));
+  } catch {}
+
+  // token + type
+  payload.accessToken =
+    localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") ||
+    localStorage.getItem("authToken")   || sessionStorage.getItem("authToken")   || "";
+  payload.tokenType =
+    localStorage.getItem("tokenType")   || sessionStorage.getItem("tokenType")   || "Bearer";
+
+  // role (nếu có trong JWT)
+  const claims = payload.accessToken ? (parseJwt(payload.accessToken) || {}) : {};
+  payload.role = payload.role || claims["role"] || claims["roles"] || "";
+
+  // storeId: ưu tiên LS/SS -> fallback claim
+  const sFromStorage = localStorage.getItem("storeId") || sessionStorage.getItem("storeId");
+  if (sFromStorage && !Number.isNaN(Number(sFromStorage))) payload.storeId = Number(sFromStorage);
+
+  if (payload.storeId == null) {
+    const keys = ["storeId","store_id","sid","store","StoreId","StoreID"];
+    for (const k of keys) {
+      if (claims[k] != null && claims[k] !== "") {
+        const v = Number(claims[k]);
+        if (!Number.isNaN(v)) {
+          payload.storeId = v;
+          break;
+        }
+      }
     }
   }
-</script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  return payload.accessToken ? payload : null;
+}
+  function getAccessToken(){ return getAuthPayload()?.accessToken || ""; }
+  function getTokenType(){ return getAuthPayload()?.tokenType || "Bearer"; }
+  function getStoreId() {
+  // 1) Ưu tiên giá trị đã lưu khi bấm Áp dụng
+  const v1 = Number(sessionStorage.getItem('storeId') || localStorage.getItem('storeId'));
+  if (Number.isFinite(v1) && v1 > 0) return v1;
+
+  // 2) Từ payload/claims
+  const v2 = getAuthPayload()?.storeId;
+  if (typeof v2 === "number" && v2 > 0) return v2;
+
+  // 3) Không có -> null
+  return null;
+}
+  function authHeaders(extra = {}) {
+    const h = { "Accept": "application/json", ...extra };
+    const t = getAccessToken(); const ty = getTokenType();
+    if (t) h["Authorization"] = `${ty} ${t}`;
+    return h;
+  }
+  function handleAuthError(res){
+    if (res.status === 401 || res.status === 403){
+      alert("Phiên hết hạn. Đăng nhập lại.");
+      logout();
+      return true;
+    }
+    return false;
+  }
+
+  // ===== Utils =====
+  const VND = new Intl.NumberFormat("vi-VN");
+  const fmt = (n) => VND.format(Number(n)||0);
+  function ymd(d){ const dt=new Date(d); const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const da=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+  function todayStr(){ return ymd(new Date()); }
+  function startOfMonthStr(){ const d=new Date(); d.setDate(1); return ymd(d); }
+  function csvDownload(filename, rows){
+    const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  }
+
+  // ===== Store picker helpers =====
+  function setSelectedStore(storeId) {
+  try {
+    sessionStorage.setItem('storeId', String(storeId));
+    localStorage.setItem('storeId', String(storeId));   // lưu cả 2 nơi cho chắc
+  } catch {}
+}
+  function getStoreFromCache(id) {
+    return STORES_CACHE.find(s => s.storeId === Number(id));
+  }
+  function updateStoreAddressBadges() {
+    const sid = getStoreId();
+    const meta = getStoreFromCache(sid) || {};
+    const addr = meta?.address || '';
+    const a1 = document.getElementById('store-address-current');
+    const a2 = document.getElementById('current-store-address');
+    if (a1) a1.textContent = addr;
+    if (a2) a2.textContent = addr;
+  }
+  async function fetchStores() {
+    const res = await fetch(API_STORES, { headers: authHeaders() });
+    if (handleAuthError(res)) return [];
+    const data = await res.json().catch(()=>({items:[]}));
+    return data?.items || [];
+  }
+  async function setupStorePicker(){
+    STORES_CACHE = await fetchStores();
+    const sel = document.getElementById('store-select');
+    sel.innerHTML = '';
+    STORES_CACHE.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.storeId;
+      opt.textContent = s.address || `Store #${s.storeId}`;
+      sel.appendChild(opt);
+    });
+    const currentSid = getStoreId();
+    if (currentSid) sel.value = String(currentSid);
+    updateStoreAddressBadges();
+  }
+  async function ensureAddressForCurrentStore(){
+    if (!getStoreId()) return;
+    if (getStoreFromCache(getStoreId())) { updateStoreAddressBadges(); return; }
+    STORES_CACHE = await fetchStores();
+    updateStoreAddressBadges();
+  }
+
+  // ===== Call single endpoint for 3 reports =====
+  async function fetchReport(type, { from = "", to = "" } = {}){
+    const sid = getStoreId();
+    if (sid == null){ alert("Không tìm thấy storeId (auth)."); return { items:[], summary:null }; }
+
+    const qs = new URLSearchParams({ type, storeId: String(sid) });
+    if (from) qs.set("from", from);
+    if (to)   qs.set("to", to);
+
+    const url = `${API_REPORT}?${qs.toString()}`;
+    const res = await fetch(url, { headers: authHeaders() });
+    if (handleAuthError(res)) return { items:[], summary:null };
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+    const data = text ? JSON.parse(text) : {};
+    return {
+      items: Array.isArray(data) ? data : (data.items || []),
+      summary: data.summary || null
+    };
+  }
+
+  // ===== Sales report =====
+  async function runSalesReport(){
+    const from = document.getElementById('rpt-sales-from').value || startOfMonthStr();
+    const to   = document.getElementById('rpt-sales-to').value   || todayStr();
+    const tbody = document.getElementById('rpt-sales-tbody');
+    const summaryEl = document.getElementById('rpt-sales-summary');
+
+    tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Đang tải…</td></tr>';
+
+    const { items } = await fetchReport('sales', { from, to });
+
+    if (!Array.isArray(items) || items.length === 0){
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Không có dữ liệu</td></tr>';
+      summaryEl.textContent = '—';
+      updateStoreAddressBadges();
+      return { csv: [] };
+    }
+
+    tbody.innerHTML = '';
+    let totalCount = 0, totalRevenue = 0;
+    const csv = ['Date,Invoices,Revenue'];
+
+    items.forEach(r => {
+      const date = r.date || '';
+      const cnt = Number(r.invoiceCount || r.count || 0);
+      const rev = Number(r.revenue || 0);
+      //const aov = Number(r.aov || (cnt ? Math.round(rev/cnt) : 0));
+
+      totalCount += cnt; totalRevenue += rev;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${date}</td>
+        <td class="text-end">${fmt(cnt)}</td>
+        <td class="text-end">${fmt(rev)} VND</td>
+       `;
+      tbody.appendChild(tr);
+
+      csv.push(`${date},${cnt},${rev}`);
+    });
+
+   // const aovAll = totalCount ? Math.round(totalRevenue/totalCount) : 0;
+    summaryEl.textContent = `Tổng: ${fmt(totalCount)} HĐ • ${fmt(totalRevenue)} VND `;
+    updateStoreAddressBadges();
+    return { csv };
+  }
+
+  // ===== Margin report =====
+  async function runMarginReport(){
+    const from = document.getElementById('rpt-margin-from').value || startOfMonthStr();
+    const to   = document.getElementById('rpt-margin-to').value   || todayStr();
+    const tbody = document.getElementById('rpt-margin-tbody');
+    const summaryEl = document.getElementById('rpt-margin-summary');
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Đang tải…</td></tr>';
+
+    const { items } = await fetchReport('margin', { from, to });
+
+    if (!Array.isArray(items) || items.length === 0){
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Không có dữ liệu</td></tr>';
+      summaryEl.textContent = '—';
+      updateStoreAddressBadges();
+      return { csv: [] };
+    }
+
+    tbody.innerHTML = '';
+    let sumQty=0, sumRev=0, sumCost=0;
+    const csv = ['Product,Qty,Revenue,Cost,Margin,MarginPct'];
+
+    items.forEach(r => {
+      const name   = r.name || '';
+      const qty    = Number(r.qty || r.quantity || 0);
+      const rev    = Number(r.revenue || 0);
+      const cost   = Number(r.cost || 0);
+      const margin = Number(r.margin != null ? r.margin : (rev - cost));
+      const pct    = Number(r.marginPct != null ? r.marginPct : (rev>0 ? (margin*100/rev) : 0));
+
+      sumQty += qty; sumRev += rev; sumCost += cost;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td class="text-end">${fmt(qty)}</td>
+        <td class="text-end">${fmt(rev)} VND</td>
+        <td class="text-end">${fmt(cost)} VND</td>
+        <td class="text-end">${fmt(margin)} VND</td>
+        <td class="text-end">${pct.toFixed(1)}%</td>`;
+      tbody.appendChild(tr);
+
+      csv.push(`"${name.replace(/"/g,'""')}",${qty},${rev},${cost},${margin},${pct.toFixed(2)}`);
+    });
+
+    const sumMargin = sumRev - sumCost;
+    const sumPct = sumRev>0 ? (sumMargin*100/sumRev) : 0;
+    summaryEl.textContent = `Tổng SL: ${fmt(sumQty)} • Doanh thu: ${fmt(sumRev)} VND • Giá vốn: ${fmt(sumCost)} VND • Lợi nhuận: ${fmt(sumMargin)} VND • Margin: ${sumPct.toFixed(1)}%`;
+    updateStoreAddressBadges();
+    return { csv };
+  }
+
+  // ===== Stock report =====
+  async function runStockReport(){
+    const tbody = document.getElementById('rpt-stock-tbody');
+    const summaryEl = document.getElementById('rpt-stock-summary');
+
+    tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Đang tải…</td></tr>';
+
+    const { items } = await fetchReport('stock');
+
+    if (!Array.isArray(items) || items.length === 0){
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Không có dữ liệu</td></tr>';
+      summaryEl.textContent = '—';
+      updateStoreAddressBadges();
+      return { csv: [] };
+    }
+
+    tbody.innerHTML = '';
+    let sumQty=0, sumCostVal=0, sumSellVal=0;
+    const csv = ['Product,Unit,Qty,CostPrice,SellPrice,StockValueCost,StockValueSell'];
+
+    items.forEach(g => {
+      const name = g.name || '';
+      const unit = g.unit || '';
+      const qty  = Number(g.qty || g.quantity || 0);
+      const cost = Number((g.cost ?? g.costPrice) ?? 0);
+      const sell = Number((g.sell ?? g.sellPrice ?? g.price) ?? 0);
+      const costVal = Number((g.costVal ?? g.stockValueCost ?? (qty * cost)) || 0);
+      const sellVal = Number((g.sellVal ?? g.stockValueSell ?? (qty * sell)) || 0);
+
+      sumQty += qty; sumCostVal += costVal; sumSellVal += sellVal;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td>${unit}</td>
+        <td class="text-end">${fmt(qty)}</td>
+        <td class="text-end">${fmt(cost)} VND</td>
+        <td class="text-end">${fmt(sell)} VND</td>`;
+      tbody.appendChild(tr);
+
+      csv.push(`"${name.replace(/"/g,'""')}",${unit},${qty},${cost},${sell},${costVal},${sellVal}`);
+    });
+
+    summaryEl.textContent = `Tổng SL: ${fmt(sumQty)} • Giá trị vốn: ${fmt(sumCostVal)} VND • Giá trị bán tiềm năng: ${fmt(sumSellVal)} VND`;
+    updateStoreAddressBadges();
+    return { csv };
+  }
+
+  // ===== Wire up =====
+  let reportsModal;
+  document.addEventListener('DOMContentLoaded', async () => {
+    reportsModal = new bootstrap.Modal(document.getElementById('reportsModal'));
+
+    // mở modal
+    document.getElementById('btn-open-reports').addEventListener('click', async () => {
+      const df = startOfMonthStr(), dt = todayStr();
+      if (!document.getElementById('rpt-sales-from').value)  document.getElementById('rpt-sales-from').value = df;
+      if (!document.getElementById('rpt-sales-to').value)    document.getElementById('rpt-sales-to').value   = dt;
+      if (!document.getElementById('rpt-margin-from').value) document.getElementById('rpt-margin-from').value= df;
+      if (!document.getElementById('rpt-margin-to').value)   document.getElementById('rpt-margin-to').value  = dt;
+
+      // hiện bộ chọn khi role = WarehouseManager
+      const role = (getAuthPayload()?.role || parseJwt(getAccessToken())?.role || "").toString();
+      const picker = document.getElementById('store-picker');
+      if (role === 'WarehouseManager') {
+        picker.classList.remove('d-none');
+        await setupStorePicker();
+      } else {
+        picker.classList.add('d-none');
+        await ensureAddressForCurrentStore();
+      }
+
+      reportsModal.show();
+    });
+
+    // Áp dụng cửa hàng
+    document.getElementById('store-apply').addEventListener('click', async () => {
+      const sid = Number(document.getElementById('store-select').value);
+      if (!sid) return;
+      setSelectedStore(sid);
+      updateStoreAddressBadges();
+      // refresh tab đang mở
+      const active = document.querySelector('#rptTabs .nav-link.active')?.getAttribute('data-bs-target');
+      try {
+        if (active === '#rpt-sales-pane')      await runSalesReport();
+        else if (active === '#rpt-margin-pane') await runMarginReport();
+        else                                     await runStockReport();
+      } catch(err){ alert('Lỗi tải báo cáo: ' + (err?.message || err)); }
+    });
+
+    // SALES
+    let lastSalesCsv = [];
+    document.getElementById('rpt-sales-run').addEventListener('click', async () => {
+      try { const { csv } = await runSalesReport(); lastSalesCsv = csv; }
+      catch (err) { alert('Lỗi Sales report: ' + (err?.message || err)); }
+    });
+    document.getElementById('rpt-sales-csv').addEventListener('click', () => {
+      if (!lastSalesCsv || lastSalesCsv.length === 0) return;
+      csvDownload(`sales_${todayStr()}.csv`, lastSalesCsv);
+    });
+
+    // MARGIN
+    let lastMarginCsv = [];
+    document.getElementById('rpt-margin-run').addEventListener('click', async () => {
+      try { const { csv } = await runMarginReport(); lastMarginCsv = csv; }
+      catch (err) { alert('Lỗi Margin report: ' + (err?.message || err)); }
+    });
+    document.getElementById('rpt-margin-csv').addEventListener('click', () => {
+      if (!lastMarginCsv || lastMarginCsv.length === 0) return;
+      csvDownload(`margin_${todayStr()}.csv`, lastMarginCsv);
+    });
+
+    // STOCK
+    let lastStockCsv = [];
+    document.getElementById('rpt-stock-run').addEventListener('click', async () => {
+      try { const { csv } = await runStockReport(); lastStockCsv = csv; }
+      catch (err) { alert('Lỗi Stock report: ' + (err?.message || err)); }
+    });
+    document.getElementById('rpt-stock-csv').addEventListener('click', () => {
+      if (!lastStockCsv || lastStockCsv.length === 0) return;
+      csvDownload(`stock_${todayStr()}.csv`, lastStockCsv);
+    });
+  });
+  </script>
 </body>
 </html>

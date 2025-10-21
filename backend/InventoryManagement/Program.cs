@@ -1,4 +1,7 @@
-﻿using InventoryManagement.Data;
+﻿using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using InventoryManagement.Data;
 using InventoryManagement.Models.Auth;
 using InventoryManagement.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,9 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
-using System.Text;
-using System.Security.Claims;
-using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,86 +19,56 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // =======================
-// MVC Controllers & Swagger
+// MVC Controllers + JSON (KHÔNG dùng Preserve)
 // =======================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+        // Tránh vòng tham chiếu nhưng vẫn trả JSON phẳng
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        // Nếu FE đang đọc PascalCase thì bỏ dòng trên.
     });
 
+// =======================
+// Swagger + Bearer
+// =======================
 builder.Services.AddEndpointsApiExplorer();
-
-
-
-
-//nút Authorize ở API
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "InventoryManagement",
-        Version = "v1"
-    });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "InventoryManagement API", Version = "v1" });
 
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    var jwtScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
+        Scheme = "bearer",            // chữ thường là chuẩn theo RFC
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập token vào đây. Ví dụ: Bearer {token}"
-    });
+        Description = "Dán JWT vào đây (có thể không cần gõ 'Bearer ')."
+    };
 
+    c.AddSecurityDefinition("Bearer", jwtScheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
+        { jwtScheme, Array.Empty<string>() }
     });
 });
 
-
-
-
-
 // =======================
 // JWT Configuration
-// - Bạn có thể cấp giá trị qua:
-//   (a) User Secrets (khuyên dùng dev):
-//       dotnet user-secrets init
-//       dotnet user-secrets set "Jwt:Issuer" "InventoryManagement"
-//       dotnet user-secrets set "Jwt:Audience" "InventoryManagement"
-//       dotnet user-secrets set "Jwt:Key" "CHUOI_BI_MAT_RAT_DAI_>=64_KY_TU................................"
-//       dotnet user-secrets set "Jwt:ExpiresMinutes" "120"
-//   (b) hoặc appsettings.json (thêm block "Jwt")
 // =======================
-
-// Bind section "Jwt" vào JwtOptions (được nạp từ User Secrets/appsettings)
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-// Service phát token
 builder.Services.AddSingleton<IJwtService, JwtService>();
 
-// Lấy cấu hình JWT để validate token
 var jwtCfg = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
-
-// Bảo vệ: nếu thiếu Key, báo lỗi sớm để dễ debug
 if (string.IsNullOrWhiteSpace(jwtCfg.Key))
 {
     throw new InvalidOperationException(
-        "JWT Key is not configured. Set it via User Secrets (recommended) or add a 'Jwt' section in appsettings.json.");
+        "JWT Key is not configured. Set it via User Secrets or add a 'Jwt' section in appsettings.json.");
 }
 
-// Đăng ký Authentication: JWT Bearer
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -111,34 +81,48 @@ builder.Services
             ValidIssuer = jwtCfg.Issuer,
             ValidAudience = jwtCfg.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtCfg.Key)),
-            RoleClaimType = ClaimTypes.Role,
+            RoleClaimType = ClaimTypes.Role, // giữ cho chắc nếu tự phát token
             ClockSkew = TimeSpan.Zero
         };
     });
 
 builder.Services.AddAuthorization();
-// services
+
+// =======================
+// CORS
+// =======================
 builder.Services.AddCors(o => o.AddPolicy("AllowLoginPage", p =>
     p.AllowAnyHeader().AllowAnyMethod().WithOrigins(
-      "http://localhost:5146",         // nếu đặt login.html trong wwwroot của chính API thì KHÔNG cần CORS
-      "http://localhost:5500",         // ví dụ Live Server
-      "http://127.0.0.1:5500",
-      "http://localhost:8080",
-      "http://localhost:4200",
-      "http://localhost:5173"
+        "http://localhost:5146",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8080",
+        "http://localhost:4200",
+        "http://localhost:5173"
+    // Nếu front chạy HTTPS, thêm "https://127.0.0.1:5500" hoặc domain thực tế vào đây
     )
 ));
 
-// middleware (đặt trước MapControllers)
+// =======================
+// HttpClient cho Sales API
+// =======================
+var salesApiBase = builder.Configuration.GetValue<string>("SalesApiBase")?.TrimEnd('/');
+if (string.IsNullOrWhiteSpace(salesApiBase))
+{
+    salesApiBase = "https://localhost:7225"; // fallback dev
+}
+builder.Services.AddHttpClient("SalesApi", c =>
+{
+    c.BaseAddress = new Uri(salesApiBase!);
+});
 
-
-
+// =======================
+// Build & pipeline
+// =======================
 var app = builder.Build();
+
 app.UseCors("AllowLoginPage");
 
-// =======================
-// Middleware pipeline
-// =======================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
