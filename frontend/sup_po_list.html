@@ -11,11 +11,8 @@
   <style>
     :root {
       --primary: #0d6efd;
-      /* xanh chủ đạo */
       --text: #111111;
-      /* chữ đen */
       --bg: #ffffff;
-      /* nền trắng */
       --muted: #6b7280;
       --border: #e5e7eb;
     }
@@ -144,7 +141,7 @@
         <ul class="nav flex-column">
           <li class="nav-item"><a href="index.html" class="nav-link">Trang chủ</a></li>
           <li class="nav-item"><a href="supplier.html" class="nav-link active">Đơn hàng</a></li>
-          <li class="nav-item"><a href="suppplier_receipt.html" class="nav-link">Biên lai</a></li>
+          <li class="nav-item"><a href="sup_receipt_list.html" class="nav-link">Biên lai</a></li>
         </ul>
       </div>
       <div class="mt-3 small" id="msg"></div>
@@ -154,17 +151,18 @@
       <div class="d-flex align-items-center gap-2">
         <h2 class="m-0">Danh sách đơn hàng</h2>
         <div class="ms-auto d-flex align-items-center gap-2">
-          <label class="form-label m-0">Status</label>
+          <label class="form-label m-0">Trạng thái</label>
           <select id="status" class="form-select form-select-sm" style="width:180px">
-            <option value="" selected>All</option>
-            <option value="Draft">Draft</option>
-            <option value="Submitted">Submitted</option>
-            <option value="Received">Received</option>
-            <option value="Cancelled">Cancelled</option>
+            <option value="" selected>Tất cả</option>
+            <option value="Submitted">Đã gửi</option>
+            <option value="Received">Đã nhận</option>
+            <option value="Shipping">Đang giao</option>
+            <option value="Done">Xong</option>
+            <option value="Cancelled">Hủy</option>
           </select>
 
           <button id="btnReload" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-arrow-clockwise"></i> Reload
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
           </button>
         </div>
       </div>
@@ -174,11 +172,11 @@
           <thead class="table-light">
             <tr>
               <th>POID</th>
-              <th>Supplier Name</th>
-              <th>Created At</th>
-              <th>Status</th>
-              <th>Total Lines</th>
-              <th>Total Amount</th>
+              <th>Tên nhà cung cấp</th>
+              <th>Ngày tạo</th>
+              <th>Trạng thái</th>
+              <th>Số lượng dòng</th>
+              <th>Tổng tiền</th>
               <th style="width:260px">Actions</th>
             </tr>
           </thead>
@@ -262,60 +260,66 @@
     }
 
     // ==== Render bảng + gắn click mở/đóng chi tiết ngay dưới hàng ====
-    function renderTable(list) {
-      const tbody = document.getElementById("poTableBody");
-      tbody.innerHTML = "";
-      currentOpenRowId = null;
-      currentDetailTr = null;
+function renderTable(list) {
+  const tbody = document.getElementById("poTableBody");
+  tbody.innerHTML = "";
+  currentOpenRowId = null;
+  currentDetailTr = null;
 
-      list.forEach(po => {
-        const poid = po.poid ?? po.purchaseOrderID ?? po.id;
-        const supplierName = po.supplierName ?? "";
-        const createdAt = po.createdAt ? new Date(po.createdAt).toLocaleString() : "";
-        const status = po.status ?? "";
-        const totalLines = po.totalLines ?? (po.lines ? po.lines.length : "");
-        const totalAmount = po.totalAmount != null ? Number(po.totalAmount).toLocaleString() : "";
+  list.forEach(po => {
+    const poid = po.poid ?? po.purchaseOrderID ?? po.id;
+    const supplierName = po.supplierName ?? "";
+    const createdAt = po.createdAt ? new Date(po.createdAt).toLocaleString() : "";
+    const status = po.status ?? "";
+    const totalLines = po.totalLines ?? (po.lines ? po.lines.length : "");
+    const totalAmount = po.totalAmount != null ? Number(po.totalAmount).toLocaleString() : "";
 
-        const st = status.toString().trim().toLowerCase();
-        const showReceipt = (st === "confirm" || st === "submitted" || st === "received");
-        const isDraft = (st === "draft");
+    let actionHtml = "";
 
-        const tr = document.createElement("tr");
-        tr.className = "clickable";
-        tr.dataset.id = String(poid);
-
-        tr.innerHTML = `
-          <td>${poid}</td>
-          <td>${supplierName}</td>
-          <td>${createdAt}</td>
-          <td>${status}</td>
-          <td>${totalLines}</td>
-          <td>${totalAmount}</td>
-          <td>
-            ${showReceipt ? `
-              <a class="btn btn-sm btn-success ms-2" href="receipt.html?poid=${poid}" onclick="event.stopPropagation()">
-                <i class="bi bi-receipt"></i> Receipt
-              </a>` : ``}
-            ${isDraft ? `
-              <button class="btn btn-sm btn-warning ms-2" onclick="event.stopPropagation(); confirmOrder(${poid});">
-                <i class="bi bi-check2-square"></i> Confirm
-              </button>` : ``}
-          </td>
-        `;
-
-        // click hàng -> toggle accordion
-        tr.addEventListener("click", async () => {
-          if (currentOpenRowId === tr.dataset.id) {
-            await closeCurrentDetail();
-            return;
-          }
-          await closeCurrentDetail();
-          await openDetailBelow(tbody, tr, poid);
-        });
-
-        tbody.appendChild(tr);
-      });
+    if (status === "Submitted") {
+      // Khi là Submitted => hiển thị nút Nhận đơn
+      actionHtml = `
+        <button class="btn btn-sm btn-outline-success" 
+          onclick="event.stopPropagation(); confirmReceive(${poid});">
+          <i class="bi bi-box-seam"></i> Nhận đơn
+        </button>`;
+    } else if (status === "Received") {
+      // Khi là Received => hiển thị nút Tạo biên lai
+      actionHtml = `
+        <a href="sup_create_receipt.html?poid=${poid}" 
+           class="btn btn-sm btn-success"
+           onclick="event.stopPropagation();">
+           <i class="bi bi-receipt"></i> Tạo biên lai
+        </a>`;
     }
+
+    const tr = document.createElement("tr");
+    tr.className = "clickable";
+    tr.dataset.id = String(poid);
+
+    tr.innerHTML = `
+      <td>${poid}</td>
+      <td>${supplierName}</td>
+      <td>${createdAt}</td>
+      <td>${status}</td>
+      <td>${totalLines}</td>
+      <td>${totalAmount}</td>
+      <td>${actionHtml}</td>
+    `;
+
+    tr.addEventListener("click", async () => {
+      if (currentOpenRowId === tr.dataset.id) {
+        await closeCurrentDetail();
+        return;
+      }
+      await closeCurrentDetail();
+      await openDetailBelow(tbody, tr, poid);
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
 
     // ==== Mở detail ngay dưới hàng đã click ====
     async function openDetailBelow(tbody, anchorTr, poid) {
@@ -395,7 +399,6 @@
       return `
         <div class="d-flex justify-content-between align-items-start gap-3">
           <div>
-            SupplierID: <b>${po.supplierID}</b> — Status: <b>${po.status ?? ""}</b><br/>
             <span class="muted">Note: ${po.note ?? ""}</span>
           </div>
         </div>
@@ -403,7 +406,7 @@
           <table class="table table-bordered table-sm">
             <thead class="table-light">
               <tr>
-                <th>GoodID</th><th>Name</th><th>SKU</th><th>Quantity</th><th>UnitPrice</th>
+                <th>ID Sản phẩm</th><th>Tên sản phẩm</th><th>SKU</th><th>Số lượng</th><th>Đơn giá</th>
               </tr>
             </thead>
             <tbody>
@@ -418,6 +421,34 @@
     document.getElementById("btnReload").addEventListener("click", loadPOs);
     document.getElementById("status").addEventListener("change", loadPOs);
     loadPOs();
+
+    // ==== Xác nhận nhận đơn (Submitted -> Received) ====
+async function confirmReceive(poid) {
+  const yes = window.confirm(`Bạn có chắc chắn muốn nhận đơn #${poid} không?`);
+  if (!yes) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/PurchaseOrders/${poid}/status`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status: "Received" })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      alert(`Cập nhật thất bại: ${txt}`);
+      return;
+    }
+
+    await loadPOs();
+    setMsg(`Đơn #${poid} đã được cập nhật sang "Received".`, "ok");
+  } catch (e) {
+    console.error(e);
+    alert("Lỗi kết nối khi cập nhật trạng thái.");
+  }
+}
+
+
 
     // Gắn vào window để dùng trong onclick HTML
     window.confirmOrder = confirmOrder;

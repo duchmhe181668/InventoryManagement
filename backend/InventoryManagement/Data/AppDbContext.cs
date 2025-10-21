@@ -115,7 +115,7 @@ namespace InventoryManagement.Data
                 .Property(x => x.CreatedAt).HasColumnType("datetime2(0)");
             model.Entity<PurchaseOrder>()
                 .ToTable(tb => tb.HasCheckConstraint("CK_PurchaseOrders_Status",
-                    "[Status] IN ('Draft','Submitted','Received','Cancelled')"));
+                    "[Status] IN ('Draft','Submitted','Received','Cancelled','Done','Shipping')"));
             model.Entity<PurchaseOrder>()
                 .HasOne(x => x.Supplier).WithMany(s => s.PurchaseOrders)
                 .HasForeignKey(x => x.SupplierID).OnDelete(DeleteBehavior.Restrict);
@@ -138,7 +138,7 @@ namespace InventoryManagement.Data
                 .Property(x => x.CreatedAt).HasColumnType("datetime2(0)");
             model.Entity<Receipt>()
                 .ToTable(tb => tb.HasCheckConstraint("CK_Receipts_Status",
-                    "[Status] IN ('Draft','Confirmed')"));
+                    "[Status] IN ('Draft', 'Submitted','Confirmed')"));
             model.Entity<Receipt>()
                 .HasOne(x => x.PO).WithMany()
                 .HasForeignKey(x => x.POID).OnDelete(DeleteBehavior.SetNull);

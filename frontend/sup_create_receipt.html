@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Supplier — Tạo biên lai</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root { --primary:#1e3a8a; --border:#e5e7eb; --muted:#6b7280; --text:#111; --bg:#fff; }
+    body { padding: 20px; background: var(--bg); color: var(--text); }
+    .layout { display: flex; gap: 24px; align-items: flex-start; min-height: 100vh; }
+    #sidebar{
+      position: sticky; top: 20px; min-height: calc(100vh - 40px);
+      width: 260px; background: var(--primary); color:#fff; border-radius:10px;
+      padding:16px; display:flex; flex-direction:column; justify-content:space-between;
+    }
+    #sidebar .nav-link{ color: rgba(255,255,255,.9); padding-left:0 }
+    #sidebar .nav-link.active{ font-weight:600; color:#fff }
+    #sidebar .nav-link:hover{ color:#fff; text-decoration: underline; }
+    #sidebarMsg{ color: #e0e7ff; }
+    .muted{ color: var(--muted); }
+    .table-sm td,.table-sm th{ padding:.45rem .6rem; border-color: var(--border); }
+    input[type="number"]{ text-align: right; }
+    .money{ text-align: right; }
+    .btn-outline-primary{ color: var(--primary); border-color: var(--primary); }
+    .btn-outline-primary:hover{ background-color: var(--primary); color:#fff; }
+    .btn-primary{ background: var(--primary); border-color: var(--primary); }
+    .w-110{ width:110px; } .w-130{ width:130px; } .w-150{ width:150px; }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div>
+        <h5 class="mb-3">Menu</h5>
+        <ul class="nav flex-column">
+          <li class="nav-item"><a href="index.html" class="nav-link">Trang chủ</a></li>
+          <li class="nav-item"><a href="sup_po_list.html" class="nav-link">Đơn hàng</a></li>
+          <li class="nav-item"><a href="sup_receipt_list.html" class="nav-link">Danh sách biên lai</a></li>
+          <li class="nav-item"><a href="#" class="nav-link active">Tạo biên lai</a></li>
+        </ul>
+      </div>
+      <div id="sidebarMsg" class="small muted"></div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-grow-1">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h3 class="m-0">Tạo biên lai</h3>
+        <div class="ms-auto small muted">
+          POID: <b id="poidLabel">?</b> • SupplierID: <b id="supplierLabel">?</b>
+        </div>
+      </div>
+
+      <div id="poInfo" class="mb-3 text-muted">Đang tải thông tin...</div>
+
+      <form id="receiveForm" class="border p-3 rounded bg-light" style="max-width:1000px;">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:90px">GoodID</th>
+                <th>Tên hàng</th>
+                <th class="text-end w-110">Qty (sửa được)</th>
+                <th class="text-end w-130">UnitPrice</th>
+                <th class="w-150">Batch No</th>
+                <th class="w-150">Expiry</th>
+                <th class="text-end w-130">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="lineTableBody"></tbody>
+            <tfoot>
+              <tr>
+                <th colspan="6" class="text-end">Tổng:</th>
+                <th class="money" id="grandTotal">0</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="alert alert-warning py-2 d-none" id="statusWarn"></div>
+
+        <div class="d-flex gap-2 mt-3">
+          <a class="btn btn-outline-secondary" href="sup_po_list.html">⬅ Quay lại</a>
+          <button type="button" class="btn btn-outline-danger" onclick="cancelCreate()">
+            <i class="bi bi-x-circle"></i> Hủy
+          </button>
+          <button type="button" id="btnCreate" class="btn btn-primary ms-auto" onclick="createReceipt()">
+            <i class="bi bi-check-circle"></i> Tạo
+          </button>
+        </div>
+        <div id="crtMsg" class="mt-2 small muted"></div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://localhost:7225";
+    const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+    const supplierId = Number(sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId"));
+    const poid = Number(new URLSearchParams(window.location.search).get("poid") || 0);
+    const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+
+    const el = id => document.getElementById(id);
+    const fmt = n => Number(n || 0).toLocaleString();
+
+console.log('token', sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken'));
+console.log('supplierId', sessionStorage.getItem('supplierId') || localStorage.getItem('supplierId'));
+console.log('URL poid', new URLSearchParams(location.search).get('poid'));
+
+
+    if (!token || !supplierId || !poid) {
+      alert("Thiếu thông tin (token / supplierId / poid).");
+      location.href = "login.html";
+    }
+    el("poidLabel").textContent = poid || "";
+    el("supplierLabel").textContent = supplierId || "";
+
+    let poStatus = "";
+
+    // Load PO và render form với Quantity có thể sửa
+    async function loadPO() {
+      el("sidebarMsg").textContent = "Đang tải PO...";
+      try {
+        const res = await fetch(`${API_BASE}/api/PurchaseOrders/${poid}`, { headers });
+        if (!res.ok) throw new Error(await res.text());
+        const po = await res.json();
+
+        poStatus = (po.status || "").trim();
+        el("poInfo").innerHTML =
+          `<b>PO #${po.poid ?? po.purchaseOrderID}</b> — ${po.supplierName ?? ""} — ` +
+          `Trạng thái: <b>${po.status}</b><br>` +
+          // CHỈNH: dùng fmtVN để hiển thị đúng giờ VN
+`<span class="muted">Ngày tạo: ${po.createdAt ? fmtVN(po.createdAt) : ""}</span>`;
+
+
+        // chỉ cho tạo khi Submitted / Received
+        const allow = ["Submitted","Received"].includes(poStatus);
+        const warn = el("statusWarn");
+        const btnCreate = el("btnCreate");
+        if (!allow) {
+          warn.classList.remove("d-none");
+          warn.textContent = "Chỉ tạo biên lai cho đơn ở trạng thái Submitted hoặc Received.";
+          btnCreate.disabled = true;
+        } else {
+          warn.classList.add("d-none");
+          btnCreate.disabled = false;
+        }
+
+        renderLines(po.lines || []);
+        el("sidebarMsg").textContent = "Đã tải PO.";
+      } catch (e) {
+        console.error(e);
+        el("poInfo").textContent = "Không thể tải thông tin đơn hàng.";
+        el("sidebarMsg").textContent = "Lỗi tải PO.";
+      }
+    }
+
+    function renderLines(lines) {
+      const tbody = el("lineTableBody");
+      tbody.innerHTML = "";
+
+      lines.forEach(l => {
+        const tr = document.createElement("tr");
+        tr.dataset.goodId = l.goodID;
+
+        // gợi ý UnitPrice theo PO (placeholder), supplier sẽ nhập/sửa
+        const hintPrice = (l.unitPrice != null) ? Number(l.unitPrice) : "";
+
+        tr.innerHTML = `
+          <td>${l.goodID}</td>
+          <td>${l.goodName ?? ""}</td>
+          <td>
+            <input type="number" min="0" step="0.01" value="${l.quantity}" 
+                   class="form-control form-control-sm text-end qty-input" id="qty-${l.goodID}">
+          </td>
+          <td>
+            <input type="number" min="0" step="0.01" value="${hintPrice}" placeholder="${hintPrice}"
+                   class="form-control form-control-sm text-end price-input" id="price-${l.goodID}" required>
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" placeholder="VD: B001" id="batch-${l.goodID}" required>
+          </td>
+          <td>
+            <input type="date" class="form-control form-control-sm" id="exp-${l.goodID}" required min="${TODAY_MIN}">
+          </td>
+          <td class="money" id="amt-${l.goodID}">0</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // bind tính tiền realtime
+      tbody.querySelectorAll("input").forEach(inp => {
+        inp.addEventListener("input", recalcTotals);
+      });
+      recalcTotals();
+
+      tbody.querySelectorAll("input[id^='batch-']").forEach(inp => {
+  inp.addEventListener("input", () => {
+    // luôn hiển thị uppercase để người dùng thấy đúng như sẽ lưu
+    inp.value = (inp.value || "").toUpperCase();
+  });
+});
+    }
+
+    function recalcTotals() {
+      let grand = 0;
+      document.querySelectorAll("#lineTableBody tr").forEach(tr => {
+        const gid = tr.dataset.goodId;
+        const qty = parseFloat(el(`qty-${gid}`).value || "0");
+        const price = parseFloat(el(`price-${gid}`).value || "0");
+        const amount = (isFinite(qty) ? qty : 0) * (isFinite(price) ? price : 0);
+        el(`amt-${gid}`).textContent = fmt(amount);
+        grand += amount;
+      });
+      el("grandTotal").textContent = fmt(grand);
+    }
+
+    function cancelCreate() {
+      if (confirm("Bạn có chắc chắn muốn hủy tạo biên lai này không?")) {
+        window.location.href = "sup_po_list.html";
+      }
+    }
+
+    async function createReceipt() {
+      const btn = el("btnCreate");
+      if (!["Submitted","Received"].includes(poStatus)) return;
+      if (!confirm("Xác nhận tạo biên lai cho đơn này?")) return;
+
+      const items = [];
+      let hasError = false, errMsg = "";
+
+      document.querySelectorAll("#lineTableBody tr").forEach(tr => {
+        const gid = Number(tr.dataset.goodId);
+        const qty = parseFloat(el(`qty-${gid}`).value || "0");
+        const priceStr = el(`price-${gid}`).value;
+        const price = parseFloat(priceStr);
+        const batchNo = (el(`batch-${gid}`).value || "").trim();
+        const exp = el(`exp-${gid}`).value;
+
+        if (!isFinite(qty) || qty <= 0) { hasError = true; errMsg = `Quantity phải > 0 (GoodID ${gid}).`; return; }
+        if (!priceStr || !isFinite(price) || price <= 0) { hasError = true; errMsg = `UnitPrice không hợp lệ (GoodID ${gid}).`; return; }
+        if (!batchNo) { hasError = true; errMsg = `BatchNo bắt buộc (GoodID ${gid}).`; return; }
+        if (!exp) { hasError = true; errMsg = `ExpiryDate bắt buộc (GoodID ${gid}).`; return; }
+
+        items.push({
+          goodID: gid,
+          quantity: qty,
+          unitPrice: price,
+          batchNo: (batchNo || "").toUpperCase(),
+          expiryDate: exp
+        });
+      });
+
+      const msg = el("crtMsg");
+      if (hasError) { msg.className = "small text-danger"; msg.textContent = errMsg; return; }
+      if (items.length === 0) { msg.className = "small text-danger"; msg.textContent = "Không có dòng nào."; return; }
+
+      msg.className = "small muted"; msg.textContent = "Đang tạo receipt...";
+      btn.disabled = true;
+
+      try {
+        const body = { poid, supplierId, items }; // nếu BE đọc claim supplier_id thì có thể bỏ supplierId
+        const res = await fetch(`${API_BASE}/api/receipts/from-po`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          msg.className = "small text-danger";
+          msg.textContent = `Lỗi: ${res.status} ${txt}`;
+          btn.disabled = false;
+          return;
+        }
+        const r = await res.json();
+        msg.className = "small text-success";
+        msg.textContent = `Tạo thành công Receipt #${r.receiptID}.`;
+        setTimeout(() => { window.location.href = "sup_receipt_list.html"; }, 600);
+      } catch (e) {
+        console.error(e);
+        msg.className = "small text-danger";
+        msg.textContent = "Không thể tạo receipt.";
+        btn.disabled = false;
+      }
+    }
+
+    // YYYY-MM-DD theo local (tránh lệch timezone)
+  function todayLocalYMD(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  const TODAY_MIN = todayLocalYMD();
+
+    // init
+    loadPO();
+
+
+function fmtVN(dt) {
+  if (!dt) return "";
+  const s = String(dt);
+  const iso = /[zZ]|[+\-]\d{2}:\d{2}$/.test(s) ? s : (s + 'Z');
+  return new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Bangkok' });
+}
+
+document.querySelectorAll("input[id^='exp-']").forEach(inp=>{
+  inp.addEventListener("change", ()=>{
+    if (inp.value && inp.value < TODAY_MIN){
+      inp.value = TODAY_MIN;
+      inp.classList.add("is-invalid");
+      inp.setCustomValidity("Không thể chọn hạn sử dụng ở quá khứ.");
+    } else {
+      inp.classList.remove("is-invalid");
+      inp.setCustomValidity("");
+    }
+  });
+});
+
+
+  </script>
+</body>
+</html>

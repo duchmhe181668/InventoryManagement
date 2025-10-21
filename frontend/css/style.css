@@ -13,7 +13,7 @@ body {
   background: #343a40;
   color: #fff;
   flex-shrink: 0;
-  min-height: 100vh;   /* kéo dài full chiều cao màn hình */
+  min-height: 130vh;   /* kéo dài full chiều cao màn hình */
   display: flex;
   flex-direction: column;
 }

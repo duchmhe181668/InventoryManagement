@@ -17,19 +17,26 @@ namespace InventoryManagement.Controllers
             _context = context;
         }
 
+        
         // 1) Danh sách PO theo SupplierID (có thể lọc theo status, phân trang)
         [HttpGet("by-supplier/{supplierId:int}")]
+        [Authorize(Roles = "Supplier")]
         public async Task<ActionResult<IEnumerable<POListItemDto>>> GetBySupplier(
             int supplierId,
             [FromQuery] string? status = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
+            // Lấy SupplierID từ claim
+            var supplierIdClaim = User.FindFirst("supplier_id")?.Value; 
+            if (string.IsNullOrEmpty(supplierIdClaim)) return Forbid(); 
+            supplierId = int.Parse(supplierIdClaim);
+
             if (page <= 0) page = 1;
             if (pageSize <= 0 || pageSize > 200) pageSize = 20;
 
             var query = _context.Set<PurchaseOrder>()
-                .Where(po => po.SupplierID == supplierId);
+                .Where(po => po.SupplierID == supplierId && po.Status != "Draft");
 
             if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(po => po.Status == status);
@@ -84,31 +91,35 @@ namespace InventoryManagement.Controllers
             return Ok(po);
         }
 
-        [HttpPost("{id:int}/confirm")]
-        public async Task<IActionResult> Confirm(int id)
+        //update status
+        [HttpPatch("{id:int}/status")]
+        [Authorize(Roles = "Supplier")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
         {
-            var po = await _context.PurchaseOrders.FindAsync(id);
-            if (po == null) return NotFound();
-            if (!string.Equals(po.Status, "Draft", StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Chỉ xác nhận đơn ở trạng thái Draft.");
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
+                return BadRequest("Trạng thái không hợp lệ.");
 
-            po.Status = "Submitted";
+            var po = await _context.PurchaseOrders.FindAsync(id);
+            if (po == null)
+                return NotFound();
+
+            // ✅ Supplier chỉ được phép đổi sang Received (trong giai đoạn này)
+            if (!dto.Status.Equals("Received", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Bạn chỉ có thể cập nhật trạng thái sang Received.");
+
+            // ✅ Kiểm tra luồng hợp lệ: Submitted -> Received
+            if (!po.Status.Equals("Submitted", StringComparison.OrdinalIgnoreCase))
+                return BadRequest($"Không thể chuyển từ {po.Status} sang {dto.Status}.");
+
+            po.Status = dto.Status;
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        [HttpPost("{id:int}/receive")]
-        public async Task<IActionResult> Submitted(int id)
+
+        public class UpdateStatusDto
         {
-            var po = await _context.PurchaseOrders.FindAsync(id);
-            if (po == null) return NotFound();
-            if (!string.Equals(po.Status, "Submitted", StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Chỉ xác nhận đơn ở trạng thái Submitted.");
-
-            po.Status = "Received";
-            await _context.SaveChangesAsync();
-            return NoContent();
+            public string Status { get; set; } = null!;
         }
-
     }
 }
