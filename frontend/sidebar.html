@@ -38,14 +38,25 @@
             </a>
         </li>
         
+        <!-- Quản lý người dùng -->
         <li>
             <a class="nav-link" data-bs-toggle="collapse" href="#userMenu" role="button" aria-expanded="false" aria-controls="userMenu">
                 <i class="bi bi-person-circle me-2"></i> Người dùng
             </a>
             <div class="collapse ps-3" id="userMenu">
-                <a href="#" class="nav-link"><i class="bi bi-key me-2"></i> Đổi mật khẩu</a>
-                <a href="#" class="nav-link"><i class="bi bi-info-circle me-2"></i> Thông tin cá nhân</a>
-                
+                <!-- Quản lý người dùng -->
+                <a href="user-manager.html" class="nav-link">
+                    <i class="bi bi-person-bounding-box me-2"></i> Quản lý người dùng
+                </a>
+                <!-- Thông tin cá nhân -->
+                <a href="profile.html" class="nav-link">
+                    <i class="bi bi-info-circle me-2"></i> Thông tin cá nhân
+                </a>
+                <!-- Đổi mật khẩu -->
+                <a href="change-password.html" class="nav-link">
+                    <i class="bi bi-key me-2"></i> Đổi mật khẩu
+                </a>
+                <!-- Đăng xuất -->
                 <a href="#" onclick="logout(); return false;" class="nav-link text-danger">
                     <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
                 </a>
@@ -55,8 +66,3 @@
     <hr>
 </div>
 
-
-
-
-
-    

@@ -1,11 +1,11 @@
 ﻿using InventoryManagement.Data;
 using InventoryManagement.Models.Auth;
 using InventoryManagement.Services;
-
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
+using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 using System.Security.Claims;
 using Microsoft.OpenApi.Models;
@@ -21,8 +21,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // =======================
 // MVC Controllers & Swagger
 // =======================
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
+
+
+
 
 //nút Authorize ở API
 builder.Services.AddSwaggerGen(c =>
@@ -58,6 +66,9 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+
+
 
 
 // =======================
