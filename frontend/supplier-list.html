@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Suppliers - InventoryManagement</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+
+  <style>
+    :root{ --card-radius:20px; --btn-radius:14px; --shadow:0 18px 45px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.06); }
+    body { background:#0d6efd; color:#e7e9ee; }
+    .card { border:0; border-radius:var(--card-radius); box-shadow:var(--shadow); background:#e7e9ee; }
+    .toolbar .form-control,.toolbar .form-select{ border-radius:var(--btn-radius); background:#83858f; color:#e7e9ee; border:1px solid #273054; }
+    .table thead th{ border-bottom-color:#2a335b; color:#aeb6d9; font-weight:600; }
+    .table tbody td{ border-top-color:#1a2247; vertical-align:middle; }
+    .badge-soft{ background:#0d6efd; color:#c7cff5; border:1px solid #2a335b; }
+    .pagination .page-link{ background:#0e1430; color:#c7cff5; border-color:#2a335b; }
+    .pagination .active .page-link{ background:#3758f9; border-color:#3758f9; }
+    .btn-smooth{ border-radius:var(--btn-radius); }
+    .spinner{ width:1.25rem; height:1.25rem; border:3px solid #2a335b; border-top-color:#3758f9; border-radius:50%; animation:spin 1s linear infinite; display:inline-block }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+    .text-muted-2{ color:#9aa4cf!important; }
+    .clicky{ cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div id="sidebar"></div>
+
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0"><i class="bi bi-truck me-2"></i>Suppliers</h3>
+    <div id="alertBox" class="d-none"></div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body toolbar">
+      <div class="row g-2">
+        <div class="col-12 col-md-4">
+          <input id="q" class="form-control" placeholder="Tìm theo tên / điện thoại / email… (Enter để tìm)"/>
+        </div>
+        <div class="col-6 col-md-3">
+          <select id="sortBy" class="form-select">
+            <option value="name">Sắp xếp: Tên</option>
+            <option value="lastpo">Số PO gần đây</option>
+            <option value="spend">Tổng chi tiêu</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <select id="sortDir" class="form-select">
+            <option value="asc">Tăng dần</option>
+            <option value="desc" selected>Giảm dần</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <!-- Ẩn nhưng vẫn dùng để đồng bộ giá trị 10 -->
+          <select id="pageSize" class="form-select" hidden>
+            <option selected>7</option><option>20</option><option>50</option><option>100</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-1 d-grid">
+          <button id="btnRefresh" class="btn btn-primary btn-smooth"><i class="bi bi-arrow-repeat me-1"></i>Làm mới</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="min-width:220px">Nhà cung cấp</th>
+            <th>Liên hệ</th>
+            <th class="text-center">PO</th>
+            <th class="text-center">Biên lai</th>
+            <th class="text-end">Tổng chi tiêu</th>
+            <th style="width:120px" class="text-end">Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="6" class="text-center py-5"><span class="spinner me-2"></span>Đang tải…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body d-flex justify-content-between align-items-center">
+      <div id="summary" class="text-muted-2 small"></div>
+      <nav><ul id="pager" class="pagination mb-0"></ul></nav>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Supplier Detail -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="background:#111735; color:#e7e9ee">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><i class="bi bi-building me-2"></i><span id="dName">Supplier</span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <div class="row g-3 mb-3">
+          <div class="col-md-3"><div class="p-3 rounded-3" style="background:#0e1430;border:1px solid #2a335b"><div class="small text-muted-2">PO gần nhất</div><div id="dLastPO" class="h5 mb-0">—</div></div></div>
+          <div class="col-md-3"><div class="p-3 rounded-3" style="background:#0e1430;border:1px solid #2a335b"><div class="small text-muted-2">Tổng PO</div><div id="dPOCount" class="h5 mb-0">0</div></div></div>
+          <div class="col-md-3"><div class="p-3 rounded-3" style="background:#0e1430;border:1px solid #2a335b"><div class="small text-muted-2">Tổng Receipts</div><div id="dRcCount" class="h5 mb-0">0</div></div></div>
+          <div class="col-md-3"><div class="p-3 rounded-3" style="background:#0e1430;border:1px solid #2a335b"><div class="small text-muted-2">Tổng chi tiêu</div><div id="dSpend" class="h5 mb-0">0</div></div></div>
+        </div>
+
+        <ul class="nav nav-tabs" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPOS" type="button">Purchase Orders</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRC" type="button">Receipts</button></li>
+        </ul>
+        <div class="tab-content pt-3">
+          <div class="tab-pane fade show active" id="tabPOS">
+            <div class="d-flex gap-2 mb-2">
+              <div class="badge badge-soft px-2 py-2">Lọc trạng thái PO:</div>
+              <div class="form-check form-check-inline"><input class="form-check-input po-filter" type="checkbox" value="Draft" id="poDraft" checked><label class="form-check-label" for="poDraft">Draft</label></div>
+              <div class="form-check form-check-inline"><input class="form-check-input po-filter" type="checkbox" value="Submitted" id="poSub" checked><label class="form-check-label" for="poSub">Submitted</label></div>
+              <div class="form-check form-check-inline"><input class="form-check-input po-filter" type="checkbox" value="Received" id="poRec" checked><label class="form-check-label" for="poRec">Received</label></div>
+              <div class="form-check form-check-inline"><input class="form-check-input po-filter" type="checkbox" value="Cancelled" id="poCan"><label class="form-check-label" for="poCan">Cancelled</label></div>
+              <button id="btnReloadPO" class="btn btn-outline-light btn-sm ms-auto btn-smooth"><i class="bi bi-filter-circle me-1"></i>Áp dụng</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead><tr><th>PO #</th><th>Ngày tạo</th><th>Trạng thái</th><th class="text-end">Số dòng</th><th class="text-end">Tổng SL</th></tr></thead>
+                <tbody id="poBody"><tr><td colspan="5" class="py-3 text-center"><span class="spinner me-2"></span>Đang tải…</td></tr></tbody>
+              </table>
+              <div class="d-flex justify-content-between align-items-center px-2 pb-2">
+                <div id="poSummary" class="small text-muted-2"></div>
+                <ul id="poPager" class="pagination pagination-sm mb-0"></ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="tabRC">
+            <div class="d-flex gap-2 mb-2">
+              <div class="badge badge-soft px-2 py-2">Lọc trạng thái Receipt:</div>
+              <div class="form-check form-check-inline"><input class="form-check-input rc-filter" type="checkbox" value="Confirmed" id="rcConf" checked><label class="form-check-label" for="rcConf">Confirmed</label></div>
+              <!-- <div class="form-check form-check-inline"><input class="form-check-input rc-filter" type="checkbox" value="Cancelled" id="rcCan"><label class="form-check-label" for="rcCan">Cancelled</label></div> -->
+              <button id="btnReloadRC" class="btn btn-outline-light btn-sm ms-auto btn-smooth"><i class="bi bi-filter-circle me-1"></i>Áp dụng</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead><tr><th>Receipt #</th><th>Ngày tạo</th><th>Trạng thái</th><th class="text-end">Số dòng</th><th class="text-end">Tổng SL</th><th class="text-end">Tổng tiền</th></tr></thead>
+                <tbody id="rcBody"><tr><td colspan="6" class="py-3 text-center"><span class="spinner me-2"></span>Đang tải…</td></tr></tbody>
+              </table>
+              <div class="d-flex justify-content-between align-items-center px-2 pb-2">
+                <div id="rcSummary" class="small text-muted-2"></div>
+                <ul id="rcPager" class="pagination pagination-sm mb-0"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-smooth" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="./supplier-list.js"></script>
+<script>
+  // Nạp sidebar giống home.html
+    fetch('sidebar.html').then(r=>r.text()).then(html=>{
+      document.getElementById('sidebar').innerHTML = html;
+    }).catch(()=>{ /* ignore */ });
+  </script>
+</script>
+</body>
+</html>

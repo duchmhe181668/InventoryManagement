@@ -276,7 +276,7 @@
     if (['administrator', 'warehousemanager', 'storemanager'].includes(r)) {
       window.location.href = 'home.html';
     } else if (r === 'supplier') {
-      window.location.href = 'supplier.html';
+      window.location.href = 'sup_po_list.html';
     } else {
       window.location.href = 'home.html';
     }
@@ -300,6 +300,15 @@
       const result = await login(username, password);
       persistAuth(result, remember);
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
+
+      const role = (result.role || '').toString();
+      let target = '/';
+      if (role === 'Supplier') {
+        target = '/sup_po_list.html';
+      } else if (role === 'StoreManager' || role === 'Administrator' || role === 'WarehouseManager') {
+        target = '/home.html';
+      }
+      //setTimeout(() => { window.location.href = target; }, 400);
       setTimeout(() => redirectByRole(result.role), 350);
     } catch (err) {
       showAlert(err?.message || 'Đăng nhập thất bại', 'danger');

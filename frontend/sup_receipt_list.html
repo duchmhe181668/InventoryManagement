@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Supplier — Receipts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root{
+      --primary: #0d6efd;
+      --text: #111111;
+      --bg: #ffffff;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+    html, body { height: 100%; }
+    body { padding: 20px; background: var(--bg); color: var(--text); }
+
+    .layout { display: flex; gap: 24px; align-items: flex-start; }
+    #sidebar {
+      position: sticky; top: 20px; min-height: calc(100vh - 40px);
+      width: 260px; background: var(--primary); color: #fff;
+      border-radius: 10px; border: none; display: flex; flex-direction: column; padding: 16px;
+    }
+    #sidebar h5 { color: #fff; }
+    #sidebar .nav-link { color: rgba(255,255,255,.92); padding-left: 0; }
+    #sidebar .nav-link:hover { color:#fff; text-decoration: underline; }
+    #sidebar .nav-link.active { color:#fff; font-weight: 600; }
+    #msg { color: #e0e7ff; }
+
+    .muted { color: var(--muted); }
+    .error { color: #b91c1c; }
+    .ok { color: #065f46; }
+
+    tr.clickable:hover { background: #f8fafc; cursor: pointer; }
+    .table-narrow th, .table-narrow td { padding: .4rem .6rem; border-color: var(--border); }
+
+    .detail-cell { padding: 0 !important; background: #fafafa; }
+    .slide { overflow: hidden; max-height: 0; transition: max-height 280ms ease; border-top: 1px solid var(--border);}
+    .slide-inner { padding: 12px 16px; }
+
+    .btn-primary, .btn-outline-primary:hover { background-color: var(--primary) !important; border-color: var(--primary) !important; }
+    .btn-outline-primary { color: var(--primary); border-color: var(--primary); }
+
+    .form-select-sm, .form-control, .form-control-sm { border-color: var(--border); }
+    .card { border-color: var(--border); }
+    .w-140 { width: 140px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div>
+        <h5 class="mb-3">Menu</h5>
+        <ul class="nav flex-column">
+          <li class="nav-item"><a href="index.html" class="nav-link">Trang chủ</a></li>
+          <li class="nav-item"><a href="sup_po_list.html" class="nav-link">Đơn hàng</a></li>
+          <li class="nav-item"><a href="sup_receipt_list.html" class="nav-link active">Biên lai</a></li>
+        </ul>
+      </div>
+      <div class="mt-3 small" id="msg"></div>
+    </aside>
+
+    <main class="flex-grow-1">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h2 class="m-0">Danh sách biên lai</h2>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <label class="form-label m-0">Trạng thái</label>
+          <select id="status" class="form-select form-select-sm w-140">
+            <option value="">Tất cả</option>
+            <option value="Submitted">Đã gửi</option>
+            <option value="Confirmed">Đã xác nhận</option>
+            <option value="Cancelled">Hủy</option>
+          </select>
+
+          <input id="from" type="date" class="form-control form-control-sm" />
+          <input id="to" type="date" class="form-control form-control-sm" />
+          <input id="poid" type="number" placeholder="POID" class="form-control form-control-sm" style="width: 110px;" />
+
+          <button id="btnReload" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-arrow-clockwise"></i> Reload
+          </button>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <div class="table-responsive mt-2">
+            <table class="table table-bordered table-hover table-narrow">
+              <thead class="table-light">
+                <tr>
+                  <th>ID Hóa đơn</th>
+                  <th>POID</th>
+                  <th>Ngày tạo</th>
+                  <th>Trạng thái</th>
+                  <th>Sản phẩm</th>
+                  <th>Tổng tiền</th>
+                  <th style="width:120px">Hành động</th>
+                </tr>
+              </thead>
+              <tbody id="tbReceipts"></tbody>
+            </table>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="small muted" id="pagingInfo"></div>
+            <div class="btn-group">
+              <button id="prev" class="btn btn-sm btn-outline-primary">Prev</button>
+              <button id="next" class="btn btn-sm btn-outline-primary">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://localhost:7225";
+    const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+    const supplierId = Number(sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId"));
+
+    let page = 1, pageSize = 20;
+    let currentOpenId = null, currentDetailTr = null;
+
+    const el = id => document.getElementById(id);
+    function authHeaders() {
+      return { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+    }
+    function setMsg(text, cls="muted") { const m = el("msg"); if (m) { m.className = cls; m.textContent = text || ""; } }
+
+    // ============= LOAD LIST =============
+    async function loadReceipts() {
+      if (!token || !supplierId) { location.href = "login.html"; return; }
+
+      setMsg("Đang tải receipts...");
+      try {
+        const url = new URL(`${API_BASE}/api/receipts/by-supplier/${supplierId}`);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("pageSize", String(pageSize));
+        const st = el("status").value;
+        const from = el("from").value;
+        const to = el("to").value;
+        const poid = el("poid").value;
+
+        if (st) url.searchParams.set("status", st);
+        if (from) url.searchParams.set("from", from);
+        if (to) url.searchParams.set("to", to);
+        if (poid) url.searchParams.set("poid", poid);
+
+        const res = await fetch(url, { headers: authHeaders() });
+        const tbody = el("tbReceipts");
+        tbody.innerHTML = "";
+
+        if (res.status === 204) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+          el("pagingInfo").textContent = `Trang ${page}`;
+          setMsg("Không có dữ liệu.");
+          return;
+        }
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        data.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = "clickable";
+          tr.dataset.id = r.receiptID;
+
+          tr.innerHTML = `
+            <td>${r.receiptID}</td>
+            <td>${r.poid ?? ""}</td>
+            <td>${r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}</td>
+            <td>${r.status ?? ""}</td>
+            <td>${r.totalLines ?? 0}</td>
+            <td>${Number(r.totalAmount ?? 0).toLocaleString()}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openDetailSingle(${r.receiptID});">
+                <i class="bi bi-eye"></i> Detail
+              </button>
+            </td>
+          `;
+
+          tr.addEventListener("click", () => openDetailBelow(tr, r.receiptID));
+          tbody.appendChild(tr);
+        });
+
+        el("pagingInfo").textContent = `Trang ${page} — số dòng: ${data.length}`;
+        setMsg(`Đã tải ${data.length} receipt.`, "ok");
+      } catch (e) {
+        console.error(e);
+        setMsg("Không thể tải danh sách receipts.", "error");
+      }
+    }
+
+    // ============= DETAIL ACCORDION =============
+    async function openDetailBelow(anchorTr, receiptId) {
+      // toggle
+      if (currentOpenId === String(receiptId)) { await closeCurrentDetail(); return; }
+      await closeCurrentDetail();
+
+      const detailTr = document.createElement("tr");
+      detailTr.className = "detail-row";
+      const td = document.createElement("td");
+      td.colSpan = 7;
+      td.className = "detail-cell";
+      td.innerHTML = `
+        <div class="slide"><div class="slide-inner" id="rec-${receiptId}">
+          <div class="muted">Đang tải chi tiết #${receiptId}...</div>
+        </div></div>`;
+      detailTr.appendChild(td);
+      anchorTr.insertAdjacentElement("afterend", detailTr);
+
+      // fetch detail
+      try {
+        const res = await fetch(`${API_BASE}/api/receipts/${receiptId}`, { headers: authHeaders() });
+        const box = el(`rec-${receiptId}`);
+        if (!res.ok) {
+          box.innerHTML = `<div class="error">Lỗi: ${res.status} ${await res.text()}</div>`;
+        } else {
+          const r = await res.json();
+          box.innerHTML = renderReceiptDetail(r);
+        }
+      } catch {
+        const box = el(`rec-${receiptId}`);
+        if (box) box.innerHTML = `<div class="error">Không thể tải chi tiết.</div>`;
+      }
+
+      const slide = detailTr.querySelector(".slide");
+      requestAnimationFrame(() => { slide.style.maxHeight = slide.scrollHeight + "px"; });
+      currentOpenId = String(receiptId);
+      currentDetailTr = detailTr;
+      detailTr.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    async function openDetailSingle(receiptId) {
+      const row = [...document.querySelectorAll("#tbReceipts tr")].find(tr => tr.dataset.id === String(receiptId));
+      if (row) await openDetailBelow(row, receiptId);
+    }
+
+    function closeCurrentDetail() {
+      return new Promise(resolve => {
+        if (!currentDetailTr) return resolve();
+        const slide = currentDetailTr.querySelector(".slide");
+        slide.addEventListener("transitionend", () => {
+          currentDetailTr?.remove();
+          currentDetailTr = null; currentOpenId = null; resolve();
+        }, { once: true });
+        slide.style.maxHeight = "0px";
+      });
+    }
+    //<td>${d.receiptDetailID}</td>
+    function renderReceiptDetail(r) {
+      const lines = (r.items ?? []).map(d => `
+        <tr>
+          <td>${d.goodID}</td>
+          <td class="text-end">${d.quantity}</td>
+          <td class="text-end">${d.unitCost}</td>
+          <td>${d.batchID ?? ""}</td>
+          <td>${d.batchNo ?? ""}</td>
+          <td>${d.expiryDate ? new Date(d.expiryDate).toLocaleDateString() : ""}</td>
+        </tr>
+      `).join("");
+
+      return `
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <span class="muted">Created: ${r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}</span>
+          </div>
+        </div>
+        <div class="mt-2">
+          <table class="table table-bordered table-sm">
+            <thead class="table-light">
+              <tr>
+                <th>ID Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th>
+                <th>ID Lô</th><th>Tên lô</th><th>Hạn sử dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lines || `<tr><td colspan="7" class="text-center muted">Không có dòng</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+
+    // ============= INIT & EVENTS =============
+    el("btnReload").addEventListener("click", () => { page = 1; loadReceipts(); });
+    el("status").addEventListener("change", () => { page = 1; loadReceipts(); });
+    el("from").addEventListener("change", () => { page = 1; loadReceipts(); });
+    el("to").addEventListener("change", () => { page = 1; loadReceipts(); });
+    el("poid").addEventListener("change", () => { page = 1; loadReceipts(); });
+
+    el("prev").addEventListener("click", () => { if (page > 1) { page--; loadReceipts(); } });
+    el("next").addEventListener("click", () => { page++; loadReceipts(); });
+
+    loadReceipts();
+    
+  </script>
+
+  
+</body>
+</html>
