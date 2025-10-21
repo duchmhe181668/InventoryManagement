@@ -85,6 +85,7 @@ function renderRows(items){
       <td class="text-end">${fmt(priceCost)}</td>
       <td class="text-end">${fmt(priceSell)}</td>
       <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary me-1" data-act="detail" data-id="${id}"><i class="fa-solid fa-eye"></i> Xem chi tiết</button>
         <button class="btn btn-sm btn-outline-primary me-1" data-act="edit" data-id="${id}"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-sm btn-outline-danger" data-act="del" data-id="${id}"><i class="fa-solid fa-trash"></i></button>
       </td>
@@ -94,8 +95,8 @@ function renderRows(items){
 }
 
 function renderPager(data){
-  const total = data.total ?? data.Total ?? 0;
-  const pageCount = data.pageCount ?? data.PageCount ?? 1;
+  const total = data.totalItems ?? data.TotalItems ?? data.total ?? data.Total ?? 0;
+  const pageCount = data.totalPages ?? data.TotalPages ?? data.pageCount ?? data.PageCount ?? 1;
   const page = data.page ?? data.Page ?? 1;
   pageInfo.textContent = `Trang ${page}/${pageCount} — ${total} mục`;
   btnPrev.disabled = page<=1; btnNext.disabled = page>=pageCount;
@@ -105,7 +106,7 @@ function renderPager(data){
 $$('.sortable').forEach(th=> th.addEventListener('click', ()=>{ state.sort = th.dataset.sort; fetchGoods(); }));
 searchInput.addEventListener('keypress', e=>{ if(e.key==='Enter'){ state.search=searchInput.value.trim(); state.page=1; fetchGoods(); }});
 btnPrev.addEventListener('click', ()=>{ if(state.page>1){ state.page--; fetchGoods(); }});
-btnNext.addEventListener('click', ()=>{ state.page++; fetchGoods(); });
+btnNext.addEventListener('click', ()=>{ const m = /\/(\d+)/.exec(pageInfo.textContent); const pageCount = m ? Number(m[1]) : 1; if(state.page < pageCount){ state.page++; fetchGoods(); }});
 
 // ===== Categories load/list =====
 async function loadCategories(selectedId){
@@ -187,6 +188,11 @@ $('#btn-add').addEventListener('click', async ()=>{
 tbody.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
   const id = +btn.dataset.id;
+  if(btn.dataset.act==='detail'){
+    window.location.href = 'warehouse-good-detail.html?id=' + id;
+    return;
+  }
+
   if(btn.dataset.act==='edit'){
     goodMsg.textContent = '';
     const res = await fetch(`${API_GOODS()}/${id}`);

@@ -26,7 +26,7 @@ namespace InventoryManagement.Controllers
             sort = (sort ?? "name").Trim().ToLowerInvariant();
 
             // chỉ cho phép những khóa sort hợp lệ
-            if (sort is not ("name" or "-name" or "sku" or "-sku" or "pricesell" or "-pricesell"))
+            if (sort is not ("name" or "-name" or "sku" or "-sku" or "pricesell" or "-pricesell" or "pricecost" or "-pricecost"))
                 sort = "name";
 
             var q = _context.Goods
@@ -51,6 +51,8 @@ namespace InventoryManagement.Controllers
                 "-sku" => q.OrderByDescending(g => g.SKU),
                 "pricesell" => q.OrderBy(g => g.PriceSell),
                 "-pricesell" => q.OrderByDescending(g => g.PriceSell),
+    "pricecost" => q.OrderBy(g => g.PriceCost),
+    "-pricecost" => q.OrderByDescending(g => g.PriceCost),
                 _ => q.OrderBy(g => g.Name)
             };
 
