@@ -24,6 +24,10 @@ namespace InventoryManagement.Services
             };
             if (roles != null) foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
             if (extraClaims != null)
             {
                 foreach (var kv in extraClaims)

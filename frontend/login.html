@@ -5,70 +5,178 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Đăng nhập - InventoryManagement</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
-    body{min-height:100vh;background:#f5f7fb;display:flex;align-items:center;justify-content:center}
-    .card{width:100%;max-width:460px;border:none;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
-    .brand{font-weight:700;letter-spacing:.5px}
-    .form-control:focus{box-shadow:none;border-color:#0d6efd}
-    .toggle-pw{cursor:pointer}
+    :root{
+      /* Palette */
+      --primary-start: #2f80ed;
+      --primary-end:   #1c64f2;
+      --card-bg: #ffffff;
+      --page-bg1: #eef4ff;
+      --page-bg2: #f7f9fc;
+      --muted: #6b7280;
+      --field-bg: #f3f6ff;
+      --border: #e5e7eb;
+
+      --radius-card: 26px;
+      --radius-btn: 16px;
+      --shadow-card: 0 26px 70px rgba(28,100,242,.12), 0 10px 24px rgba(16,24,40,.08);
+    }
+
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(1400px 700px at 15% 15%, var(--page-bg1) 0%, var(--page-bg2) 40%, #f5f7fb 100%);
+      display:flex;align-items:center;justify-content:center;
+      padding:28px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+                   "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      color:#0f172a;
+    }
+
+    .login-card{
+      width:100%;
+      max-width:460px;
+      border:none;
+      border-radius:var(--radius-card);
+      background:var(--card-bg);
+      box-shadow:var(--shadow-card);
+      padding:32px 28px;
+    }
+
+    .brand-title{ font-weight:800; letter-spacing:.2px; color:#111827; }
+    .brand-sub{ color:var(--muted); font-size:.96rem; }
+
+    .form-label{ margin-bottom:.45rem; }
+
+    
+    .input-group.pill{
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;               
+      background: var(--field-bg);
+    }
+    .input-group.pill:focus-within{
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+      background:#fff;
+    }
+    
+    .input-group.pill > .input-group-text,
+    .input-group.pill > .form-control,
+    .input-group.pill > .btn-icon{
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent;
+    }
+    .input-group.pill > .input-group-text{
+      padding: .72rem .9rem;
+      color:#334155;
+    }
+    .input-group.pill > .form-control{
+      padding: .84rem .95rem;
+    }
+    .input-group.pill > .btn-icon{
+      display:flex;align-items:center;justify-content:center;
+      padding:.72rem .9rem;
+      background:#fff;                 
+      cursor:pointer;
+    }
+    .btn-icon:focus{ box-shadow:none; }
+
+    /* Primary button */
+    .btn-primary{
+      border:none;
+      border-radius:var(--radius-btn);
+      padding:.95rem 1rem;
+      font-weight:700;
+      letter-spacing:.2px;
+      background-image: linear-gradient(180deg, var(--primary-start), var(--primary-end));
+      box-shadow: 0 10px 24px rgba(28,100,242,.24), 0 4px 10px rgba(28,100,242,.18);
+    }
+    .btn-primary:hover{
+      filter: brightness(0.98);
+      background-image: linear-gradient(180deg, var(--primary-end), var(--primary-end));
+    }
+    .btn-primary:active{ transform: translateY(1px); }
+
+    .btn-outline-secondary{
+      border-radius:var(--radius-btn);
+      padding:.95rem 1rem;
+      font-weight:600;
+      color:#374151;
+      border-color:#d1d5db;
+      background:#f8fafc;
+    }
+    .btn-outline-secondary:hover{ background:#eef2f7; color:#111827; border-color:#c7cdd6; }
+
+    .tiny-link{ color:#4f46e5; text-decoration:none; }
+    .tiny-link:hover{ text-decoration:underline; }
+
+    .divider{ height:1px;background:#edf1f7;margin:14px 0 0; }
   </style>
 </head>
 <body>
-  <div class="card p-4">
+  <div class="login-card">
     <div class="mb-3 text-center">
-      <div class="brand fs-4">Hệ thống Quản lý Kho Hàng</div>
-      <div class="text-muted">Đăng nhập hệ thống</div>
+      <div class="brand-title h3 mb-1">
+      <div class="brand-title h3 mb-1"><i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập</div>
+      </div>
+      <div class="brand-sub">Hệ Thống Quản Lý Kho Hàng</div>
     </div>
 
     <div id="alert" class="alert d-none" role="alert"></div>
 
     <form id="loginForm" novalidate>
+      <!-- Username -->
       <div class="mb-3">
-        <label class="form-label">Tài Khoản</label>
-        <input id="username" class="form-control" autocomplete="username" required />
-        <div class="invalid-feedback">Nhập username</div>
+        <label class="form-label fw-semibold">Tên đăng nhập <span class="text-danger"></span></label>
+        <div class="input-group pill">
+          <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+          <input id="username" class="form-control" autocomplete="username" required />
+        </div>
+        <div class="invalid-feedback">Vui lòng nhập tên đăng nhập.</div>
       </div>
 
+      <!-- Password -->
       <div class="mb-2">
-        <label class="form-label">Mật khẩu</label>
-        <div class="input-group">
+        <label class="form-label fw-semibold">Mật khẩu <span class="text-danger"></span></label>
+        <div class="input-group pill">
+          <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
           <input id="password" type="password" class="form-control" autocomplete="current-password" required />
-          <span class="input-group-text toggle-pw" title="Show/Hide password" role="button" aria-label="Show/Hide password">
-            <!-- Icon mắt 2D đơn giản -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </span>
-          <div class="invalid-feedback">Nhập mật khẩu</div>
+          <button type="button" class="btn btn-icon" id="btnTogglePw" title="Hiện/ẩn mật khẩu" aria-label="Hiện/ẩn mật khẩu">
+            <i class="bi bi-eye"></i>
+          </button>
         </div>
+        <div class="invalid-feedback">Vui lòng nhập mật khẩu.</div>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="form-check">
           <input id="remember" class="form-check-input" type="checkbox">
-          <label class="form-check-label" for="remember">Ghi nhớ</label>
+          <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
         </div>
-        <a class="small text-decoration-none" href="forgot.html">Quên mật khẩu?</a>
+        <a class="tiny-link" href="forgot.html">Quên mật khẩu?</a>
       </div>
 
-      <!-- ĐĂNG KÝ & ĐĂNG NHẬP cạnh nhau -->
-      <div class="d-flex gap-2">
-        <a href="register.html" class="btn btn-outline-primary flex-fill">Đăng ký</a>
-        <button id="btnLogin" type="submit" class="btn btn-primary flex-fill">
-          <span id="spnLoad" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-          Đăng nhập
-        </button>
-      </div>
+      <button id="btnLogin" type="submit" class="btn btn-primary w-100 mb-3">
+        <span id="spnLoad" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+      </button>
 
+      <div class="divider"></div>
+
+      <a href="register.html" class="btn btn-outline-secondary w-100 mt-3">
+        <i class="bi bi-person-plus me-1"></i> Tạo tài khoản mới
+      </a>
+    </form>
+  </div>
 
 <script>
 (function () {
-  // Ưu tiên https (Kestrel), fallback sang http (IISExpress/Profiles khác)
+  // Ưu tiên https (Kestrel), fallback http (profile khác)
   const ENDPOINTS = [
     'https://localhost:7225/api/Auth/login',
-    'http://localhost:5146/api/Auth/login'
   ];
 
   const form = document.getElementById('loginForm');
@@ -76,31 +184,36 @@
   const btnLogin = document.getElementById('btnLogin');
   const spnLoad = document.getElementById('spnLoad');
   const pwd = document.getElementById('password');
-  const toggle = document.querySelector('.toggle-pw');
+  const btnTogglePw = document.getElementById('btnTogglePw');
 
-  const lnkUserMgr = document.getElementById('lnkUserMgr');
-  const lnkProfile = document.getElementById('lnkProfile');
-
-  // Eye toggle
-  toggle.addEventListener('click', () => {
-    pwd.type = (pwd.type === 'password') ? 'text' : 'password';
+  btnTogglePw?.addEventListener('click', () => {
+    const eye = btnTogglePw.querySelector('i');
+    if (pwd.type === 'password') {
+      pwd.type = 'text';
+      eye?.classList.replace('bi-eye','bi-eye-slash');
+    } else {
+      pwd.type = 'password';
+      eye?.classList.replace('bi-eye-slash','bi-eye');
+    }
   });
 
-  // UI helpers
   function showAlert(msg, type='danger') {
+    if (!alertBox) return;
     alertBox.textContent = msg;
     alertBox.className = 'alert alert-' + type;
+    alertBox.classList.remove('d-none');
   }
   function clearAlert() {
+    if (!alertBox) return;
     alertBox.className = 'alert d-none';
     alertBox.textContent = '';
   }
   function setBusy(b) {
-    btnLogin.disabled = b;
-    spnLoad.classList.toggle('d-none', !b);
+    if (b) btnLogin?.setAttribute('disabled', 'disabled');
+    else btnLogin?.removeAttribute('disabled');
+    spnLoad?.classList.toggle('d-none', !b);
   }
 
-  // Đăng nhập: thử lần lượt các endpoint cho tới khi OK
   async function login(username, password) {
     let lastError;
     for (const url of ENDPOINTS) {
@@ -108,7 +221,7 @@
         const res = await fetch(url, {
           method: 'POST',
           mode: 'cors',
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', 'Accept':'application/json'},
           body: JSON.stringify({ username, password })
         });
         const data = await res.json().catch(() => ({}));
@@ -116,28 +229,32 @@
           const msg = typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại');
           throw new Error(msg);
         }
-        // Kỳ vọng payload: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
+        // expected: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
         return data;
-      } catch (err) {
-        lastError = err;
-        // thử endpoint tiếp theo
-      }
+      } catch (err) { lastError = err; }
     }
-    // nếu tất cả endpoint đều fail
     throw lastError || new Error('Không thể gọi API đăng nhập');
   }
 
-  // Lưu phiên: giữ cả key cũ (authToken) để tương thích
+  // Fallback: đọc exp từ JWT nếu không có expiresInSeconds
+  function getJwtExpMs(token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+      if (!payload || typeof payload.exp !== 'number') return null;
+      return payload.exp * 1000; // sec → ms
+    } catch { return null; }
+  }
+
   function persistAuth(result, remember) {
     const store = remember ? localStorage : sessionStorage;
 
-    // Payload đầy đủ
     try { store.setItem('authUser', JSON.stringify(result)); } catch {}
 
-    // Các key lẻ để code khác có thể dùng trực tiếp
     const token = result.accessToken || '';
     try { store.setItem('accessToken', token); } catch {}
-    try { store.setItem('authToken',  token); } catch {}       // key cũ
+    try { store.setItem('authToken',  token); } catch {}       // alias cho code cũ
     try { store.setItem('tokenType', result.tokenType || 'Bearer'); } catch {}
     try { store.setItem('authRole',  result.role || ''); } catch {}
     try { store.setItem('authUserName', result.username || ''); } catch {}
@@ -148,10 +265,12 @@
     if (typeof result.expiresInSeconds === 'number') {
       const expireAt = Date.now() + (result.expiresInSeconds * 1000);
       try { store.setItem('tokenExpireAt', String(expireAt)); } catch {}
+    } else if (token) {
+      const expMs = getJwtExpMs(token);
+      if (expMs) { try { store.setItem('tokenExpireAt', String(expMs)); } catch {} }
     }
   }
 
-  // Điều hướng theo vai trò
   function redirectByRole(role) {
     const r = (role || '').toString().toLowerCase();
     if (['administrator', 'warehousemanager', 'storemanager'].includes(r)) {
@@ -159,25 +278,11 @@
     } else if (r === 'supplier') {
       window.location.href = 'supplier.html';
     } else {
-      // role lạ → về home cho an toàn (hoặc logout tuỳ bạn)
       window.location.href = 'home.html';
     }
   }
 
-  // Hiện link nhanh sau khi đã có phiên
-  function updateQuickLinksIfLogged() {
-    const store = localStorage.getItem('authToken') ? localStorage : sessionStorage;
-    const token = store.getItem('authToken') || store.getItem('accessToken');
-    if (!token) return;
-
-    const role = (store.getItem('authRole') || '').toLowerCase();
-    lnkProfile.classList.remove('d-none');         // ai đăng nhập cũng thấy Edit Profile
-    if (role === 'administrator') {
-      lnkUserMgr.classList.remove('d-none');       // chỉ admin thấy User Manager
-    }
-  }
-
-  form.addEventListener('submit', async (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearAlert();
 
@@ -186,17 +291,15 @@
       return;
     }
 
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const remember = document.getElementById('remember').checked;
+    const username = document.getElementById('username')?.value?.trim() || '';
+    const password = document.getElementById('password')?.value || '';
+    const remember = document.getElementById('remember')?.checked || false;
 
     setBusy(true);
     try {
       const result = await login(username, password);
       persistAuth(result, remember);
-
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
-      // Điều hướng tuỳ role
       setTimeout(() => redirectByRole(result.role), 350);
     } catch (err) {
       showAlert(err?.message || 'Đăng nhập thất bại', 'danger');
@@ -204,9 +307,6 @@
       setBusy(false);
     }
   });
-
-  // Khi tải trang: nếu đã đăng nhập trước đó → bật link tiện ích
-  updateQuickLinksIfLogged();
 })();
 </script>
 </body>

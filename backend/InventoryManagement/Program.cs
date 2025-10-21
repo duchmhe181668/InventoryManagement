@@ -1,11 +1,11 @@
 ﻿using InventoryManagement.Data;
 using InventoryManagement.Models.Auth;
 using InventoryManagement.Services;
-
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
+using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 using System.Security.Claims;
 using Microsoft.OpenApi.Models;
@@ -28,7 +28,10 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddEndpointsApiExplorer();
+<<<<<<< HEAD
+=======
 
+>>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
 //nút Authorize ở API
 builder.Services.AddSwaggerGen(c =>
 {
@@ -63,7 +66,10 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+<<<<<<< HEAD
+=======
 
+>>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
 
 // =======================
 // JWT Configuration
