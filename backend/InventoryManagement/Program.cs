@@ -28,10 +28,10 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddEndpointsApiExplorer();
-<<<<<<< HEAD
-=======
 
->>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
+
+
+
 //nút Authorize ở API
 builder.Services.AddSwaggerGen(c =>
 {
@@ -66,10 +66,10 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-<<<<<<< HEAD
-=======
 
->>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
+
+
+
 
 // =======================
 // JWT Configuration

@@ -88,8 +88,8 @@ namespace InventoryManagement.Controllers
             if (storeId.HasValue)
                 extraClaims["store_id"] = storeId.Value.ToString();
 
-<<<<<<< HEAD
-=======
+
+
 
             var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
             var exp = _jwt.GetExpiry();
@@ -100,7 +100,7 @@ namespace InventoryManagement.Controllers
             // if (storeId.HasValue)    extraClaims["store_id"]    = storeId.Value.ToString();
             // var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
 
->>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
+
             return Ok(new LoginResponse
             {
                 AccessToken = token,
@@ -200,7 +200,7 @@ namespace InventoryManagement.Controllers
             });
         }
 
-<<<<<<< HEAD
+
         /// Cập nhật thông tin người dùng
         [HttpPut("update/{userId}")]
         [Authorize(Roles = "Administrator")]
@@ -503,7 +503,6 @@ namespace InventoryManagement.Controllers
             ClearResetCode(user.Username);
             return NoContent();
         }
-=======
->>>>>>> 321ff6ba44c688d83fcc95b43fca3d6df0f45b93
+
     }
 }
