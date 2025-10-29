@@ -3,33 +3,32 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Tạo phiếu Request (Warehouse → Supplier)</title>
+  <title>Phiếu Mua Hàng</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="purchase_order.css" rel="stylesheet">
-  
 </head>
 <body>
 <div class="container container-narrow py-4">
 
   <div class="d-flex align-items-center mb-3">
-    <button class="btn btn-outline-secondary icon-btn me-3" onclick="location.href='../home.html'">
+    <a href="../purchase_order_list/purchase_order_list.html" class="btn btn-outline-secondary icon-btn me-3">
       <i class="fa-solid fa-arrow-left"></i>
-    </button>
-    <h4 class="m-0 text-primary">Tạo phiếu danh sách hàng (Kho → Nhà Cung Cấp)</h4>
+    </a>
+    <h4 id="pageTitle" class="m-0 text-primary">Tạo Phiếu Mua Hàng (Kho → NCC)</h4>
   </div>
 
   <div class="row g-3">
     <!-- Left 70% -->
     <div class="col-lg-8">
-      <div class="card p-3 p-lg-4">
+      <div class="card p-3 p-lg-4 overflow-visible">
         <div class="mb-2 fw-semibold text-primary">Tìm & thêm mặt hàng</div>
 
-        <!-- Product search with "+" append -->
+        <!-- Product search -->
         <div class="position-relative mb-3">
           <div class="input-group">
             <input id="goodSearch" class="form-control" placeholder="Nhập tên hoặc mã sản phẩm.." autocomplete="off">
-            <button id="btnAddNewGood" class="btn btn-primary btn-append icon-btn" type="button" title="Thêm sản phẩm mới">
+            <button id="btnShowAddGoodModal" class="btn btn-primary btn-append icon-btn" type="button" title="Thêm sản phẩm mới">
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
@@ -76,213 +75,427 @@
           <button class="btn btn-danger rounded-pill" id="btnClearAll">
             <i class="fa-solid fa-trash-can me-2"></i>Xóa hết
           </button>
+          <button class="btn btn-primary1 rounded-pill" id="btnDraft">
+            <i class="fa-solid fa-file-pen me-2"></i>Lưu nháp
+          </button>
           <button class="btn btn-primary rounded-pill" id="btnConfirm">
             <i class="fa-solid fa-check me-2"></i>Gửi yêu cầu
           </button>
         </div>
       </div>
     </div>
-    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
-
   </div>
-
 </div>
+
+<!-- MODAL THÊM SẢN PHẨM MỚI -->
+<div class="modal fade" id="addGoodModal" tabindex="-1" aria-labelledby="addGoodModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius: 22px;">
+      <div class="modal-header border-0">
+        <h1 class="modal-title fs-5 text-primary" id="addGoodModalLabel">Thêm sản phẩm mới</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addGoodForm">
+          <div class="mb-3">
+            <label for="goodName" class="form-label">Tên sản phẩm</label>
+            <input type="text" class="form-control" id="goodName" required>
+          </div>
+          <!-- THAY THẾ SELECT BẰNG INPUT + DATALIST -->
+          <div class="mb-3">
+            <label for="goodCategoryName" class="form-label">Loại sản phẩm</label>
+            <input type="text" class="form-control" id="goodCategoryName" list="categorySuggestions" required placeholder="Nhập hoặc chọn loại sản phẩm">
+            <datalist id="categorySuggestions">
+              <!-- Gợi ý Categories sẽ được load vào đây bằng JS -->
+            </datalist>
+          </div>
+          <div class="mb-3">
+            <label for="goodBarcode" class="form-label">Barcode</label>
+            <input type="text" class="form-control" id="goodBarcode">
+          </div>
+          <div class="mb-3">
+            <label for="goodUnit" class="form-label">Đơn vị tính</label>
+            <input type="text" class="form-control" id="goodUnit" required>
+          </div>
+           <div class="mb-3">
+            <label for="goodSKU" class="form-label">SKU (Mã nội bộ)</label>
+            <input type="text" class="form-control" id="goodSKU" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" form="addGoodForm" class="btn btn-primary rounded-pill">
+          <i class="fa-solid fa-floppy-disk me-2"></i>Lưu sản phẩm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const API_BASE = 'https://localhost:7225/api/orders';
-  const CREATED_BY = 1;
+  // === CONFIG & STATE ===
+  const API_BASE = 'https://localhost:7225/api';
+  let items = [];
+  let supplier = null;
+  let currentOrderId = null; 
+  let isViewMode = false;
+  let authToken = '';
+  let authPayload = null;
 
-  let items = []; // [{goodId, name, barcode, qty}]
-  let supplier = null; // {supplierId, name}
 
+  // === AUTHENTICATION & PERMISSION ===
+  function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) { return null; }
+  }
+
+  function checkAuth() {
+      const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      if (!token) {
+          alert("Bạn chưa đăng nhập hoặc phiên đã hết hạn. Vui lòng đăng nhập lại.");
+          window.location.href = '../login.html';
+          return false;
+      }
+      
+      authToken = token; 
+      authPayload = parseJwt(token); 
+      
+      let userRole = localStorage.getItem('authRole') || sessionStorage.getItem('authRole');
+      if (!userRole && authPayload) {
+          userRole = authPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
+      }
+      
+      const roleToCompare = (userRole || '').toLowerCase();
+      const allowedRoles = ['warehousemanager', 'storemanager', 'administrator'];
+      
+      if (!allowedRoles.includes(roleToCompare)) {
+          alert("Bạn không có quyền truy cập chức năng này.");
+          window.location.href = '../home.html';
+          return false;
+      }
+      return true;
+  }
+
+  // === UTILS ===
   const debounce = (fn, ms=300) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} };
   const esc = s => (s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  
+  function showToast(message, variant='primary', delay=3000){
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    const color = ({success:'success', error:'danger', warning:'warning', info:'primary', primary:'primary'})[variant] || 'primary';
+    el.className = `toast align-items-center bg-white border border-2 border-${color} text-${color}`;
+    el.setAttribute('role','alert'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-atomic','true');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${esc(message)}</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;
+    container.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay });
+    el.addEventListener('hidden.bs.toast', ()=> el.remove());
+    t.show();
+  }
 
+  // === RENDER FUNCTION ===
   function renderItems(){
     const tb = document.getElementById('itemsBody');
     tb.innerHTML = '';
     items.forEach((it, idx)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-  <td>${idx+1}</td>
-  <td>${esc(it.name)}</td>
-  <td>${esc(it.barcode || '')}</td>
-  <td>${esc(it.unit || '')}</td>   <!-- thêm ô đơn vị ở đúng vị trí -->
-  <td>
-    <input type="number" min="0.0001" step="0.0001"
-           class="form-control form-control-sm qty-input"
-           value="${it.qty}" data-idx="${idx}">
-  </td>
-  <td class="text-center">
-    <button class="btn btn-outline-danger icon-btn" data-del="${idx}" title="Xóa">
-      <i class="fa-solid fa-trash-can"></i>
-    </button>
-  </td>`;
+      tr.innerHTML = `<td>${idx+1}</td><td>${esc(it.name)}</td><td>${esc(it.barcode || '')}</td><td>${esc(it.unit || '')}</td><td><input type="number" min="0.01" step="0.01" class="form-control form-control-sm qty-input" value="${it.qty}" data-idx="${idx}" ${isViewMode ? 'disabled' : ''}></td><td class="text-center"><button class="btn btn-sm btn-outline-danger icon-btn" data-del="${idx}" title="Xóa" ${isViewMode ? 'disabled' : ''}><i class="fa-solid fa-trash-can fa-sm"></i></button></td>`;
       tb.appendChild(tr);
     });
     document.getElementById('totalItems').textContent = items.length.toString();
-
     tb.querySelectorAll('input.qty-input').forEach(inp=>{
-      inp.addEventListener('change',(e)=>{
-        const i = Number(e.target.dataset.idx);
-        let v = Number(e.target.value);
-        if(!Number.isFinite(v) || v<=0){ v = 1; }
-        items[i].qty = v; e.target.value = v;
-      });
+      inp.addEventListener('change',(e)=>{ const i = Number(e.target.dataset.idx); let v = Number(e.target.value); if(!Number.isFinite(v) || v<=0){ v = 1; } items[i].qty = v; e.target.value = v; });
     });
     tb.querySelectorAll('button[data-del]').forEach(btn=>{
-      btn.addEventListener('click', e=>{
-        const i = Number(e.currentTarget.dataset.del);
-        items.splice(i,1);
-        renderItems();
-      });
+      btn.addEventListener('click', e=>{ const i = Number(e.currentTarget.dataset.del); items.splice(i,1); renderItems(); });
     });
   }
 
-  // ===== Goods search =====
+  // === LOAD EXISTING ORDER DATA (FOR EDIT/VIEW) ===
+  async function loadOrderForEditing(orderId) {
+      try {
+          const res = await fetch(`${API_BASE}/Orders/purchase-orders/${orderId}`, {
+              headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          if (!res.ok) throw new Error('Không tìm thấy đơn hàng hoặc bạn không có quyền xem.');
+          
+          const orderData = await res.json();
+          
+          const supplierListRes = await fetch(`${API_BASE}/Orders/lookups/suppliers`, {
+              headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          if (!supplierListRes.ok) throw new Error('Không thể tải danh sách nhà cung cấp.');
+          
+          const allSuppliers = await supplierListRes.json();
+          const supplierInfo = allSuppliers.find(s => s.supplierID === orderData.supplierID);
+          
+          const supName = supplierInfo ? supplierInfo.name : `ID: ${orderData.supplierID}`;
+          
+          supplier = { supplierId: orderData.supplierID, name: supName };
+          document.getElementById('supplierSearch').value = supName;
+
+          items = orderData.lines.map(line => ({
+              goodId: line.goodID,
+              name: line.name,
+              barcode: line.barcode,
+              unit: line.unit,
+              qty: line.quantity
+          }));
+          renderItems();
+
+          if (isViewMode) {
+              document.getElementById('pageTitle').textContent = `Xem chi tiết Phiếu Mua Hàng #${orderId}`;
+              document.querySelectorAll('input, button').forEach(el => {
+                // Giữ nút Back hoạt động
+                if(!el.closest('.d-flex.align-items-center.mb-3')) el.disabled = true;
+              });
+               // Đảm bảo nút back trong header luôn hoạt động
+              document.querySelector('.d-flex.align-items-center.mb-3 a.btn').disabled = false; 
+              document.getElementById('btnDraft').style.display = 'none';
+              document.getElementById('btnConfirm').style.display = 'none';
+              document.getElementById('btnClearAll').style.display = 'none';
+          } else {
+              document.getElementById('pageTitle').textContent = `Chỉnh sửa Phiếu Mua Hàng #${orderId}`;
+          }
+
+      } catch(err) {
+          console.error(err);
+          showToast('Lỗi khi tải thông tin phiếu.', 'error');
+          document.getElementById('itemsBody').innerHTML = `<tr><td colspan="6" class="text-center p-5 text-danger">Không thể tải dữ liệu phiếu.</td></tr>`
+      }
+  }
+
+  // === GOODS SEARCH LOGIC ===
   const goodSearch = document.getElementById('goodSearch');
   const goodBox = document.getElementById('goodResults');
   const goodUl = goodBox.querySelector('ul');
 
-  goodSearch.addEventListener('input', debounce(async (e)=>{
-    const q = e.target.value.trim();
-    if(!q){ goodBox.classList.add('d-none'); goodUl.innerHTML=''; return; }
+  const fetchAndRenderGoods = async (query) => {
+    if(!query){ goodBox.classList.add('d-none'); goodUl.innerHTML=''; return; }
     try{
-      const url = new URL(API_BASE + '/lookups/goods', location.origin);
-      url.searchParams.set('q', q);
-      url.searchParams.set('top', '20');
-      const res = await fetch(url, {headers:{'Accept':'application/json'}});
-      const data = await res.json(); // [{goodID,name,barcode}]
+      const res = await fetch(`${API_BASE}/Orders/lookups/goods?q=${encodeURIComponent(query)}&top=20`, {headers:{'Authorization': `Bearer ${authToken}`}});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       goodUl.innerHTML = '';
       data.forEach(g=>{
         const li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action';
-        li.innerHTML = `
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="fw-semibold">${esc(g.name)}</div>
-              <div class="text-muted small">Barcode: ${esc(g.barcode||'')}</div>
-            </div>
-          </div>`;
+        li.innerHTML = `<div class="fw-semibold">${esc(g.name)}</div><div class="text-muted small">Barcode: ${esc(g.barcode||'')}</div>`;
         li.addEventListener('click', ()=>{
           const idx = items.findIndex(x=>x.goodId===g.goodID);
           if(idx>=0){ items[idx].qty = Number(items[idx].qty)+1; }
-          else { items.push({goodId:g.goodID, name:g.name, barcode:g.barcode,unit: g.unit, qty:1}); }
+          else { items.push({goodId:g.goodID, name:g.name, barcode:g.barcode, unit: g.unit, qty:1}); }
           renderItems();
           goodBox.classList.add('d-none'); goodUl.innerHTML=''; goodSearch.value='';
         });
         goodUl.appendChild(li);
       });
       goodBox.classList.toggle('d-none', data.length===0);
-    }catch(err){
-      console.error(err);
-      goodBox.classList.add('d-none');
-    }
-  }, 300));
+    }catch(err){ console.error("Error fetching goods:", err); goodBox.classList.add('d-none'); }
+  };
+  goodSearch.addEventListener('input', debounce((e) => fetchAndRenderGoods(e.target.value.trim()), 300));
 
-  // "+" button for adding new goods 
-  document.getElementById('btnAddNewGood').addEventListener('click', (e)=>{ /* placeholder */ });
-
-  // ===== Supplier search =====
+  // === SUPPLIER SEARCH LOGIC ===
   const supSearch = document.getElementById('supplierSearch');
   const supBox = document.getElementById('supplierResults');
   const supUl = supBox.querySelector('ul');
-
   supSearch.addEventListener('input', debounce(async (e)=>{
     const q = e.target.value.trim();
     if(!q){ supBox.classList.add('d-none'); supUl.innerHTML=''; supplier=null; return; }
     try{
-      const url = new URL(API_BASE + '/lookups/suppliers', location.origin);
-      url.searchParams.set('q', q);
-      url.searchParams.set('top', '20');
-      const res = await fetch(url, {headers:{'Accept':'application/json'}});
-      const data = await res.json(); // [{supplierID,name,...}]
+      const res = await fetch(`${API_BASE}/Orders/lookups/suppliers?q=${encodeURIComponent(q)}`, {headers:{'Authorization': `Bearer ${authToken}`}});
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       supUl.innerHTML = '';
       data.forEach(s=>{
         const li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action';
-        li.innerHTML = `
-          <div class="fw-semibold">${esc(s.name)}</div>
-          <div class="text-muted small">${esc(s.email||'')}${s.phoneNumber? ' • '+esc(s.phoneNumber):''}</div>`;
-        li.addEventListener('click', ()=>{
-          supplier = { supplierId: s.supplierID, name: s.name };
-          supSearch.value = s.name; // hiển thị ngay trong input
-          supBox.classList.add('d-none'); supUl.innerHTML='';
-        });
+        li.innerHTML = `<div class="fw-semibold">${esc(s.name)}</div><div class="text-muted small">${esc(s.email||'')}${s.phoneNumber? ' • '+esc(s.phoneNumber):''}</div>`;
+        li.addEventListener('click', ()=>{ supplier = { supplierId: s.supplierID, name: s.name }; supSearch.value = s.name; supBox.classList.add('d-none'); supUl.innerHTML=''; });
         supUl.appendChild(li);
       });
       supBox.classList.toggle('d-none', data.length===0);
-    }catch(err){
-      console.error(err);
-      supBox.classList.add('d-none');
-    }
+    }catch(err){ console.error("Error fetching suppliers:", err); supBox.classList.add('d-none'); }
   }, 300));
+  
+  // === ACTIONS (SAVE DRAFT / CONFIRM / UPDATE) ===
+  const handleSaveOrder = async (isDraft) => {
+    if(!supplier){ showToast('Vui lòng chọn nhà cung cấp.', 'warning'); return; }
+    if(items.length===0){ showToast('Danh sách mặt hàng đang trống.', 'warning'); return; }
 
-  // ===== Clear All / Confirm =====
-  document.getElementById('btnClearAll').addEventListener('click', ()=>{
-    if(items.length===0) return;
-    if(confirm('Xóa hết các mặt hàng trong danh sách?')){
-      items = [];
-      renderItems();
+    const isUpdate = !!currentOrderId;
+    
+    try {
+        if (isUpdate) {
+            // Cập nhật phiếu (PUT)
+            const updatePayload = {
+                poid: currentOrderId,
+                items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
+            };
+            const updateRes = await fetch(`${API_BASE}/Orders/purchase-orders`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(updatePayload)
+            });
+            if (!updateRes.ok) throw new Error(await updateRes.text());
+        } else {
+            // Tạo phiếu mới (POST) - Payload KHÔNG chứa createdBy
+            const createPayload = {
+                supplierID: supplier.supplierId,
+                status: isDraft ? "Draft" : "Submitted",
+                items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
+            };
+            const createRes = await fetch(`${API_BASE}/Orders/purchase-orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(createPayload)
+            });
+            if (!createRes.ok) throw new Error(await createRes.text());
+        }
+
+        // Nếu là Cập nhật và Gửi yêu cầu (không phải nháp) -> Gọi thêm API submit
+        if (isUpdate && !isDraft) {
+            const submitRes = await fetch(`${API_BASE}/Orders/purchase-orders/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify({ poid: currentOrderId })
+            });
+            if (!submitRes.ok) throw new Error(await submitRes.text());
+        }
+
+        // Thông báo thành công và chuyển hướng
+        const successMessage = isUpdate
+            ? (!isDraft ? `Gửi yêu cầu PO-${currentOrderId} thành công!` : `Cập nhật nháp PO-${currentOrderId} thành công!`)
+            : (isDraft ? `Lưu nháp thành công!` : `Gửi yêu cầu thành công!`);
+        
+        showToast(successMessage, 'success');
+        
+        setTimeout(() => {
+            window.location.href = '../purchase_order_list/purchase_order_list.html';
+        }, 1500);
+
+    } catch (err) {
+        console.error("Error saving PO:", err);
+        showToast(`Lỗi: ${err.message}`, 'error');
     }
-  });
-  // SHOW TOAST
-  function showToast(message, variant='primary', delay=2800){
-  const container = document.getElementById('toastContainer');
-  const el = document.createElement('div');
-  const color = ({success:'success', error:'danger', warning:'warning', info:'primary', primary:'primary'})[variant] || 'primary';
-  el.className = `toast align-items-center bg-white border border-2 border-${color} text-${color}`;
-  el.setAttribute('role','alert'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-atomic','true');
-  el.innerHTML = `
-    <div class="d-flex">
-      <div class="toast-body fw-semibold">${(window.esc?esc(message):message)}</div>
-      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>`;
-  container.appendChild(el);
-  const t = new bootstrap.Toast(el, { delay });
-  el.addEventListener('hidden.bs.toast', ()=> el.remove());
-  t.show();
-}
-  // CONFIRM button
-  document.getElementById('btnConfirm').addEventListener('click', async ()=>{
-  if(!supplier){ showToast('Vui lòng chọn nhà cung cấp.', 'warning'); return; }
-  if(items.length===0){ showToast('Danh sách mặt hàng đang trống.', 'warning'); return; }
-  const payload = {
-    supplierID: supplier.supplierId,
-    createdBy: CREATED_BY,
-    items: items.map(it=>({ goodID: it.goodId, quantity: Number(it.qty), unitPrice: 0 }))
   };
-  try{
-    const res = await fetch(API_BASE + '/purchase-orders', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok){
-      const err = await res.text();
-      throw new Error(err || ('HTTP '+res.status));
-    }
-    const data = await res.json();
-    showToast(`Tạo phiếu thành công! Đã gửi đến nhà cung cấp`, 'success');
-    items = []; supplier = null; renderItems(); supSearch.value='';
-  }catch(err){
-    console.error(err);
-    showToast('Lỗi khi lưu PO: ' + (err.message||err), 'error');
-  }
-});
 
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', (e)=>{
-    if(!document.getElementById('goodResults').contains(e.target) &&
-       e.target !== goodSearch){
-      goodBox.classList.add('d-none');
-    }
-    if(!document.getElementById('supplierResults').contains(e.target) &&
-       e.target !== supSearch){
-      supBox.classList.add('d-none');
+  document.getElementById('btnDraft').addEventListener('click', () => handleSaveOrder(true));
+  document.getElementById('btnConfirm').addEventListener('click', () => handleSaveOrder(false));
+  document.getElementById('btnClearAll').addEventListener('click', ()=>{ if(items.length>0 && confirm('Xóa hết các mặt hàng trong danh sách?')){ items = []; renderItems(); } });
+
+  // === INITIALIZATION ===
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!checkAuth()) return; // Kiểm tra đăng nhập và quyền
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');
+    const isEdit = urlParams.has('edit');
+    
+    if (orderId) {
+        currentOrderId = parseInt(orderId, 10);
+        isViewMode = !isEdit;
+        loadOrderForEditing(currentOrderId); // Tải dữ liệu nếu có ID
     }
   });
+
+  // === THÊM SẢN PHẨM MỚI (MODAL) ===
+  const addGoodModal = new bootstrap.Modal(document.getElementById('addGoodModal'));
+  const categoryDatalist = document.getElementById('categorySuggestions');
+  const categoryInput = document.getElementById('goodCategoryName');
+
+  // Hàm load categories vào datalist
+  async function loadCategories() {
+      try {
+          // API GET /api/Categories đã có sẵn
+          const res = await fetch(`${API_BASE}/Categories`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+          if (!res.ok) throw new Error('Không thể tải danh mục.');
+          const categories = await res.json();
+          
+          categoryDatalist.innerHTML = ''; // Xóa gợi ý cũ
+          categories.forEach(cat => {
+              const option = document.createElement('option');
+              option.value = cat.categoryName; // Giá trị gợi ý là tên
+              categoryDatalist.appendChild(option);
+          });
+      } catch (err) {
+          console.error("Error loading categories:", err);
+          // Có thể không cần báo lỗi ở đây, chỉ là không có gợi ý
+      }
+  }
+
+  // Gọi loadCategories khi modal được hiển thị
+  document.getElementById('addGoodModal').addEventListener('show.bs.modal', loadCategories);
+
+  // Xử lý submit form thêm sản phẩm
+  document.getElementById('btnShowAddGoodModal').addEventListener('click', () => { 
+      document.getElementById('addGoodForm').reset(); 
+      // Không cần reset datalist vì nó sẽ tự load lại khi modal mở
+      addGoodModal.show(); 
+  });
+
+  document.getElementById('addGoodForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // Lấy tên Category từ ô input
+    const categoryName = categoryInput.value.trim(); 
+    
+    const payload = { 
+        name: document.getElementById('goodName').value.trim(), 
+        barcode: document.getElementById('goodBarcode').value.trim(), 
+        unit: document.getElementById('goodUnit').value.trim(), 
+        sku: document.getElementById('goodSKU').value.trim(),
+        // Gửi categoryName (string) thay vì categoryID
+        categoryName: categoryName 
+    };
+    
+    // Đổi điều kiện kiểm tra
+    if (!payload.name || !payload.categoryName || !payload.unit || !payload.sku) { 
+        showToast('Tên, Loại SP, Đơn vị và SKU là bắt buộc.', 'warning'); 
+        return; 
+    }
+    
+    try {
+        // Đảm bảo API POST /api/Goods chấp nhận categoryName và xử lý logic "tìm hoặc tạo mới"
+        const res = await fetch(`${API_BASE}/Goods`, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}`}, 
+            body: JSON.stringify(payload) 
+        });
+        if (!res.ok) { const errText = await res.text(); throw new Error(errText || `HTTP ${res.status}`); }
+        showToast('Thêm sản phẩm mới thành công!', 'success');
+        addGoodModal.hide();
+        // Tự động điền tên và tìm kiếm sản phẩm vừa thêm
+        goodSearch.value = payload.name; 
+        fetchAndRenderGoods(payload.name); 
+    } catch (err) { 
+        console.error("Error adding new good:", err); 
+        showToast(`Lỗi khi thêm sản phẩm: ${err.message}`, 'error'); 
+    }
+  });
+
+  // Đóng dropdown khi bấm ra ngoài
+  document.addEventListener('click', (e)=>{
+    const goodResults = document.getElementById('goodResults');
+    const goodInput = document.getElementById('goodSearch');
+    if(goodResults && goodInput && !goodResults.contains(e.target) && e.target !== goodInput) {
+        goodResults.classList.add('d-none');
+    }
+    const supplierResults = document.getElementById('supplierResults');
+    const supplierInput = document.getElementById('supplierSearch');
+     if(supplierResults && supplierInput && !supplierResults.contains(e.target) && e.target !== supplierInput) {
+        supplierResults.classList.add('d-none');
+    }
+  });
+
 </script>
 </body>
 </html>

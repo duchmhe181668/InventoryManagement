@@ -16,7 +16,7 @@ namespace InventoryManagement.Models
 
         public DateTime CreatedAt { get; set; }
 
-        // 'Draft','Submitted','Received','Cancelled'
+        // 'Draft','Submitted','Shipped','Cancelled'
         [Required, MaxLength(20)]
         public string Status { get; set; } = "Draft";
 

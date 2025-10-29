@@ -7,10 +7,43 @@
     .card{border:none;border-radius:22px;box-shadow:0 12px 32px rgba(13,110,253,.10)}
     .btn, .form-control, .form-select{border-radius:9999px}
     .btn-primary{background:var(--blue);border-color:var(--blue)}
+    .btn-primary1{background:#39eb25;border-color:#39eb25}
+    .btn-primary1:hover{background:#068321;border-color:#068321}  
     .btn-outline-secondary{border-color:#d0d7e2;color:#334155}
     .btn-outline-secondary:hover{background:#f1f5ff;border-color:#c2d0ff;color:#1d4ed8}
-    .result-list{position:absolute;z-index:20;left:0;right:0;top:100%;margin-top:6px}
-    .result-list .list-group-item{cursor:pointer;border:0;border-radius:14px;margin-bottom:6px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+    
+    /* === FIX DROPDOWN BỊ VỠ (LẦN 2) === */
+    .result-list{
+        position:absolute;
+        z-index:20;
+        left:0;
+        right:0;
+        top:100%;
+        margin-top:6px;
+        /* Thêm các thuộc tính này để tạo panel liền mạch */
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 12px 32px rgba(13, 110, 253, .15);
+        padding: 8px;
+    }
+    .result-list .list-group-item{
+        cursor:pointer;
+        border:0;
+        border-radius:14px;
+        /* Bỏ margin và shadow riêng lẻ */
+        margin-bottom: 0; 
+        box-shadow: none;
+        padding: .75rem 1rem;
+        transition: background-color 0.2s ease-in-out;
+    }
+    .result-list .list-group-item:not(:last-child) {
+        margin-bottom: 4px; /* Thêm khoảng cách nhỏ nếu muốn */
+    }
+    .result-list .list-group-item:hover {
+        background-color: #f1f5ff;
+        color: var(--blue);
+    }
+
     .qty-input{width:110px}
     .sticky-right{position:sticky; top:16px}
     .table thead th{white-space:nowrap}
@@ -29,3 +62,8 @@
     #toastContainer .toast .toast-body{
     white-space: nowrap;                     
     }
+    
+    .overflow-visible {
+        overflow: visible;
+    }
+

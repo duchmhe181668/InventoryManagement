@@ -14,10 +14,21 @@
             </a>
         </li>
         
-        <li>
-            <a href="" class="nav-link">
-                <i class="bi bi-box-arrow-in-down me-2"></i> Nhập kho
+        <!-- MỤC NHẬP KHO ĐÃ ĐƯỢC CẬP NHẬT THÀNH DROPDOWN -->
+        <li class="nav-item">
+            <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#nhapkho-submenu" role="button" aria-expanded="false" aria-controls="nhapkho-submenu">
+                <span><i class="bi bi-box-arrow-in-down me-2"></i> Nhập kho</span>
+                <i class="bi bi-chevron-right small arrow-icon"></i>
             </a>
+            <div class="collapse" id="nhapkho-submenu">
+                <a href="purchase_order/purchase_order.html" class="nav-link">
+                    <i class="bi bi-plus-circle me-2"></i> Tạo Phiếu Mua Hàng
+                </a>
+                <!-- ĐÃ SỬA ĐƯỜNG DẪN TẠI ĐÂY -->
+                <a href="purchase_order_list/purchase_order_list.html" class="nav-link">
+                    <i class="bi bi-list-check me-2"></i> Danh sách Phiếu
+                </a>
+            </div>
         </li>
         
         <li>

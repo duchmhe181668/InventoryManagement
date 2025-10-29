@@ -84,7 +84,6 @@ namespace InventoryManagement.Controllers
 
             entity.CategoryName = dto.CategoryName.Trim();
             await _context.SaveChangesAsync(ct);
-
             return NoContent();
         }
 
