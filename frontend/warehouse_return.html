@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tạo phiếu trả hàng cho NCC</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #sidebar {
+      width: 250px;
+      background-color: #343a40;
+      color: white;
+      flex-shrink: 0;
+    }
+    .content {
+      flex-grow: 1;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+    }
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+      background-color: #495057;
+      color: white;
+    }
+    .table-secondary.text-muted td {
+  opacity: 0.6;
+}
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar"></div>
+
+  <!-- Main content -->
+  <div class="content">
+    <h3 class="mb-3">🔁 Trả hàng cho Nhà cung cấp</h3>
+
+    <div class="card p-3 mb-3">
+      <div><strong>Mã biên lai:</strong> <span id="receiptIdText"></span></div>
+      <div><strong>Mã nhà cung cấp:</strong> <span id="supplierIdText"></span></div>
+      <div><strong>Người xử lý (UserID):</strong> <span id="userIdText"></span></div>
+    </div>
+
+    <div class="table-responsive card p-3">
+      <table class="table table-bordered align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Mã hàng</th>
+            <th>Tên hàng</th>
+            <th>Tên lô</th>
+            <th>Số lượng đặt</th>
+            <th>Số lượng trong kho</th>
+            <th>Số lượng trả</th>
+            <th>Lý do trả hàng</th>
+          </tr>
+        </thead>
+        <tbody id="tblReturn"></tbody>
+      </table>
+    </div>
+
+    <div class="text-end mt-3">
+      <button class="btn btn-secondary" onclick="goBack()">⬅ Quay lại</button>
+      <button class="btn btn-danger" onclick="confirmReturn()">✅ Xác nhận trả hàng</button>
+    </div>
+
+    <p id="msg" class="text-muted mt-3"></p>
+  </div>
+
+  <script>
+const API_BASE = "https://localhost:7225/api";
+const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+if (!token) { alert("⚠️ Hết phiên đăng nhập!"); location.href = "login.html"; }
+
+const userId = parseInt(localStorage.getItem("userId") || sessionStorage.getItem("userId"));
+const params = new URLSearchParams(location.search);
+const receiptId = parseInt(params.get("receiptId"));
+const supplierId = parseInt(params.get("supplierId"));
+
+document.getElementById("receiptIdText").textContent = receiptId;
+document.getElementById("supplierIdText").textContent = supplierId;
+document.getElementById("userIdText").textContent = userId;
+
+function authHeaders() {
+  return { Authorization: "Bearer " + token, "Content-Type": "application/json" };
+}
+function setMsg(t, cls = "text-muted") {
+  const e = document.getElementById("msg"); e.textContent = t; e.className = cls;
+}
+function goBack() { location.href = "warehouse_receipts.html"; }
+
+// === 1️⃣ Load danh sách hàng từ API preview ===
+async function loadReturnPreview() {
+  const res = await fetch(`${API_BASE}/ReturnOrders/preview-confirm/${receiptId}`, { headers: authHeaders() });
+  if (!res.ok) { alert("Không tải được dữ liệu biên lai!"); return; }
+
+  const data = await res.json();
+  const tbody = document.getElementById("tblReturn");
+  tbody.innerHTML = "";
+
+  data.previewItems.forEach((item) => {
+    const disabled = Number(item.quantityToReturn) <= 0;
+    const noteCell = disabled
+      ? `<input type="text" class="form-control reason" placeholder="Đã đủ hàng" disabled>`
+      : `<input type="text" class="form-control reason" placeholder="Nhập lý do">`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${item.goodID}</td>
+      <td>${item.goodName}</td>
+      <td>${item.batchNo ?? ""}</td>
+      <td>${item.quantityOrdered}</td>
+      <td>${item.quantityReceived}</td>
+      <td>${item.quantityToReturn}</td>
+      <td>${noteCell}</td>
+    `;
+    if (disabled) tr.classList.add("table-secondary", "text-muted");
+    tbody.appendChild(tr);
+  });
+}
+
+// === 2️⃣ Khi người dùng ấn "Xác nhận trả hàng" → tạo phiếu ===
+async function confirmReturn() {
+  if (!confirm("Xác nhận tạo phiếu trả hàng gửi nhà cung cấp?")) return;
+
+  const rows = document.querySelectorAll("#tblReturn tr");
+  const items = [];
+  rows.forEach((tr) => {
+    const tds = tr.querySelectorAll("td");
+    const goodId = parseInt(tds[0].textContent);
+    const qtyToReturn = Number(tds[5].textContent);
+    const reason = tr.querySelector(".reason")?.value.trim() || "";
+    if (qtyToReturn > 0) {
+      items.push({
+        goodID: goodId,
+        quantityToReturn: qtyToReturn,
+        reason,
+        unitCost: 0,
+        batchID: null
+      });
+    }
+  });
+
+  if (items.length === 0) {
+    alert("Không có mặt hàng nào cần trả.");
+    return;
+  }
+
+  const body = { receiptId, supplierId, userId, note: "Phiếu trả hàng từ Warehouse", items };
+
+  try {
+    const res = await fetch(`${API_BASE}/ReturnOrders`, {
+      method: "POST", headers: authHeaders(), body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+
+    alert("✅ " + data.message);
+    setMsg("Đã tạo phiếu trả hàng #" + data.returnId, "text-success");
+    goBack();
+  } catch (e) {
+    console.error(e);
+    setMsg("❌ Lỗi tạo phiếu trả hàng: " + e.message, "text-danger");
+  }
+}
+
+// === Gọi khi load trang ===
+(async () => {
+  try {
+    await loadReturnPreview();
+    setMsg("✅ Đã tải danh sách hàng trả.", "text-success");
+  } catch (e) {
+    console.error(e);
+    setMsg("❌ Lỗi tải danh sách hàng trả.", "text-danger");
+  }
+})();
+</script>
+
+
+</body>
+</html>

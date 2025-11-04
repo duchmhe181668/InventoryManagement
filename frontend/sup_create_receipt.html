@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="css/style.css" rel="stylesheet">
   <style>
     :root { --primary:#1e3a8a; --border:#e5e7eb; --muted:#6b7280; --text:#111; --bg:#fff; }
     body { padding: 20px; background: var(--bg); color: var(--text); }
@@ -27,6 +28,8 @@
     .btn-outline-primary:hover{ background-color: var(--primary); color:#fff; }
     .btn-primary{ background: var(--primary); border-color: var(--primary); }
     .w-110{ width:110px; } .w-130{ width:130px; } .w-150{ width:150px; }
+    input[readonly] {background-color: #f8f9fa; cursor: not-allowed;
+}
   </style>
 </head>
 
@@ -62,12 +65,12 @@
           <table class="table table-sm align-middle">
             <thead class="table-light">
               <tr>
-                <th style="width:90px">GoodID</th>
+                <th style="width:90px">ID</th>
                 <th>Tên hàng</th>
-                <th class="text-end w-110">Qty (sửa được)</th>
-                <th class="text-end w-130">UnitPrice</th>
-                <th class="w-150">Batch No</th>
-                <th class="w-150">Expiry</th>
+                <th class="text-end w-110">Số lượng</th>
+                <th class="text-end w-130">Đơn giá</th>
+                <th class="w-150">Tên lô</th>
+                <th class="w-150">Hạn sử dụng</th>
                 <th class="text-end w-130">Thành tiền</th>
               </tr>
             </thead>
@@ -138,12 +141,12 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
 
 
         // chỉ cho tạo khi Submitted / Received
-        const allow = ["Submitted","Received"].includes(poStatus);
+        const allow = ["Submitted"].includes(poStatus);
         const warn = el("statusWarn");
         const btnCreate = el("btnCreate");
         if (!allow) {
           warn.classList.remove("d-none");
-          warn.textContent = "Chỉ tạo biên lai cho đơn ở trạng thái Submitted hoặc Received.";
+          warn.textContent = "Chỉ tạo biên lai cho đơn ở trạng thái Submitted.";
           btnCreate.disabled = true;
         } else {
           warn.classList.add("d-none");
@@ -175,7 +178,7 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
           <td>${l.goodName ?? ""}</td>
           <td>
             <input type="number" min="0" step="0.01" value="${l.quantity}" 
-                   class="form-control form-control-sm text-end qty-input" id="qty-${l.goodID}">
+                   class="form-control form-control-sm text-end qty-input" id="qty-${l.goodID}" readonly>
           </td>
           <td>
             <input type="number" min="0" step="0.01" value="${hintPrice}" placeholder="${hintPrice}"
@@ -241,8 +244,8 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
         const batchNo = (el(`batch-${gid}`).value || "").trim();
         const exp = el(`exp-${gid}`).value;
 
-        if (!isFinite(qty) || qty <= 0) { hasError = true; errMsg = `Quantity phải > 0 (GoodID ${gid}).`; return; }
-        if (!priceStr || !isFinite(price) || price <= 0) { hasError = true; errMsg = `UnitPrice không hợp lệ (GoodID ${gid}).`; return; }
+        if (!isFinite(qty) || qty <= 0) { hasError = true; errMsg = `Số lượng phải > 0 (GoodID ${gid}).`; return; }
+        if (!priceStr || !isFinite(price) || price <= 0) { hasError = true; errMsg = `Đơn giá không hợp lệ (GoodID ${gid}).`; return; }
         if (!batchNo) { hasError = true; errMsg = `BatchNo bắt buộc (GoodID ${gid}).`; return; }
         if (!exp) { hasError = true; errMsg = `ExpiryDate bắt buộc (GoodID ${gid}).`; return; }
 
@@ -262,30 +265,46 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
       msg.className = "small muted"; msg.textContent = "Đang tạo receipt...";
       btn.disabled = true;
 
+      
       try {
-        const body = { poid, supplierId, items }; // nếu BE đọc claim supplier_id thì có thể bỏ supplierId
-        const res = await fetch(`${API_BASE}/api/receipts/from-po`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(body)
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          msg.className = "small text-danger";
-          msg.textContent = `Lỗi: ${res.status} ${txt}`;
-          btn.disabled = false;
-          return;
-        }
-        const r = await res.json();
-        msg.className = "small text-success";
-        msg.textContent = `Tạo thành công Receipt #${r.receiptID}.`;
-        setTimeout(() => { window.location.href = "sup_receipt_list.html"; }, 600);
-      } catch (e) {
-        console.error(e);
-        msg.className = "small text-danger";
-        msg.textContent = "Không thể tạo receipt.";
-        btn.disabled = false;
-      }
+         const body = { poid, supplierId, items };
+
+  const res = await fetch(`${API_BASE}/api/receipts/from-po`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    msg.className = "small text-danger";
+    msg.textContent = `Lỗi: ${res.status} ${txt}`;
+    btn.disabled = false;
+    return;
+  }
+
+  const r = await res.json();
+  msg.className = "small text-success";
+  msg.textContent = `Tạo thành công Receipt #${r.receiptID}.`;
+
+  // ✅ Sau khi tạo biên lai thành công → cập nhật PO sang Received
+  await fetch(`${API_BASE}/api/PurchaseOrders/${poid}/status`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "Received" })
+  });
+
+  // ✅ Quay lại danh sách PO sau 1s
+  setTimeout(() => {
+    window.location.href = "sup_po_list.html";
+  }, 1000);
+
+} catch (e) {
+  console.error(e);
+  msg.className = "small text-danger";
+  msg.textContent = "Không thể tạo receipt.";
+  btn.disabled = false;
+}
     }
 
     // YYYY-MM-DD theo local (tránh lệch timezone)

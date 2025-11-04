@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Danh sách Biên lai - Warehouse</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+  <div id="sidebar"></div>
+  <div class="container py-4">
+    <h3 class="mb-3">📦 Danh sách Biên lai</h3>
+
+    <!-- Bộ lọc -->
+    <div class="card p-3 mb-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Từ ngày</label>
+          <input type="date" class="form-control" id="fromDate">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Đến ngày</label>
+          <input type="date" class="form-control" id="toDate">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Tìm kiếm (Tên NCC / ID)</label>
+          <input type="text" class="form-control" id="searchInput" placeholder="Nhập tên hoặc ID...">
+        </div>
+        <div class="col-md-3 text-end">
+          <button class="btn btn-primary" onclick="loadReceipts()">🔍 Lọc</button>
+          <button class="btn btn-secondary" onclick="resetFilters()">🔄 Làm mới</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bảng dữ liệu -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nhà cung cấp</th>
+            <th>Ngày tạo</th>
+            <th>Trạng thái</th>
+            <th class="text-end">Tổng SL</th>
+            <th class="text-end">Tổng giá trị</th>
+            <th class="text-center">Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="tblReceipts"></tbody>
+      </table>
+    </div>
+
+    <p id="msg" class="text-muted mt-2"></p>
+
+    <!-- Thêm phần hiển thị phân trang dưới bảng -->
+    <div id="pagination" class="mt-3 mb-4 d-flex justify-content-end"></div>
+
+  </div>
+
+
+  <!-- Modal xem & xác nhận biên lai -->
+  <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Xác nhận nhập kho</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <strong>Mã biên lai:</strong> <span id="modalReceiptId" class="text-primary"></span><br>
+            <strong>Nhà cung cấp:</strong> <span id="modalSupplierName" class="text-primary"></span><br>
+            <strong>Ngày tạo:</strong> <span id="modalCreatedAt" class="text-primary"></span>
+          </div>
+
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã hàng</th>
+                <th>Tên hàng</th>
+                <th>Đơn vị</th>
+                <th class="text-end">Số lượng</th>
+                <th class="text-end">Đơn giá</th>
+                <th class="text-end">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="modalReceiptLines"></tbody>
+          </table>
+
+          <div class="text-end fw-bold">
+            Tổng giá trị: <span id="modalTotal" class="text-danger">0</span> đ
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-success" id="btnConfirmReceipt">✅ Xác nhận nhập kho</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script>
+    // ==== Cấu hình & state ====
+    const API_BASE = "https://localhost:7225";
+    const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+    const supplierId = sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId");
+
+    let receiptsData = []; // lưu toàn bộ dữ liệu
+    let currentPage = 1;
+    const pageSize = 8;
+
+    function authHeaders() {
+      return { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+    }
+
+    function setMsg(text, type = "muted") {
+      const el = document.getElementById("msg");
+      if (!el) return;
+      el.className = type;
+      el.textContent = text || "";
+    }
+
+    // ✅ Nếu chưa đăng nhập → quay lại login
+    if (!token) {
+      alert("Vui lòng đăng nhập lại!");
+      window.location.href = "login.html";
+    }
+
+    // ==== Hàm tải danh sách biên lai ====
+    async function loadReceipts() {
+      const search = document.getElementById("searchInput").value.trim();
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
+
+      const params = new URLSearchParams();
+      if (search) params.append("search", search);
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
+
+      const msg = document.getElementById("msg");
+      msg.textContent = "Đang tải dữ liệu...";
+
+      try {
+        const query = params.toString();
+        const url = `${API_BASE}/api/Receipts${query ? "?" + query : ""}`;
+        const res = await fetch(url, { headers: authHeaders() });
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`${res.status}: ${err}`);
+        }
+
+        const data = await res.json();
+        receiptsData = data;
+        currentPage = 1; // reset về trang 1 khi load mới
+        renderTable();
+        renderPagination();
+        setMsg(`Tìm thấy ${data.length} biên lai.`, "text-success");
+      } catch (e) {
+        console.error(e);
+        setMsg(`Lỗi tải dữ liệu biên lai: ${e.message}`, "text-danger");
+      }
+    }
+
+    // ==== Hiển thị bảng ====
+    function renderTable() {
+      const tbody = document.getElementById("tblReceipts");
+      if (!receiptsData || receiptsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Không có dữ liệu</td></tr>`;
+        return;
+      }
+
+      // 🧮 Tính giới hạn trang
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const pageItems = receiptsData.slice(startIndex, endIndex);
+
+      tbody.innerHTML = pageItems.map(r => {
+        let actions = "";
+
+        if (r.status.toLowerCase() !== "confirmed") {
+          actions += `
+          <button class="btn btn-sm btn-success me-1" onclick="confirmReceipt(${r.receiptID})">
+            Xác nhận
+          </button>`;
+        } else {
+          const totalOrdered = r.totalOrdered || 0;
+          const totalReceived = r.totalReceived || r.totalQty || 0;
+          const totalReturned = r.totalReturned || 0;
+
+          const disableReturn = (totalReceived + totalReturned) >= totalOrdered;
+          const titleMsg = disableReturn
+            ? "Đã nhập và trả đủ số lượng theo đơn hàng, không thể trả thêm"
+            : "Trả hàng cho nhà cung cấp";
+
+          const disabledAttr = disableReturn ? "disabled" : "";
+
+          actions += `
+          <button class="btn btn-sm btn-warning" 
+                  onclick="returnToSupplier(${r.receiptID}, ${r.supplierID})" 
+                  ${disabledAttr}
+                  title="${titleMsg}">
+            Trả hàng
+          </button>`;
+        }
+
+        return `
+        <tr>
+          <td>${r.receiptID}</td>
+          <td>${r.supplierName}</td>
+          <td>${new Date(r.createdAt).toLocaleString("vi-VN")}</td>
+          <td>${r.status}</td>
+          <td class="text-end">${r.totalQty}</td>
+          <td class="text-end">${r.totalValue.toLocaleString("vi-VN")}</td>
+          <td class="text-center">${actions}</td>
+        </tr>
+      `;
+      }).join("");
+    }
+
+    // ==== Phân trang ====
+    function renderPagination() {
+      const totalPages = Math.ceil(receiptsData.length / pageSize);
+      const paginationDiv = document.getElementById("pagination");
+
+      if (!paginationDiv) return;
+
+      if (totalPages <= 1) {
+        paginationDiv.innerHTML = "";
+        return;
+      }
+
+      let html = `
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+            <button class="page-link" onclick="changePage(${currentPage - 1})">«</button>
+          </li>`;
+
+      for (let i = 1; i <= totalPages; i++) {
+        html += `
+        <li class="page-item ${i === currentPage ? "active" : ""}">
+          <button class="page-link" onclick="changePage(${i})">${i}</button>
+        </li>`;
+      }
+
+      html += `
+          <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+            <button class="page-link" onclick="changePage(${currentPage + 1})">»</button>
+          </li>
+        </ul>
+      </nav>`;
+
+      paginationDiv.innerHTML = html;
+    }
+
+    function changePage(page) {
+      const totalPages = Math.ceil(receiptsData.length / pageSize);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderTable();
+      renderPagination();
+    }
+
+    function resetFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("fromDate").value = "";
+      document.getElementById("toDate").value = "";
+      loadReceipts();
+    }
+
+    // ==== Xác nhận biên lai ====
+    async function confirmReceipt(receiptId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/Receipts/${receiptId}`, {
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error(await res.text());
+
+        const receipt = await res.json();
+        document.getElementById("modalReceiptId").textContent = receipt.receiptID || receipt.ReceiptID;
+        document.getElementById("modalSupplierName").textContent = receipt.supplierName || receipt.SupplierName || ("#" + receipt.supplierID);
+        document.getElementById("modalCreatedAt").textContent = new Date(receipt.createdAt || receipt.CreatedAt).toLocaleString("vi-VN");
+
+        const details = receipt.items || receipt.Items || receipt.details || receipt.Details || [];
+        const tbody = document.getElementById("modalReceiptLines");
+        if (!Array.isArray(details) || details.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Không có hàng hóa nào trong biên lai này.</td></tr>`;
+          document.getElementById("modalTotal").textContent = "0";
+          return;
+        }
+
+        let total = 0;
+        tbody.innerHTML = details.map(d => {
+          const goodId = d.goodID || d.GoodID;
+          const name = d.goodName || d.GoodName || "(Không có tên)";
+          const unit = d.unit || d.Unit || "";
+          const qty = d.quantity || d.Quantity || 0;
+          const price = d.unitCost || d.UnitCost || 0;
+          const amount = qty * price;
+          total += amount;
+
+          return `
+          <tr data-goodid="${goodId}">
+            <td>${goodId}</td>
+            <td>${name}</td>
+            <td>${unit}</td>
+            <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end qty-input" value="${qty}"></td>
+            <td class="text-end">${price.toLocaleString("vi-VN")}</td>
+            <td class="text-end">${amount.toLocaleString("vi-VN")}</td>
+          </tr>`;
+        }).join("");
+
+        document.getElementById("modalTotal").textContent = total.toLocaleString("vi-VN");
+
+        //Gắn sự kiện thay đổi số lượng để cập nhật real-time
+        tbody.querySelectorAll(".qty-input").forEach(input => {
+          input.addEventListener("input", updateTotalRealTime);
+        });
+
+        document.getElementById("btnConfirmReceipt").onclick = () => finalizeConfirm(receiptId);
+
+        const modal = new bootstrap.Modal(document.getElementById("receiptModal"));
+        modal.show();
+      } catch (e) {
+        console.error(e);
+        alert("❌ Lỗi tải thông tin biên lai: " + e.message);
+      }
+    }
+
+    async function finalizeConfirm(receiptId) {
+      const userIdStr = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+      const receivedById = parseInt(userIdStr);
+      if (isNaN(receivedById)) {
+        alert("Không tìm thấy userId hợp lệ!");
+        return;
+      }
+
+      const rows = document.querySelectorAll("#modalReceiptLines tr");
+      const items = Array.from(rows).map(r => ({
+        goodID: parseInt(r.dataset.goodid),
+        quantity: parseFloat(r.querySelector(".qty-input").value) || 0
+      }));
+
+      const body = { receivedBy: receivedById, items };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/Receipts/${receiptId}/confirm`, {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(await res.text());
+
+        alert(`✅ Biên lai #${receiptId} đã được xác nhận nhập kho!`);
+        const modal = bootstrap.Modal.getInstance(document.getElementById("receiptModal"));
+        modal.hide();
+        await loadReceipts();
+      } catch (e) {
+        console.error(e);
+        alert(`❌ Lỗi xác nhận: ${e.message}`);
+      }
+    }
+
+    // ==== Trả hàng NCC ====
+    function returnToSupplier(receiptId, supplierId) {
+      window.location.href = `warehouse_return.html?receiptId=${receiptId}&supplierId=${supplierId}`;
+    }
+
+    // ==== Sidebar ====
+    fetch("sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar").innerHTML = html;
+      })
+      .catch(err => console.error("Lỗi tải sidebar:", err));
+
+
+    // ==== Cập nhật tổng tiền real-time khi chỉnh số lượng ====
+    function updateTotalRealTime() {
+      const rows = document.querySelectorAll("#modalReceiptLines tr");
+      let total = 0;
+
+      rows.forEach(row => {
+        const qtyInput = row.querySelector(".qty-input");
+        const priceCell = row.querySelector("td:nth-child(5)"); // cột đơn giá
+        const amountCell = row.querySelector("td:nth-child(6)"); // cột thành tiền
+
+        const price = parseFloat(priceCell.textContent.replace(/\D/g, "")) || 0;
+        const qty = parseFloat(qtyInput.value) || 0;
+
+        const amount = qty * price;
+        amountCell.textContent = amount.toLocaleString("vi-VN");
+        total += amount;
+      });
+
+      document.getElementById("modalTotal").textContent = total.toLocaleString("vi-VN");
+    }
+
+
+    // ==== Load mặc định khi mở trang ====
+    window.addEventListener("DOMContentLoaded", loadReceipts);
+  </script>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</html>

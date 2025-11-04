@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Danh sách Phiếu trả hàng - Warehouse</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+  <div id="sidebar"></div>
+  <div class="container py-4">
+    <h3 class="mb-3">↩️ Danh sách Phiếu trả hàng</h3>
+
+    <!-- Bộ lọc -->
+    <div class="card p-3 mb-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label">Mã POID</label>
+          <input type="number" class="form-control" id="poid" min="1" placeholder="Nhập POID">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Từ ngày</label>
+          <input type="date" class="form-control" id="fromDate">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Đến ngày</label>
+          <input type="date" class="form-control" id="toDate">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Trạng thái</label>
+          <select class="form-select" id="status">
+            <option value="">Tất cả</option>
+            <option value="Submitted">Đã gửi</option>
+            <option value="Confirmed">Đã xác nhận</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Tên nhà cung cấp</label>
+          <input type="text" id="supplierName" class="form-control" placeholder="Nhập tên NCC">
+        </div>
+        <div class="col-md-1 text-end">
+          <button class="btn btn-primary w-100" onclick="loadReturns()">🔍</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nút tạo phiếu mới -->
+    <div class="mb-3 text-end">
+      <a href="warehouse_return_create.html" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Tạo phiếu mới
+      </a>
+    </div>
+
+    <!-- Bảng dữ liệu -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Mã biên lai</th>
+            <th>Ngày tạo</th>
+            <th>Ngày nhận</th>
+            <th>Trạng thái</th>
+            <th>Ghi chú</th>
+            <th>Người tạo</th>
+            <th class="text-center">Chi tiết</th>
+          </tr>
+        </thead>
+        <tbody id="tblReturns"></tbody>
+      </table>
+    </div>
+
+    <p id="msg" class="text-muted mt-2"></p>
+
+    <!-- Phân trang -->
+    <div id="pagination" class="mt-3 mb-4 d-flex justify-content-end"></div>
+  </div>
+
+  <!-- Modal xem chi tiết -->
+  <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Chi tiết phiếu trả hàng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <strong>ID phiếu:</strong> <span id="modalReturnId" class="text-primary"></span><br>
+            <strong>Mã biên lai:</strong> <span id="modalReceiptId" class="text-primary"></span><br>
+            <strong>Trạng thái:</strong> <span id="modalStatus" class="text-primary"></span><br>
+            <strong>Ngày tạo:</strong> <span id="modalCreatedAt" class="text-primary"></span>
+          </div>
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã hàng</th><th>Tên hàng</th><th>Tên lô</th>
+                <th class="text-end">Số lượng</th><th>Lý do</th>
+              </tr>
+            </thead>
+            <tbody id="modalReturnLines"></tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPT ===== -->
+  <script>
+    const API_BASE = "https://localhost:7225";
+
+    // ✅ Lấy thông tin đăng nhập từ storage
+    const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+    const userId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+    const role = (sessionStorage.getItem("authRole") || localStorage.getItem("authRole") || "").toLowerCase();
+
+    // 🧾 In ra console để debug
+    console.group("🔍 Auth Info");
+    console.log("Token:", token ? "(đã có)" : "❌ chưa có");
+    console.log("UserID:", userId);
+    console.log("Role:", role);
+    console.groupEnd();
+
+    // 🚫 Kiểm tra quyền truy cập
+    if (!token || role !== "warehousemanager") {
+      alert(`🚫 Bạn không có quyền truy cập (Role: ${role || "Không xác định"})`);
+      window.location.href = "login.html";
+    } else {
+      console.log("✅ Truy cập hợp lệ, role:", role);
+    }
+
+    let returnsData = [];
+    let currentPage = 1;
+    const pageSize = 8;
+
+    function authHeaders() {
+      return { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+    }
+
+    function setMsg(t, cls = "text-muted") {
+      const m = document.getElementById("msg");
+      m.className = cls;
+      m.textContent = t || "";
+    }
+
+    // 📦 Load danh sách phiếu trả hàng
+    async function loadReturns() {
+      const poid = document.getElementById("poid").value;
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
+      const status = document.getElementById("status").value;
+      const supplierName = document.getElementById("supplierName").value;
+
+      const params = new URLSearchParams();
+      if (poid) params.append("poid", poid);
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
+      if (status) params.append("status", status);
+      if (supplierName) params.append("supplierName", supplierName);
+
+      setMsg("Đang tải dữ liệu...");
+      try {
+        const url = `${API_BASE}/api/ReturnOrders/by-warehouse/${userId}?${params.toString()}`;
+        console.log("🌐 Fetch:", url);
+
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        console.log("📦 Dữ liệu phiếu trả:", data);
+
+        returnsData = data;
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+        setMsg(`Đã tải ${data.length} phiếu trả hàng.`, "text-success");
+      } catch (e) {
+        console.error("❌ Lỗi tải dữ liệu:", e);
+        setMsg("❌ Lỗi khi tải dữ liệu: " + e.message, "text-danger");
+        document.getElementById("tblReturns").innerHTML =
+          `<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu</td></tr>`;
+      }
+    }
+
+    // 🧾 Render bảng danh sách
+    function renderTable() {
+      const tbody = document.getElementById("tblReturns");
+      if (!returnsData?.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu</td></tr>`;
+        return;
+      }
+
+      const start = (currentPage - 1) * pageSize;
+      const items = returnsData.slice(start, start + pageSize);
+
+      tbody.innerHTML = items.map(r => `
+        <tr>
+          <td>${r.returnID}</td>
+          <td>${r.receiptID ?? "—"}</td>
+          <td>${r.createdAt ? new Date(r.createdAt).toLocaleString("vi-VN") : ""}</td>
+          <td>${r.confirmedAt ? new Date(r.confirmedAt).toLocaleString("vi-VN") : "—"}</td>
+          <td>${r.status ?? ""}</td>
+          <td>${r.note ?? ""}</td>
+          <td>${r.createdBy ?? ""}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(${r.returnID})">
+              <i class="bi bi-eye"></i> Xem
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    // 🔢 Phân trang
+    function renderPagination() {
+      const totalPages = Math.ceil(returnsData.length / pageSize);
+      const div = document.getElementById("pagination");
+      if (totalPages <= 1) { div.innerHTML = ""; return; }
+
+      let html = `<nav><ul class="pagination">`;
+      html += `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+                 <button class="page-link" onclick="changePage(${currentPage - 1})">«</button></li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<li class="page-item ${i === currentPage ? "active" : ""}">
+                   <button class="page-link" onclick="changePage(${i})">${i}</button></li>`;
+      }
+      html += `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+                 <button class="page-link" onclick="changePage(${currentPage + 1})">»</button></li>`;
+      html += `</ul></nav>`;
+      div.innerHTML = html;
+    }
+
+    function changePage(p) {
+      const totalPages = Math.ceil(returnsData.length / pageSize);
+      if (p < 1 || p > totalPages) return;
+      currentPage = p;
+      renderTable();
+      renderPagination();
+    }
+
+    // 🔍 Xem chi tiết phiếu trả
+    async function viewDetail(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/ReturnOrders/${id}`, { headers: authHeaders() });
+        if (!res.ok) throw new Error(await res.text());
+        const ro = await res.json();
+
+        document.getElementById("modalReturnId").textContent = ro.returnID ?? id;
+        document.getElementById("modalReceiptId").textContent = ro.receiptID ?? "—";
+        document.getElementById("modalStatus").textContent = ro.status ?? "";
+        document.getElementById("modalCreatedAt").textContent =
+          ro.createdAt ? new Date(ro.createdAt).toLocaleString("vi-VN") : "";
+
+        const lines = ro.details ?? [];
+        const tbody = document.getElementById("modalReturnLines");
+        if (!lines.length) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Không có chi tiết.</td></tr>`;
+        } else {
+          tbody.innerHTML = lines.map(d => `
+            <tr>
+              <td>${d.goodID}</td>
+              <td>${d.good?.name ?? ""}</td>
+              <td>${d.batch?.batchNo ?? "—"}</td>
+              <td class="text-end">${d.quantityReturned ?? 0}</td>
+              <td>${d.reason ?? ""}</td>
+            </tr>
+          `).join("");
+        }
+        new bootstrap.Modal(document.getElementById("returnModal")).show();
+      } catch (e) {
+        alert("Lỗi tải chi tiết: " + e.message);
+      }
+    }
+
+    document.getElementById("poid").addEventListener("input", e => {
+      if (e.target.value <= 0) e.target.value = "";
+    });
+
+    // ==== Sidebar ====
+    fetch("sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar").innerHTML = html;
+      })
+      .catch(err => console.error("Lỗi tải sidebar:", err));
+
+
+    window.addEventListener("DOMContentLoaded", loadReturns);
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

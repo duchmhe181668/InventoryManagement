@@ -261,6 +261,8 @@
 
     if (result.storeId != null)    try { store.setItem('storeId',    String(result.storeId)); } catch {}
     if (result.supplierId != null) try { store.setItem('supplierId', String(result.supplierId)); } catch {}
+    if (result.userId != null) try { store.setItem('userId', String(result.userId)); } catch {}
+
 
     if (typeof result.expiresInSeconds === 'number') {
       const expireAt = Date.now() + (result.expiresInSeconds * 1000);
