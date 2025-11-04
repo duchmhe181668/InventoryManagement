@@ -82,7 +82,10 @@ namespace InventoryManagement.Controllers
                 .FirstOrDefaultAsync();
 
             // 7) Thêm extra claims và tạo token
-            var extraClaims = new Dictionary<string, string>();
+            var extraClaims = new Dictionary<string, string>
+            {
+                { "user_id", user.UserID.ToString() }
+            };
             if (supplierId.HasValue)
                 extraClaims["supplier_id"] = supplierId.Value.ToString();
             if (storeId.HasValue)
@@ -108,6 +111,7 @@ namespace InventoryManagement.Controllers
                 ExpiresInSeconds = (long)(exp - DateTimeOffset.UtcNow).TotalSeconds,
                 Username = user.Username,
                 Role = roleName,
+                UserId = user.UserID,
                 SupplierId = supplierId,
                 StoreId = storeId
             });

@@ -14,7 +14,7 @@
         public string Username { get; set; } = string.Empty;
         public string? Role { get; set; }
 
-        //Trung
+        public int UserId { get; set; }
         public int? SupplierId { get; set; }
         public int? StoreId { get; set; }
     }

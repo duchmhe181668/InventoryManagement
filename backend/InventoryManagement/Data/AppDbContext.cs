@@ -32,6 +32,9 @@ namespace InventoryManagement.Data
         public DbSet<Adjustment> Adjustments => Set<Adjustment>();
         public DbSet<AdjustmentLine> AdjustmentLines => Set<AdjustmentLine>();
         public DbSet<PriceChange> PriceChanges => Set<PriceChange>();
+        public DbSet<ReturnOrder> ReturnOrders { get; set; }
+        public DbSet<ReturnDetail> ReturnDetails { get; set; }
+
 
         // Views
         public DbSet<StockAvailableView> StockAvailable => Set<StockAvailableView>();
@@ -291,6 +294,37 @@ namespace InventoryManagement.Data
                 .HasIndex(s => s.UserID)
                 .IsUnique()
                 .HasFilter("[UserID] IS NOT NULL"); // unique chỉ khi có UserID
+
+
+            model.Entity<ReturnOrder>()
+               .Property(x => x.CreatedAt).HasColumnType("datetime2(0)");
+
+            model.Entity<ReturnOrder>()
+                .ToTable(tb => tb.HasCheckConstraint("CK_ReturnOrders_Status",
+                    "[Status] IN ('Submitted','Confirmed','Cancelled')"));
+
+            model.Entity<ReturnOrder>()
+                .HasOne(x => x.Receipt).WithMany()
+                .HasForeignKey(x => x.ReceiptID).OnDelete(DeleteBehavior.Restrict);
+
+            model.Entity<ReturnOrder>()
+                .HasOne(x => x.Supplier).WithMany()
+                .HasForeignKey(x => x.SupplierID).OnDelete(DeleteBehavior.Restrict);
+
+            model.Entity<ReturnOrder>()
+                .HasOne(x => x.CreatedByUser).WithMany()
+                .HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+
+            model.Entity<ReturnOrder>()
+                .HasMany(x => x.Details)
+                .WithOne(d => d.ReturnOrder!)
+                .HasForeignKey(d => d.ReturnID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            model.Entity<ReturnDetail>()
+                .Property(x => x.QuantityReturned).HasColumnType("decimal(18,2)");
+            model.Entity<ReturnDetail>()
+                .Property(x => x.UnitCost).HasColumnType("decimal(18,2)");
         }
     }
 }
