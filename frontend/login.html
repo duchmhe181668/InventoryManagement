@@ -290,6 +290,21 @@
 
     if (!form.checkValidity()) {
       form.classList.add('was-validated');
+      const u = document.getElementById('username');
+    const p = document.getElementById('password');
+
+    const missing = [];
+    if (!u?.value?.trim()) missing.push('tên đăng nhập');
+    if (!p?.value)         missing.push('mật khẩu');
+
+    if (missing.length) {
+      showAlert(`Thiếu ${missing.join(' và ')}. Vui lòng nhập đầy đủ.`, 'danger');
+      // Focus vào ô đầu tiên bị thiếu
+      (u?.value?.trim() ? p : u)?.focus();
+    } else {
+      // Trường khác không hợp lệ (nếu có thêm ràng buộc)
+      showAlert('Vui lòng kiểm tra lại các trường chưa hợp lệ.', 'danger');
+    }
       return;
     }
 

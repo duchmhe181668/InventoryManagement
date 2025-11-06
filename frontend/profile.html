@@ -93,21 +93,27 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Email</label>
-          <div class="input-group pill">
-            <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-            <input id="Email" type="email" class="form-control" placeholder="you@example.com">
-          </div>
-        </div>
+  <label class="form-label">Email</label>
+  <div class="input-group pill">
+    <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+    <input id="Email" type="email" class="form-control"
+           placeholder="you@gmail.com"
+           pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
+  </div>
+  <div class="invalid-feedback">Email phải có dạng <b>@gmail.com</b>.</div>
+</div>
 
         <div class="col-md-6">
-          <label class="form-label">Số điện thoại</label>
-          <div class="input-group pill">
-            <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
-            <input id="PhoneNumber" class="form-control" placeholder="090xxxxxxx">
-          </div>
-        </div>
-      </div>
+  <label class="form-label">Số điện thoại</label>
+  <div class="input-group pill">
+    <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
+    <input id="PhoneNumber" class="form-control"
+           placeholder="090xxxxxxx"
+           inputmode="numeric" maxlength="10"
+           pattern="^[0-9]{10}$">
+  </div>
+  <div class="invalid-feedback">Số điện thoại phải gồm đúng <b>10 số</b>.</div>
+</div>
 
       <div class="divider"></div>
 

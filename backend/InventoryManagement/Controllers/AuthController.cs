@@ -2,17 +2,18 @@
 using InventoryManagement.Data;
 using InventoryManagement.Models;
 using InventoryManagement.Models.Auth;
+using InventoryManagement.Models.Views;
 using InventoryManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 using System.Data;
-using System.Text;
-using InventoryManagement.Models.Views;
-using System.Security.Cryptography;
 using System.Net;
 using System.Net.Mail;
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace InventoryManagement.Controllers
 {
@@ -132,12 +133,20 @@ namespace InventoryManagement.Controllers
             var email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email!.Trim();
             var phone = string.IsNullOrWhiteSpace(req.PhoneNumber) ? null : req.PhoneNumber!.Trim();
 
+            if (!string.IsNullOrWhiteSpace(email) &&
+               !Regex.IsMatch(email, @"^[\w.+-]+@gmail\.com$", RegexOptions.IgnoreCase))
+                return BadRequest("Email phải có dạng @gmail.com");
+
+            if (!string.IsNullOrWhiteSpace(phone) &&
+                !Regex.IsMatch(phone, @"^\d{10}$"))
+                return BadRequest("Số điện thoại phải gồm đúng 10 số");
+
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(name))
                 return BadRequest("Username, Password, Name are required.");
             if (password.Length < 6) return BadRequest("Password must be at least 6 characters.");
 
             var existed = await _db.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower());
-            if (existed) return Conflict("Username already exists.");
+            if (existed) return Conflict("Tài khoản này đã tồn tại");
 
             var roleName = string.IsNullOrWhiteSpace(req.RoleName) ? "Supplier" : req.RoleName!.Trim();
             var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName);
@@ -207,7 +216,7 @@ namespace InventoryManagement.Controllers
 
         /// Cập nhật thông tin người dùng
         [HttpPut("update/{userId}")]
-        [Authorize(Roles = "Administrator")]
+        [AllowAnonymous]
         [Consumes("application/json")]
         [Produces("application/json")]
         public async Task<ActionResult> UpdateUser(int userId, [FromBody] UpdateUserRequest req)
@@ -235,7 +244,7 @@ namespace InventoryManagement.Controllers
 
         /// Xóa người dùng
         [HttpDelete("delete/{userId}")]
-        [Authorize(Roles = "Administrator")]
+        [AllowAnonymous]
         [Produces("application/json")]
         public async Task<ActionResult> DeleteUser(int userId)
         {
@@ -250,7 +259,7 @@ namespace InventoryManagement.Controllers
 
         /// Lấy tất cả người dùng
         [HttpGet("users")]
-        [Authorize(Roles = "Administrator")]
+        [AllowAnonymous]
         [Produces("application/json")]
         public async Task<ActionResult<IEnumerable<object>>> GetAllUsers()
         {
@@ -273,7 +282,7 @@ namespace InventoryManagement.Controllers
 
         /// Lấy thông tin chi tiết người dùng
         [HttpGet("user/{userId}")]
-        [Authorize(Roles = "Administrator")]
+        [AllowAnonymous]
         [Produces("application/json")]
         public async Task<ActionResult<object>> GetUserById(int userId)
         {
@@ -343,6 +352,14 @@ namespace InventoryManagement.Controllers
 
             var u = await _db.Users.FirstOrDefaultAsync(x => x.Username == username);
             if (u == null) return NotFound("User not found.");
+
+            if (!string.IsNullOrWhiteSpace(req.Email) &&
+                !Regex.IsMatch(req.Email.Trim(), @"^[\w.+-]+@gmail\.com$", RegexOptions.IgnoreCase))
+                return BadRequest("Email phải có dạng @gmail.com");
+
+            if (!string.IsNullOrWhiteSpace(req.PhoneNumber) &&
+                !Regex.IsMatch(req.PhoneNumber.Trim(), @"^\d{10}$"))
+                return BadRequest("Số điện thoại phải gồm đúng 10 số");
 
             if (!string.IsNullOrWhiteSpace(req.Name)) u.Name = req.Name.Trim();
             if (req.Email != null) u.Email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim();

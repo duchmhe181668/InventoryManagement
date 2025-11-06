@@ -168,6 +168,9 @@ function pick(obj, ...keys) {
   for (const k of keys) if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
   return undefined;
 }
+function isAdminRole(roleName) {
+  return String(roleName || '').trim().toLowerCase().includes('admin');
+}
 function normalizeRole(u) {
   const roleField = pick(u, 'RoleName', 'roleName', 'Role', 'role');
   if (!roleField) return '';
@@ -217,8 +220,21 @@ function render(list) {
     const email = pick(u, 'Email', 'email') ?? '';
     const phone = pick(u, 'PhoneNumber', 'phoneNumber', 'phone') ?? '';
     const role  = normalizeRole(u);
+    const adminTarget = isAdminRole(role);
+
+    const actionsHtml = adminTarget
+      ? '<span class="badge bg-secondary" title="Admin user is protected">Admin</span>'
+      : `
+        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-admin-only data-id="${id}">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-admin-only data-id="${id}"
+                data-name="${escapeHtml(usern || name || ('#'+id))}">
+          <i class="bi bi-trash"></i>
+        </button>`;
 
     const tr = document.createElement('tr');
+    tr.dataset.role = role || ''; // để guard ở click handler
     tr.innerHTML = `
       <td>${id}</td>
       <td>${escapeHtml(usern)}</td>
@@ -226,23 +242,16 @@ function render(list) {
       <td>${escapeHtml(email)}</td>
       <td>${escapeHtml(phone)}</td>
       <td>${escapeHtml(role)}</td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-admin-only data-id="${id}">
-          <i class="bi bi-pencil"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-admin-only data-id="${id}"
-                data-name="${escapeHtml(usern || name || ('#'+id))}">
-          <i class="bi bi-trash"></i>
-        </button>
-      </td>
+      <td class="text-end">${actionsHtml}</td>
     `;
     frag.appendChild(tr);
   }
   tbody.appendChild(frag);
 
-  // Ẩn nút nếu không phải admin
+  // Ẩn nút nếu người XEM không phải admin (giữ behavior cũ)
   hideAdminUiIfNeeded();
 }
+
 
 // ===== ADD =====
 addBtn?.addEventListener('click', () => {
