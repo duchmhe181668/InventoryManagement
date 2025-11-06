@@ -22,7 +22,7 @@ $('#btn-ping').addEventListener('click', async ()=>{
 
 // ===== State =====
 const state = { page:1, pageSize:20, sort:'name', search:'' };
-let storeId = Number(localStorage.getItem('storeId')||'');
+let storeId = getStoreId();
 if(!storeId) storeId = null;
 
 // ===== DOM =====
@@ -70,7 +70,7 @@ btnSetStore.addEventListener('click', ()=>{
 async function fetchGoods(){
   mainMsg.textContent = '';
   if(!storeId){
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5">Nhập <b>Store ID</b> rồi bấm <b>Set</b>.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5">Nhập <b>Store ID</b> rồi bấm <b>Set</b>.</td></tr>`;
     pageInfo.textContent = '—';
     return;
   }
@@ -88,7 +88,7 @@ async function fetchGoods(){
     renderRows(items);
     renderPager(data);
   }catch(err){
-    tbody.innerHTML = `<tr><td colspan="10" class="text-danger text-center py-4">Không tải được danh sách (${err.message})</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-danger text-center py-4">Không tải được danh sách (${err.message})</td></tr>`;
     pageInfo.textContent = '—';
   }
 }
@@ -102,10 +102,8 @@ function norm(x){
     unit: x.unit ?? x.Unit ?? '',
     imageURL: x.imageURL ?? x.imageUrl ?? x.ImageURL ?? '',
     categoryName: x.categoryName ?? x.CategoryName ?? '',
-    onHand: x.onHand ?? x.OnHand ?? 0,
-    reserved: x.reserved ?? x.Reserved ?? 0,
-    inTransit: x.inTransit ?? x.InTransit ?? 0,
     available: x.available ?? x.Available ?? 0,
+    priceBuy: x.priceBuy ?? x.PriceBuy ?? x.costPrice ?? x.CostPrice ?? 0,
     priceSell: x.priceSell ?? x.PriceSell ?? 0
   };
 }
@@ -117,11 +115,10 @@ function renderRows(items){
       <td>${g.imageURL?`<img class="img-40" src="${g.imageURL}">`:'<div class="img-40"></div>'}</td>
       <td><div class="truncate">${g.name}</div></td>
       <td><span class="badge bg-light text-dark">${g.sku}</span></td>
+      <td>${g.barcode ? `<span class="badge bg-secondary-subtle text-dark">${g.barcode}</span>` : ''}</td>
       <td>${g.categoryName}</td>
-      <td class="text-end">${fmt(g.onHand)}</td>
-      <td class="text-end">${fmt(g.reserved)}</td>
-      <td class="text-end">${fmt(g.inTransit)}</td>
       <td class="text-end ${(+g.available)<=0?'text-danger-strong':''}">${fmt(g.available)}</td>
+      <td class="text-end">${fmt(g.priceBuy)}</td>
       <td class="text-end">${fmt(g.priceSell)}</td>
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary" data-act="price" data-id="${g.goodID}" data-price="${g.priceSell}">
@@ -189,3 +186,39 @@ priceForm.addEventListener('submit', async (e)=>{
   refreshStoreUI();
   fetchGoods();
 })();
+
+function getAuthPayload() {
+        const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+        if (raw) { try { return JSON.parse(raw); } catch {} }
+
+        const accessToken =
+          localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") ||
+          localStorage.getItem("authToken")   || sessionStorage.getItem("authToken")   || "";
+        const tokenType =
+          localStorage.getItem("tokenType")   || sessionStorage.getItem("tokenType")   || "Bearer";
+        const storeIdStr =
+          localStorage.getItem("storeId")     || sessionStorage.getItem("storeId");
+
+        const payload = { accessToken, tokenType };
+        if (storeIdStr != null && storeIdStr !== "") payload.storeId = Number(storeIdStr);
+
+        if (accessToken && payload.storeId == null){
+          const claims = parseJwt(accessToken) || {};
+          const keys = ["storeId", "store_id", "sid", "store", "StoreId", "StoreID"];
+          for (const k of keys){
+            if (claims[k] != null && claims[k] !== ""){
+              const v = Number(claims[k]);
+              if (!Number.isNaN(v)){
+                payload.storeId = v;
+                try { sessionStorage.setItem("storeId", String(v)); } catch {}
+                break;
+              }
+            }
+          }
+        }
+        return accessToken ? payload : null;
+      }
+function getStoreId(){ 
+        const v = getAuthPayload()?.storeId;
+        return (typeof v === "number" && !Number.isNaN(v)) ? v : null;
+      }

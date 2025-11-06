@@ -28,6 +28,7 @@ namespace InventoryManagement.Controllers
         }
 
         // GET: api/Stores/2/goods?search=abc&page=1&pageSize=20&sort=name
+        // GET: api/Stores/2/goods?search=abc&page=1&pageSize=20&sort=name
         [HttpGet("{storeId:int}/goods")]
         public async Task<IActionResult> GetStoreGoods(
             int storeId,
@@ -50,7 +51,7 @@ namespace InventoryManagement.Controllers
 
             var today = DateTime.Today;
 
-            // 2) Goods + Category + search (AsNoTracking để nhẹ)
+            // 2) Goods + Category + search
             var goods = _db.Goods
                 .AsNoTracking()
                 .Include(g => g.Category)
@@ -66,12 +67,12 @@ namespace InventoryManagement.Controllers
                 );
             }
 
-            // 3) Tồn theo Location từ view v_StockByGood
+            // 3) Tồn theo Location từ view v_StockByGood (chỉ dùng Available)
             var avail = _db.StockByGood
                 .AsNoTracking()
                 .Where(v => v.LocationID == locationId.Value);
 
-            // 4) Giá theo store: chọn bản có EffectiveFrom lớn nhất <= today
+            // 4) Giá bán theo store: lấy bản có EffectiveFrom lớn nhất <= today
             var spBase = _db.StorePrices
                 .AsNoTracking()
                 .Where(p => p.StoreID == storeId && p.EffectiveFrom <= today);
@@ -87,7 +88,7 @@ namespace InventoryManagement.Controllers
                     equals new { l.GoodID, l.EffectiveFrom }
                 select new { p.GoodID, p.PriceSell };
 
-            // 5) LEFT JOIN và project DTO – KHÔNG so sánh entity với null
+            // 5) LEFT JOIN và project DTO
             var query =
                 from g in goods
                 join a in avail on g.GoodID equals a.GoodID into ga
@@ -102,14 +103,15 @@ namespace InventoryManagement.Controllers
                     Barcode = g.Barcode,
                     Unit = g.Unit,
                     ImageURL = g.ImageURL,
-                    CategoryName = g.Category.CategoryName,   // để EF tự LEFT JOIN
+                    CategoryName = g.Category.CategoryName,
 
-                    OnHand = (decimal?)a.OnHand ?? 0m,
-                    Reserved = (decimal?)a.Reserved ?? 0m,
-                    InTransit = (decimal?)a.InTransit ?? 0m,
+                    // Chỉ còn Available, bỏ OnHand/Reserved/InTransit
                     Available = (decimal?)a.Available ?? 0m,
 
-                    PriceSell = (decimal?)lp.PriceSell ?? g.PriceSell
+                    // Giá bán ưu tiên StorePrices, fallback Goods.PriceSell
+                    PriceSell = (decimal?)lp.PriceSell ?? g.PriceSell,
+
+                    PriceBuy = g.PriceCost // nếu model là PriceCost => đổi thành g.PriceCost
                 };
 
             // 6) Sort
@@ -117,6 +119,7 @@ namespace InventoryManagement.Controllers
             {
                 "sku" => query.OrderBy(x => x.SKU).ThenBy(x => x.Name),
                 "pricesell" => query.OrderByDescending(x => x.PriceSell).ThenBy(x => x.Name),
+                "pricebuy" => query.OrderByDescending(x => x.PriceBuy).ThenBy(x => x.Name),
                 "available" => query.OrderByDescending(x => x.Available).ThenBy(x => x.Name),
                 _ => query.OrderBy(x => x.Name).ThenBy(x => x.SKU)
             };
@@ -139,12 +142,10 @@ namespace InventoryManagement.Controllers
             public string? ImageURL { get; set; }
             public string? CategoryName { get; set; }
 
-            public decimal OnHand { get; set; }
-            public decimal Reserved { get; set; }
-            public decimal InTransit { get; set; }
-            public decimal Available { get; set; }
-
-            public decimal PriceSell { get; set; }
+            public decimal Available { get; set; }     // giữ lại
+            public decimal PriceSell { get; set; }     // giữ lại
+            public decimal PriceBuy { get; set; }      // MỚI: giá nhập
         }
+
     }
 }
