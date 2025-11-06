@@ -81,7 +81,6 @@
               <th>Ngày nhận</th>
               <th>Trạng thái</th>
               <th>Ghi chú</th>
-              <th>Người xác nhận</th>
             </tr>
           </thead>
           <tbody id="returnTableBody"></tbody>
@@ -157,8 +156,7 @@
           <td>${createdAt}</td>
           <td>${confirmedAt}</td>
           <td>${ro.status??""}</td>
-          <td>${ro.note??""}</td>
-          <td>${ro.confirmedBy??"—"}</td>`;
+          <td>${ro.note??""}</td>`;
         tr.onclick=async()=>{if(currentOpenRowId===id){await closeDetail();return;}await closeDetail();await openDetailBelow(tbody,tr,id,ro.status);};
         tbody.appendChild(tr);
       });
