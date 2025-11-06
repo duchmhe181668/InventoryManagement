@@ -74,7 +74,8 @@
           userRole = payload ? (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '') : '';
       }
       const roleToCompare = (userRole || '').toLowerCase();
-      const allowedRoles = ['warehousemanager', 'storemanager', 'administrator'];
+      // SỬA QUYỀN: Trang này giờ chỉ dành cho WarehouseManager và Administrator
+      const allowedRoles = ['warehousemanager', 'administrator']; 
       if (!allowedRoles.includes(roleToCompare)) {
           alert("Bạn không có quyền truy cập chức năng này.");
           window.location.href = '../home.html';
@@ -100,13 +101,13 @@
     }
     orders.forEach(order => {
       const tr = document.createElement('tr');
-      const pageUrl = order.type === 'Purchase Order' ? `../purchase_order/purchase_order.html` : `../transfer/transfer.html`;
+      // SỬA: Chúng ta biết chắc chắn đây là 'Purchase Order'
+      const pageUrl = `../purchase_order/purchase_order.html`;
       
       const actionButton = order.status === 'Draft'
         ? `<a href="${pageUrl}?id=${order.id}&edit=true" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-pencil me-1"></i> Sửa</a>`
         : `<a href="${pageUrl}?id=${order.id}" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-eye me-1"></i> Xem</a>`;
       
-      // SỬA LỖI HIỂN THỊ TRẠNG THÁI: Truyền `order.status` vào hàm getStatusBadge
       tr.innerHTML = `
         <td><strong>#${order.id}</strong></td>
         <td>${esc(order.type)}</td>
@@ -121,7 +122,7 @@
   async function fetchOrders(token) {
     const tbody = document.getElementById('orderTableBody');
     try {
-      const res = await fetch(`${API_BASE}/Orders/all-orders`, {
+      const res = await fetch(`${API_BASE}/purchase-management`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (!res.ok) {
@@ -139,6 +140,7 @@
   window.addEventListener('DOMContentLoaded', () => {
     const authResult = checkAuth();
     if(authResult.hasPermission){
+
         fetchOrders(authResult.token);
     }
   });
