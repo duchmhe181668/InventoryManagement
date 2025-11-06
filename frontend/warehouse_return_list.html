@@ -19,6 +19,10 @@
           <label class="form-label">Mã POID</label>
           <input type="number" class="form-control" id="poid" min="1" placeholder="Nhập POID">
         </div>
+        <div class="col-md-3">
+          <label class="form-label">Tên nhà cung cấp</label>
+          <input type="text" id="supplierName" class="form-control" placeholder="Nhập tên NCC">
+        </div>
         <div class="col-md-2">
           <label class="form-label">Từ ngày</label>
           <input type="date" class="form-control" id="fromDate">
@@ -35,10 +39,6 @@
             <option value="Confirmed">Đã xác nhận</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Tên nhà cung cấp</label>
-          <input type="text" id="supplierName" class="form-control" placeholder="Nhập tên NCC">
-        </div>
         <div class="col-md-1 text-end">
           <button class="btn btn-primary w-100" onclick="loadReturns()">🔍</button>
         </div>
@@ -49,6 +49,9 @@
     <div class="mb-3 text-end">
       <a href="warehouse_return_create.html" class="btn btn-success">
         <i class="bi bi-plus-circle"></i> Tạo phiếu mới
+      </a>
+      <a href="purchase_order_list/purchase_order_list.html" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Danh sách đơn
       </a>
     </div>
 
@@ -162,7 +165,7 @@
       if (status) params.append("status", status);
       if (supplierName) params.append("supplierName", supplierName);
 
-      setMsg("Đang tải dữ liệu...");
+      // setMsg("Đang tải dữ liệu...");
       try {
         const url = `${API_BASE}/api/ReturnOrders/by-warehouse/${userId}?${params.toString()}`;
         console.log("🌐 Fetch:", url);
@@ -177,10 +180,10 @@
         currentPage = 1;
         renderTable();
         renderPagination();
-        setMsg(`Đã tải ${data.length} phiếu trả hàng.`, "text-success");
+        // setMsg(`Đã tải ${data.length} phiếu trả hàng.`, "text-success");
       } catch (e) {
         console.error("❌ Lỗi tải dữ liệu:", e);
-        setMsg("❌ Lỗi khi tải dữ liệu: " + e.message, "text-danger");
+        // setMsg("❌ Lỗi khi tải dữ liệu: " + e.message, "text-danger");
         document.getElementById("tblReturns").innerHTML =
           `<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu</td></tr>`;
       }
