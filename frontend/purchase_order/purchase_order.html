@@ -288,9 +288,7 @@
   const fetchAndRenderGoods = async (query) => {
     if(!query){ goodBox.classList.add('d-none'); goodUl.innerHTML=''; return; }
     try{
-      // ===================================================================
-      // SỬA API (3)
-      // ===================================================================
+      
       const res = await fetch(`${API_BASE}/lookups/goods?q=${encodeURIComponent(query)}&top=20`, {headers:{'Authorization': `Bearer ${authToken}`}});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -321,9 +319,6 @@
     const q = e.target.value.trim();
     if(!q){ supBox.classList.add('d-none'); supUl.innerHTML=''; supplier=null; return; }
     try{
-      // ===================================================================
-      // SỬA API (4)
-      // ===================================================================
       const res = await fetch(`${API_BASE}/lookups/suppliers?q=${encodeURIComponent(q)}`, {headers:{'Authorization': `Bearer ${authToken}`}});
        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -353,9 +348,7 @@
                 poid: currentOrderId,
                 items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
             };
-            // ===================================================================
-            // SỬA API (5)
-            // ===================================================================
+            
             const updateRes = await fetch(`${API_BASE}/purchase-management`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
@@ -368,10 +361,7 @@
                 supplierID: supplier.supplierId,
                 status: isDraft ? "Draft" : "Submitted",
                 items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
-            };
-            // ===================================================================
-            // SỬA API (6)
-            // ===================================================================
+            }
             const createRes = await fetch(`${API_BASE}/purchase-management`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
@@ -382,9 +372,7 @@
 
         // Nếu là Cập nhật và Gửi yêu cầu (không phải nháp) -> Gọi thêm API submit
         if (isUpdate && !isDraft) {
-            // ===================================================================
-            // SỬA API (7)
-            // ===================================================================
+            
             const submitRes = await fetch(`${API_BASE}/purchase-management/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },

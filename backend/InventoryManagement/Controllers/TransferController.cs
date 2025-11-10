@@ -9,7 +9,7 @@ using InventoryManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using InventoryManagement.Dto.TransferOrders; // dùng DTO bạn đã gửi
+using InventoryManagement.Dto.TransferOrders; 
 
 namespace InventoryManagement.Controllers
 {
@@ -22,11 +22,12 @@ namespace InventoryManagement.Controllers
         public TransfersController(AppDbContext db) { _db = db; }
 
         // ========= Helpers =========
-        private static DateTime GetVietnamTime() => DateTime.UtcNow; // tránh phụ thuộc BaseApiController
+        private static DateTime GetVietnamTime() => DateTime.UtcNow;
 
         private int GetUserId()
         {
-            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // === SỬA ĐỔI: Đọc claim "user_id" (mà JwtService đã tạo) ===
+            var s = User.FindFirstValue("user_id"); 
             return int.TryParse(s, out var id) ? id : 0;
         }
 
@@ -37,10 +38,11 @@ namespace InventoryManagement.Controllers
                    ?? $"user#{GetUserId()}";
         }
 
+        // === SỬA ĐỔI: Chuyển sang ToLower() để EF Core dịch được ===
         private static bool IsWarehouse(Location l)
-            => l.LocationType != null && l.LocationType.Equals("WAREHOUSE", StringComparison.OrdinalIgnoreCase);
+            => l.LocationType != null && l.LocationType.ToLower() == "warehouse";
         private static bool IsStore(Location l)
-            => l.LocationType != null && l.LocationType.Equals("STORE", StringComparison.OrdinalIgnoreCase);
+            => l.LocationType != null && l.LocationType.ToLower() == "store";
 
         private async Task AddOnHandAsync(int locationId, int goodId, int? batchId, decimal delta)
         {
@@ -69,7 +71,11 @@ namespace InventoryManagement.Controllers
         {
             var q = _db.Locations.AsNoTracking().AsQueryable();
             if (!string.IsNullOrWhiteSpace(type))
-                q = q.Where(l => l.LocationType != null && l.LocationType.Equals(type, StringComparison.OrdinalIgnoreCase));
+            {
+                // === SỬA ĐỔI: Dùng ToLower() ===
+                var typeLower = type.ToLower();
+                q = q.Where(l => l.LocationType != null && l.LocationType.ToLower() == typeLower); 
+            }
             if (active != null)
                 q = q.Where(l => l.IsActive == active);
 
@@ -80,52 +86,29 @@ namespace InventoryManagement.Controllers
             return Ok(list);
         }
 
-        // GET ~/api/auth/profile  -> FE lấy storeDefaultLocation & tên người dùng
-        [HttpGet("~/api/auth/profile")]
-        public async Task<IActionResult> ProfileForFE()
-        {
-            var uid = GetUserId();
-            // chọn 1 location STORE active làm mặc định (vì DB không gắn store theo user)
-            var store = await _db.Locations.AsNoTracking()
-                .Where(l => l.IsActive && IsStore(l))
-                .OrderBy(l => l.LocationID)
-                .Select(l => new { l.LocationID, l.Name })
-                .FirstOrDefaultAsync();
-
-            return Ok(new
-            {
-                userId = uid,
-                username = GetUserName(),
-                name = GetUserName(),
-                // FE ưu tiên 2 key này:
-                storeDefaultLocationId = store?.LocationID,
-                storeDefaultLocationName = store?.Name
-            });
-        }
-
         // GET ~/api/stocks/available?locationId=&kw=
-        // Trả về: [{goodID, sku, goodName, unit, available}]
         [HttpGet("~/api/stocks/available")]
         public async Task<IActionResult> StockAvailable([FromQuery] int locationId, [FromQuery] string? kw)
         {
             if (locationId <= 0) return BadRequest("locationId required.");
 
-            // Query base: tồn khả dụng = OnHand - Reserved - InTransit
+            // Lấy tổng tồn kho (theo giải pháp 2)
             var stockQ = _db.Stocks.AsNoTracking()
                 .Where(s => s.LocationID == locationId)
                 .GroupBy(s => s.GoodID)
                 .Select(g => new { GoodID = g.Key, Available = g.Sum(x => x.OnHand - x.Reserved - x.InTransit) });
 
-            // Join với Goods (tên cột có thể khác, bạn đổi ở 3 chỗ TODO bên dưới)
+            // Join với bảng Goods
             var q =
                 from s in stockQ
                 join g in _db.Goods on s.GoodID equals g.GoodID
                 select new
                 {
                     s.GoodID,
-                    sku = EF.Property<string>(g, "SKU"), // TODO: nếu không có SKU, đổi thành null
-                    goodName = EF.Property<string>(g, "Name") ?? EF.Property<string>(g, "GoodName"), // TODO: sửa đúng tên cột
-                    unit = EF.Property<string>(g, "Unit") ?? EF.Property<string>(g, "UnitName"),      // TODO: sửa đúng tên cột
+                    sku = EF.Property<string>(g, "SKU"),
+                    goodName = EF.Property<string>(g, "Name"),
+                    unit = EF.Property<string>(g, "Unit"),
+                    barcode = EF.Property<string>(g, "Barcode"), // === THÊM BARCODE ===
                     available = s.Available
                 };
 
@@ -134,7 +117,9 @@ namespace InventoryManagement.Controllers
                 var key = kw.Trim().ToLower();
                 q = q.Where(x =>
                     (x.goodName ?? "").ToLower().Contains(key) ||
-                    (x.sku ?? "").ToLower().Contains(key));
+                    (x.sku ?? "").ToLower().Contains(key) ||
+                    (x.barcode ?? "").ToLower().Contains(key) // === TÌM BẰNG BARCODE ===
+                );
             }
 
             var list = await q.OrderByDescending(x => x.available).ThenBy(x => x.goodName).Take(50).ToListAsync();
@@ -156,6 +141,8 @@ namespace InventoryManagement.Controllers
             var from = await _db.Locations.FindAsync(dto.FromLocationID);
             var to = await _db.Locations.FindAsync(dto.ToLocationID);
             if (from == null || to == null) return BadRequest("Location không hợp lệ.");
+            
+            // === SỬA ĐỔI: Dùng hàm đã sửa (ToLower) ===
             if (!IsWarehouse(from)) return BadRequest("From must be WAREHOUSE.");
             if (!IsStore(to)) return BadRequest("To must be STORE.");
 
@@ -165,12 +152,12 @@ namespace InventoryManagement.Controllers
             {
                 FromLocationID = dto.FromLocationID,
                 ToLocationID = dto.ToLocationID,
-                CreatedBy = GetUserId(),
+                CreatedBy = GetUserId(), // Đã sửa GetUserId() để đọc "user_id"
                 CreatedAt = GetVietnamTime(),
                 Status = "Draft"
             };
             _db.Transfers.Add(t);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(); // Lỗi 547 (FK) đã xảy ra ở đây -> đã sửa GetUserId()
 
             foreach (var it in dto.Items ?? new List<TransferItemDto>())
             {
@@ -179,7 +166,8 @@ namespace InventoryManagement.Controllers
                 {
                     TransferID = t.TransferID,
                     GoodID = it.GoodID,
-                    BatchID = it.BatchID ?? 0,
+                    // === SỬA ĐỔI (Giải pháp 2): Lưu BatchID là null ===
+                    BatchID = null, 
                     Quantity = it.Quantity,
                     ShippedQty = 0,
                     ReceivedQty = 0
@@ -213,7 +201,8 @@ namespace InventoryManagement.Controllers
                 {
                     TransferID = t.TransferID,
                     GoodID = it.GoodID,
-                    BatchID = it.BatchID ?? 0,
+                    // === SỬA ĐỔI (Giải pháp 2): Lưu BatchID là null ===
+                    BatchID = null, 
                     Quantity = it.Quantity,
                     ShippedQty = 0,
                     ReceivedQty = 0
@@ -235,25 +224,13 @@ namespace InventoryManagement.Controllers
             if (t == null) return NotFound("Transfer không tồn tại.");
             if (t.Status != "Draft") return BadRequest("Chỉ duyệt khi đang Draft.");
             if (t.Items == null || t.Items.Count == 0) return BadRequest("Transfer không có dòng.");
-            if (t.Items.Any(i => i.BatchID == null)) return BadRequest("Mỗi dòng phải có BatchID trước khi duyệt.");
-
-            using var tx = await _db.Database.BeginTransactionAsync();
-
-            foreach (var it in t.Items)
-            {
-                var stock = await _db.Stocks.FirstOrDefaultAsync(s =>
-                    s.LocationID == t.FromLocationID && s.GoodID == it.GoodID && s.BatchID == it.BatchID!.Value);
-                if (stock == null || (stock.OnHand - stock.Reserved) < it.Quantity)
-                {
-                    await tx.RollbackAsync();
-                    return BadRequest($"Không đủ tồn khả dụng tại FromLocation cho Good={it.GoodID}, Batch={it.BatchID}.");
-                }
-                stock.Reserved += it.Quantity;
-            }
+            
+            // === SỬA ĐỔI (Giải pháp 2): Xóa check BatchID và logic Reserved ===
+            // if (t.Items.Any(i => i.BatchID == null)) return BadRequest("Mỗi dòng phải có BatchID trước khi duyệt.");
+            // (Xóa toàn bộ vòng lặp foreach và tx.Commit/Rollback)
 
             t.Status = "Approved";
             await _db.SaveChangesAsync();
-            await tx.CommitAsync();
             return Ok(new { t.TransferID, t.Status });
         }
 
@@ -271,24 +248,32 @@ namespace InventoryManagement.Controllers
             using var tx = await _db.Database.BeginTransactionAsync();
             var plan = new List<(TransferItem item, decimal shipQty)>();
 
+            // === SỬA ĐỔI (Giải pháp 2): WM phải cung cấp Lines (kèm BatchID) ===
             if (dto.Lines == null || dto.Lines.Count == 0)
             {
-                foreach (var it in t.Items!)
-                {
-                    if (it.BatchID == null) return BadRequest("BatchID là bắt buộc khi ship.");
-                    var remaining = it.Quantity - it.ShippedQty;
-                    if (remaining > 0) plan.Add((it, remaining));
-                }
+                return BadRequest("Shipment lines (với BatchID) là bắt buộc.");
             }
             else
             {
                 foreach (var line in dto.Lines)
                 {
-                    var it = t.Items!.FirstOrDefault(x => x.GoodID == line.GoodID && x.BatchID == line.BatchID);
-                    if (it == null) return BadRequest($"Dòng không khớp Transfer: Good={line.GoodID}, Batch={line.BatchID}.");
+                    // Tìm item theo GoodID (vì BatchID đang là null)
+                    var it = t.Items!.FirstOrDefault(x => x.GoodID == line.GoodID); 
+                    if (it == null) 
+                    {
+                        await tx.RollbackAsync();
+                        return BadRequest($"Dòng không khớp Transfer: Good={line.GoodID}.");
+                    }
+
+                    // Gán BatchID mà WM đã chọn vào item
+                    it.BatchID = line.BatchID; 
+                    
                     var remaining = it.Quantity - it.ShippedQty;
                     if (line.ShipQty <= 0 || line.ShipQty > remaining)
+                    {
+                        await tx.RollbackAsync();
                         return BadRequest($"ShipQty không hợp lệ (còn {remaining}).");
+                    }
                     plan.Add((it, line.ShipQty));
                 }
             }
@@ -297,9 +282,16 @@ namespace InventoryManagement.Controllers
             {
                 var from = await _db.Stocks.FirstOrDefaultAsync(s =>
                     s.LocationID == t.FromLocationID && s.GoodID == it.GoodID && s.BatchID == it.BatchID!.Value);
-                if (from == null)
-                    return BadRequest($"Không tìm thấy stock tại FromLocation cho Good={it.GoodID}, Batch={it.BatchID}.");
-                from.OnHand -= shipQty; from.Reserved -= shipQty;
+                
+                // === SỬA ĐỔI: Chỉ check OnHand (không có Reserved) ===
+                if (from == null || from.OnHand < shipQty)
+                {
+                    await tx.RollbackAsync();
+                    return BadRequest($"Không đủ tồn kho (OnHand) tại FromLocation cho Good={it.GoodID}, Batch={it.BatchID}.");
+                }
+                
+                from.OnHand -= shipQty; 
+                // from.Reserved -= shipQty; // Bỏ
 
                 var to = await _db.Stocks.FirstOrDefaultAsync(s =>
                     s.LocationID == t.ToLocationID && s.GoodID == it.GoodID && s.BatchID == it.BatchID!.Value);
@@ -380,15 +372,30 @@ namespace InventoryManagement.Controllers
                 {
                     x.TransferID,
                     x.FromLocationID,
+                    FromLocationName = _db.Locations.Where(l => l.LocationID == x.FromLocationID).Select(l => l.Name).FirstOrDefault(),
                     x.ToLocationID,
+                    ToLocationName = _db.Locations.Where(l => l.LocationID == x.ToLocationID).Select(l => l.Name).FirstOrDefault(),
                     x.Status,
                     x.CreatedBy,
                     x.CreatedAt,
-                    Items = _db.TransferItems.Where(i => i.TransferID == x.TransferID)
-                        .Select(i => new { i.GoodID, i.BatchID, i.Quantity, i.ShippedQty, i.ReceivedQty })
-                        .ToList()
+                    // === SỬA ĐỔI: Thêm Barcode vào Items ===
+                    Items = (from ti in _db.TransferItems
+                             join g in _db.Goods on ti.GoodID equals g.GoodID
+                             where ti.TransferID == x.TransferID
+                             select new 
+                             {
+                                 ti.GoodID,
+                                 g.SKU,
+                                 g.Name,
+                                 g.Barcode, // (Lấy từ bảng Goods)
+                                 ti.BatchID, 
+                                 ti.Quantity, 
+                                 ti.ShippedQty, 
+                                 ti.ReceivedQty
+                             }).ToList()
                 })
                 .FirstOrDefaultAsync();
+                
             return t == null ? NotFound() : Ok(t);
         }
 
@@ -396,21 +403,31 @@ namespace InventoryManagement.Controllers
         [HttpGet]
         public async Task<IActionResult> ListTransfers([FromQuery] string? status, [FromQuery] int top = 50)
         {
-            var q = _db.Transfers.AsNoTracking().Include(t => t.FromLocation).Include(t => t.ToLocation).AsQueryable();
+            var q = _db.Transfers.AsNoTracking().AsQueryable();
+
+            // === SỬA ĐỔI: Chỉ lấy transfer của User hiện tại (SM) ===
+            var currentUserId = GetUserId();
+            q = q.Where(t => t.CreatedBy == currentUserId);
+            
             if (!string.IsNullOrWhiteSpace(status))
                 q = q.Where(t => t.Status == status);
 
-            var data = await q.OrderByDescending(t => t.TransferID)
-                .Select(t => new
-                {
-                    Id = t.TransferID,
-                    Type = "Stock Transfer",
-                    Status = t.Status,
-                    CreatedAt = t.CreatedAt,
-                    Details = $"Từ: {t.FromLocation.Name} → Tới: {t.ToLocation.Name}"
-                })
-                .Take(top)
-                .ToListAsync();
+            // === SỬA ĐỔI: Dùng JOIN để đảm bảo luôn lấy được tên (thay vì .Include) ===
+            var query = from t in q
+                        join locFrom in _db.Locations on t.FromLocationID equals locFrom.LocationID
+                        join locTo in _db.Locations on t.ToLocationID equals locTo.LocationID
+                        orderby t.TransferID descending
+                        select new
+                        {
+                            Id = t.TransferID,
+                            Status = t.Status,
+                            CreatedAt = t.CreatedAt,
+                            FromName = locFrom.Name, // Lấy tên từ join
+                            ToName = locTo.Name       // Lấy tên từ join
+                        };
+
+            var data = await query.Take(top).ToListAsync();
+            // === KẾT THÚC SỬA ĐỔI ===
 
             return Ok(data);
         }
@@ -567,6 +584,9 @@ namespace InventoryManagement.Controllers
         {
             if (dto?.Lines == null || dto.Lines.Count == 0) return BadRequest("No lines.");
 
+            // === SỬA ĐỔI: Thêm khai báo 'uid' bị thiếu ===
+            var uid = GetUserId();
+
             var r = await _db.Receipts.Include(x => x.Location).Include(x => x.Details)
                 .FirstOrDefaultAsync(x => x.ReceiptID == receiptId);
             if (r == null) return NotFound();
@@ -575,7 +595,7 @@ namespace InventoryManagement.Controllers
 
             var t = await _db.Transfers.FirstOrDefaultAsync(x => x.TransferID == r.POID);
             if (t == null) return BadRequest("Linked transfer not found.");
-            if (t.CreatedBy != GetUserId()) return Forbid();
+            if (t.CreatedBy != uid) return Forbid();
 
             var fromWH = t.FromLocationID;
             var toStore = r.LocationID;
