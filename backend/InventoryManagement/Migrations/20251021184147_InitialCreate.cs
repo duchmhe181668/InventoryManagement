@@ -119,27 +119,6 @@ namespace InventoryManagement.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Stores",
-                columns: table => new
-                {
-                    StoreID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    LocationID = table.Column<int>(type: "int", nullable: false),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    Address = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Stores", x => x.StoreID);
-                    table.ForeignKey(
-                        name: "FK_Stores_Locations_LocationID",
-                        column: x => x.LocationID,
-                        principalTable: "Locations",
-                        principalColumn: "LocationID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -214,32 +193,6 @@ namespace InventoryManagement.Migrations
                         column: x => x.LocationID,
                         principalTable: "Locations",
                         principalColumn: "LocationID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "StorePrices",
-                columns: table => new
-                {
-                    StoreID = table.Column<int>(type: "int", nullable: false),
-                    GoodID = table.Column<int>(type: "int", nullable: false),
-                    EffectiveFrom = table.Column<DateTime>(type: "date", nullable: false),
-                    PriceSell = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_StorePrices", x => new { x.StoreID, x.GoodID, x.EffectiveFrom });
-                    table.ForeignKey(
-                        name: "FK_StorePrices_Goods_GoodID",
-                        column: x => x.GoodID,
-                        principalTable: "Goods",
-                        principalColumn: "GoodID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_StorePrices_Stores_StoreID",
-                        column: x => x.StoreID,
-                        principalTable: "Stores",
-                        principalColumn: "StoreID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -367,6 +320,34 @@ namespace InventoryManagement.Migrations
                         principalTable: "Users",
                         principalColumn: "UserID",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Stores",
+                columns: table => new
+                {
+                    StoreID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LocationID = table.Column<int>(type: "int", nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
+                    UserID = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Stores", x => x.StoreID);
+                    table.ForeignKey(
+                        name: "FK_Stores_Locations_LocationID",
+                        column: x => x.LocationID,
+                        principalTable: "Locations",
+                        principalColumn: "LocationID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Stores_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -632,6 +613,32 @@ namespace InventoryManagement.Migrations
                         column: x => x.SaleID,
                         principalTable: "Sales",
                         principalColumn: "SaleID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StorePrices",
+                columns: table => new
+                {
+                    StoreID = table.Column<int>(type: "int", nullable: false),
+                    GoodID = table.Column<int>(type: "int", nullable: false),
+                    EffectiveFrom = table.Column<DateTime>(type: "date", nullable: false),
+                    PriceSell = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StorePrices", x => new { x.StoreID, x.GoodID, x.EffectiveFrom });
+                    table.ForeignKey(
+                        name: "FK_StorePrices_Goods_GoodID",
+                        column: x => x.GoodID,
+                        principalTable: "Goods",
+                        principalColumn: "GoodID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_StorePrices_Stores_StoreID",
+                        column: x => x.StoreID,
+                        principalTable: "Stores",
+                        principalColumn: "StoreID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -927,6 +934,13 @@ namespace InventoryManagement.Migrations
                 table: "Stores",
                 column: "LocationID",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Stores_UserID",
+                table: "Stores",
+                column: "UserID",
+                unique: true,
+                filter: "[UserID] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TransferItems_BatchID",

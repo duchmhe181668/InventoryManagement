@@ -175,7 +175,9 @@
       }
       
       const roleToCompare = (userRole || '').toLowerCase();
-      const allowedRoles = ['warehousemanager', 'storemanager', 'administrator'];
+      
+      // SỬA QUYỀN: Màn hình này giờ chỉ dành cho WarehouseManager và Administrator
+      const allowedRoles = ['warehousemanager', 'administrator']; 
       
       if (!allowedRoles.includes(roleToCompare)) {
           alert("Bạn không có quyền truy cập chức năng này.");
@@ -223,14 +225,20 @@
   // === LOAD EXISTING ORDER DATA (FOR EDIT/VIEW) ===
   async function loadOrderForEditing(orderId) {
       try {
-          const res = await fetch(`${API_BASE}/Orders/purchase-orders/${orderId}`, {
+          // ===================================================================
+          // SỬA API (1)
+          // ===================================================================
+          const res = await fetch(`${API_BASE}/purchase-management/${orderId}`, {
               headers: { 'Authorization': `Bearer ${authToken}` }
           });
           if (!res.ok) throw new Error('Không tìm thấy đơn hàng hoặc bạn không có quyền xem.');
           
           const orderData = await res.json();
           
-          const supplierListRes = await fetch(`${API_BASE}/Orders/lookups/suppliers`, {
+          // ===================================================================
+          // SỬA API (2)
+          // ===================================================================
+          const supplierListRes = await fetch(`${API_BASE}/lookups/suppliers`, {
               headers: { 'Authorization': `Bearer ${authToken}` }
           });
           if (!supplierListRes.ok) throw new Error('Không thể tải danh sách nhà cung cấp.');
@@ -255,10 +263,8 @@
           if (isViewMode) {
               document.getElementById('pageTitle').textContent = `Xem chi tiết Phiếu Mua Hàng #${orderId}`;
               document.querySelectorAll('input, button').forEach(el => {
-                // Giữ nút Back hoạt động
                 if(!el.closest('.d-flex.align-items-center.mb-3')) el.disabled = true;
               });
-               // Đảm bảo nút back trong header luôn hoạt động
               document.querySelector('.d-flex.align-items-center.mb-3 a.btn').disabled = false; 
               document.getElementById('btnDraft').style.display = 'none';
               document.getElementById('btnConfirm').style.display = 'none';
@@ -282,7 +288,8 @@
   const fetchAndRenderGoods = async (query) => {
     if(!query){ goodBox.classList.add('d-none'); goodUl.innerHTML=''; return; }
     try{
-      const res = await fetch(`${API_BASE}/Orders/lookups/goods?q=${encodeURIComponent(query)}&top=20`, {headers:{'Authorization': `Bearer ${authToken}`}});
+      
+      const res = await fetch(`${API_BASE}/lookups/goods?q=${encodeURIComponent(query)}&top=20`, {headers:{'Authorization': `Bearer ${authToken}`}});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       goodUl.innerHTML = '';
@@ -312,7 +319,7 @@
     const q = e.target.value.trim();
     if(!q){ supBox.classList.add('d-none'); supUl.innerHTML=''; supplier=null; return; }
     try{
-      const res = await fetch(`${API_BASE}/Orders/lookups/suppliers?q=${encodeURIComponent(q)}`, {headers:{'Authorization': `Bearer ${authToken}`}});
+      const res = await fetch(`${API_BASE}/lookups/suppliers?q=${encodeURIComponent(q)}`, {headers:{'Authorization': `Bearer ${authToken}`}});
        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       supUl.innerHTML = '';
@@ -341,20 +348,21 @@
                 poid: currentOrderId,
                 items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
             };
-            const updateRes = await fetch(`${API_BASE}/Orders/purchase-orders`, {
+            
+            const updateRes = await fetch(`${API_BASE}/purchase-management`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify(updatePayload)
             });
             if (!updateRes.ok) throw new Error(await updateRes.text());
         } else {
-            // Tạo phiếu mới (POST) - Payload KHÔNG chứa createdBy
+            // Tạo phiếu mới (POST)
             const createPayload = {
                 supplierID: supplier.supplierId,
                 status: isDraft ? "Draft" : "Submitted",
                 items: items.map(it => ({ goodID: it.goodId, quantity: Number(it.qty) }))
-            };
-            const createRes = await fetch(`${API_BASE}/Orders/purchase-orders`, {
+            }
+            const createRes = await fetch(`${API_BASE}/purchase-management`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify(createPayload)
@@ -364,7 +372,8 @@
 
         // Nếu là Cập nhật và Gửi yêu cầu (không phải nháp) -> Gọi thêm API submit
         if (isUpdate && !isDraft) {
-            const submitRes = await fetch(`${API_BASE}/Orders/purchase-orders/submit`, {
+            
+            const submitRes = await fetch(`${API_BASE}/purchase-management/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify({ poid: currentOrderId })
@@ -372,7 +381,6 @@
             if (!submitRes.ok) throw new Error(await submitRes.text());
         }
 
-        // Thông báo thành công và chuyển hướng
         const successMessage = isUpdate
             ? (!isDraft ? `Gửi yêu cầu PO-${currentOrderId} thành công!` : `Cập nhật nháp PO-${currentOrderId} thành công!`)
             : (isDraft ? `Lưu nháp thành công!` : `Gửi yêu cầu thành công!`);
@@ -413,39 +421,31 @@
   const categoryDatalist = document.getElementById('categorySuggestions');
   const categoryInput = document.getElementById('goodCategoryName');
 
-  // Hàm load categories vào datalist
   async function loadCategories() {
       try {
-          // API GET /api/Categories đã có sẵn
           const res = await fetch(`${API_BASE}/Categories`, { headers: { 'Authorization': `Bearer ${authToken}` } });
           if (!res.ok) throw new Error('Không thể tải danh mục.');
           const categories = await res.json();
           
-          categoryDatalist.innerHTML = ''; // Xóa gợi ý cũ
+          categoryDatalist.innerHTML = '';
           categories.forEach(cat => {
               const option = document.createElement('option');
-              option.value = cat.categoryName; // Giá trị gợi ý là tên
+              option.value = cat.categoryName; 
               categoryDatalist.appendChild(option);
           });
       } catch (err) {
           console.error("Error loading categories:", err);
-          // Có thể không cần báo lỗi ở đây, chỉ là không có gợi ý
       }
   }
 
-  // Gọi loadCategories khi modal được hiển thị
   document.getElementById('addGoodModal').addEventListener('show.bs.modal', loadCategories);
-
-  // Xử lý submit form thêm sản phẩm
   document.getElementById('btnShowAddGoodModal').addEventListener('click', () => { 
       document.getElementById('addGoodForm').reset(); 
-      // Không cần reset datalist vì nó sẽ tự load lại khi modal mở
       addGoodModal.show(); 
   });
 
   document.getElementById('addGoodForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Lấy tên Category từ ô input
     const categoryName = categoryInput.value.trim(); 
     
     const payload = { 
@@ -453,18 +453,15 @@
         barcode: document.getElementById('goodBarcode').value.trim(), 
         unit: document.getElementById('goodUnit').value.trim(), 
         sku: document.getElementById('goodSKU').value.trim(),
-        // Gửi categoryName (string) thay vì categoryID
         categoryName: categoryName 
     };
     
-    // Đổi điều kiện kiểm tra
     if (!payload.name || !payload.categoryName || !payload.unit || !payload.sku) { 
         showToast('Tên, Loại SP, Đơn vị và SKU là bắt buộc.', 'warning'); 
         return; 
     }
     
     try {
-        // Đảm bảo API POST /api/Goods chấp nhận categoryName và xử lý logic "tìm hoặc tạo mới"
         const res = await fetch(`${API_BASE}/Goods`, { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${authToken}`}, 
@@ -473,7 +470,6 @@
         if (!res.ok) { const errText = await res.text(); throw new Error(errText || `HTTP ${res.status}`); }
         showToast('Thêm sản phẩm mới thành công!', 'success');
         addGoodModal.hide();
-        // Tự động điền tên và tìm kiếm sản phẩm vừa thêm
         goodSearch.value = payload.name; 
         fetchAndRenderGoods(payload.name); 
     } catch (err) { 

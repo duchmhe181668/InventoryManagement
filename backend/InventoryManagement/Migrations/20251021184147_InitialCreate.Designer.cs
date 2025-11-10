@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InventoryManagement.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250925174051_InitialCreate")]
+    [Migration("20251021184147_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -729,10 +729,17 @@ namespace InventoryManagement.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int?>("UserID")
+                        .HasColumnType("int");
+
                     b.HasKey("StoreID");
 
                     b.HasIndex("LocationID")
                         .IsUnique();
+
+                    b.HasIndex("UserID")
+                        .IsUnique()
+                        .HasFilter("[UserID] IS NOT NULL");
 
                     b.ToTable("Stores");
                 });
@@ -1295,7 +1302,14 @@ namespace InventoryManagement.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("InventoryManagement.Models.User", "User")
+                        .WithOne("Store")
+                        .HasForeignKey("InventoryManagement.Models.Store", "UserID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Location");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("InventoryManagement.Models.StorePrice", b =>
@@ -1445,6 +1459,11 @@ namespace InventoryManagement.Migrations
             modelBuilder.Entity("InventoryManagement.Models.Transfer", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("InventoryManagement.Models.User", b =>
+                {
+                    b.Navigation("Store");
                 });
 #pragma warning restore 612, 618
         }
