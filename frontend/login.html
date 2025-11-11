@@ -8,7 +8,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
     :root{
-      /* Palette */
       --primary-start: #2f80ed;
       --primary-end:   #1c64f2;
       --card-bg: #ffffff;
@@ -20,7 +19,7 @@
 
       --radius-card: 26px;
       --radius-btn: 16px;
-      --shadow-card: 0 26px 70px rgba(28,100,242,.12), 0 10px 24px rgba(16,24,40,.08);
+      --shadow-card: 0 26px 70px rgba(28,100,242,.12), 0 10px 24px rgba(28,100,242,.08);
     }
 
     body{
@@ -84,7 +83,6 @@
     }
     .btn-icon:focus{ box-shadow:none; }
 
-    /* Primary button */
     .btn-primary{
       border:none;
       border-radius:var(--radius-btn);
@@ -128,7 +126,6 @@
     <div id="alert" class="alert d-none" role="alert"></div>
 
     <form id="loginForm" novalidate>
-      <!-- Username -->
       <div class="mb-3">
         <label class="form-label fw-semibold">Tên đăng nhập <span class="text-danger"></span></label>
         <div class="input-group pill">
@@ -138,7 +135,6 @@
         <div class="invalid-feedback">Vui lòng nhập tên đăng nhập.</div>
       </div>
 
-      <!-- Password -->
       <div class="mb-2">
         <label class="form-label fw-semibold">Mật khẩu <span class="text-danger"></span></label>
         <div class="input-group pill">
@@ -174,7 +170,6 @@
 
 <script>
 (function () {
-  // Ưu tiên https (Kestrel), fallback http (profile khác)
   const ENDPOINTS = [
     'https://localhost:7225/api/Auth/login',
   ];
@@ -229,7 +224,6 @@
           const msg = typeof data === 'string' ? data : (data?.title || data?.message || 'Đăng nhập thất bại');
           throw new Error(msg);
         }
-        // expected: { accessToken, tokenType, expiresInSeconds, username, role, supplierId, storeId }
         return data;
       } catch (err) { lastError = err; }
     }
@@ -243,7 +237,7 @@
       if (parts.length < 2) return null;
       const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
       if (!payload || typeof payload.exp !== 'number') return null;
-      return payload.exp * 1000; // sec → ms
+      return payload.exp * 1000; 
     } catch { return null; }
   }
 
@@ -284,6 +278,44 @@
     }
   }
 
+    //  - Prefill bằng Credential API nếu có; nếu không, dùng fallback localStorage
+    //  - Sau khi đăng nhập, nếu tick #remember thì lưu credential (CMA) và fallback
+  function saveRememberFallback(username, password){
+    try {
+      localStorage.setItem('rememberUser', username);
+      localStorage.setItem('rememberPass', password); 
+    } catch {}
+  }
+  function prefillRememberFallback(){
+    try {
+      const u = localStorage.getItem('rememberUser') || '';
+      const p = localStorage.getItem('rememberPass') || '';
+      if (u && p) {
+        document.getElementById('username').value = u;
+        document.getElementById('password').value = p;
+        const r = document.getElementById('remember'); if (r) r.checked = true;
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+  // Prefill khi mở trang
+  (async function prefillFromCredentials(){
+    if ('credentials' in navigator) {
+      try {
+        let cred = await navigator.credentials.get({ password:true, mediation:'silent' });
+        if (!cred) cred = await navigator.credentials.get({ password:true, mediation:'optional' });
+        if (cred && cred.type === 'password') {
+          document.getElementById('username').value = cred.id || '';
+          document.getElementById('password').value = cred.password || '';
+          const r = document.getElementById('remember'); if (r) r.checked = true;
+          return;
+        }
+      } catch(e) { /* ignore */ }
+    }
+    prefillRememberFallback();
+  })();
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearAlert();
@@ -291,31 +323,42 @@
     if (!form.checkValidity()) {
       form.classList.add('was-validated');
       const u = document.getElementById('username');
-    const p = document.getElementById('password');
+      const p = document.getElementById('password');
 
-    const missing = [];
-    if (!u?.value?.trim()) missing.push('tên đăng nhập');
-    if (!p?.value)         missing.push('mật khẩu');
+      const missing = [];
+      if (!u?.value?.trim()) missing.push('tên đăng nhập');
+      if (!p?.value)         missing.push('mật khẩu');
 
-    if (missing.length) {
-      showAlert(`Thiếu ${missing.join(' và ')}. Vui lòng nhập đầy đủ.`, 'danger');
-      // Focus vào ô đầu tiên bị thiếu
-      (u?.value?.trim() ? p : u)?.focus();
-    } else {
-      // Trường khác không hợp lệ (nếu có thêm ràng buộc)
-      showAlert('Vui lòng kiểm tra lại các trường chưa hợp lệ.', 'danger');
-    }
+      if (missing.length) {
+        showAlert(`Thiếu ${missing.join(' và ')}. Vui lòng nhập đầy đủ.`, 'danger');
+        (u?.value?.trim() ? p : u)?.focus();
+      } else {
+        showAlert('Vui lòng kiểm tra lại các trường chưa hợp lệ.', 'danger');
+      }
       return;
     }
 
     const username = document.getElementById('username')?.value?.trim() || '';
     const password = document.getElementById('password')?.value || '';
-    const remember = document.getElementById('remember')?.checked || false;
+    const remember = true;
 
     setBusy(true);
     try {
       const result = await login(username, password);
       persistAuth(result, remember);
+
+      // Lưu credential nếu tick "Ghi nhớ đăng nhập"
+      if (document.getElementById('remember')?.checked) {
+        if ('credentials' in navigator && window.PasswordCredential) {
+          try {
+            const cred = new PasswordCredential({ id: username, name: username, password });
+            await navigator.credentials.store(cred);
+          } catch(e) { /* ignore */ }
+        }
+        // Luôn lưu fallback để đảm bảo có dữ liệu tự điền nếu CMA không trả về
+        saveRememberFallback(username, password);
+      }
+
       showAlert(`✅ Đăng nhập thành công! Xin chào ${result.username}.`, 'success');
 
       const role = (result.role || '').toString();
@@ -325,8 +368,7 @@
       } else if (role === 'StoreManager' || role === 'Administrator' || role === 'WarehouseManager') {
         target = '/home.html';
       }
-      //setTimeout(() => { window.location.href = target; }, 400);
-      setTimeout(() => redirectByRole(result.role), 350);
+      setTimeout(() => redirectByRole(result.role), 1000);
     } catch (err) {
       showAlert(err?.message || 'Đăng nhập thất bại', 'danger');
     } finally {

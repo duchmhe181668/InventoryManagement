@@ -27,7 +27,6 @@
     .page-sub{ color:var(--muted); }
     .btn-light{ border-radius:12px; }
 
-    /* pill input group */
     .input-group.pill{
       border:1px solid var(--border); border-radius:var(--radius-pill);
       overflow:hidden; background:var(--field);
@@ -53,7 +52,6 @@
 </head>
 <body>
   <div class="card-profile">
-    <!-- header -->
     <div class="d-flex align-items-center justify-content-between mb-2">
       <div>
         <div class="page-title h4 mb-1"><i class="bi bi-person-gear me-2 text-primary"></i>Thông tin của bạn</div>
@@ -63,7 +61,6 @@
     </div>
     <div id="alert" class="alert d-none" role="alert"></div>
 
-    <!-- info form -->
     <form id="profileForm" novalidate>
       <div class="row g-3">
         <div class="col-md-6">
@@ -93,27 +90,28 @@
         </div>
 
         <div class="col-md-6">
-  <label class="form-label">Email</label>
+  <label class="form-label">Email <span class="text-danger">*</span></label>
   <div class="input-group pill">
     <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
     <input id="Email" type="email" class="form-control"
            placeholder="you@gmail.com"
-           pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
+           pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$"
+           required>
   </div>
-  <div class="invalid-feedback">Email phải có dạng <b>@gmail.com</b>.</div>
 </div>
-
         <div class="col-md-6">
-  <label class="form-label">Số điện thoại</label>
+  <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
   <div class="input-group pill">
     <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
-    <input id="PhoneNumber" class="form-control"
+    <input id="PhoneNumber" type="tel" class="form-control"
            placeholder="090xxxxxxx"
            inputmode="numeric" maxlength="10"
-           pattern="^[0-9]{10}$">
+           pattern="^[0-9]{10}$"
+           required>
   </div>
-  <div class="invalid-feedback">Số điện thoại phải gồm đúng <b>10 số</b>.</div>
 </div>
+
+
 
       <div class="divider"></div>
 
@@ -129,11 +127,10 @@
 
 <script>
 (function(){
-  // ==== Config API (đổi nếu cần) ====
   const API_BASE = 'https://localhost:7225/api/Auth';
   const URL = {
     me:      () => `${API_BASE}/me`,
-    profile: () => `${API_BASE}/profile`   // GET/PUT chính chủ
+    profile: () => `${API_BASE}/profile`   
   };
 
   // ==== DOM ====
@@ -161,7 +158,7 @@
   function setBusy(b){ btnSave.disabled=b; spnLoad.classList.toggle('d-none',!b); }
 
   // ==== Auth helpers ====
-  function preferLocal(){ // ưu tiên nhớ đăng nhập
+  function preferLocal(){ 
     return (localStorage.getItem('accessToken') || localStorage.getItem('authToken')) ? localStorage : sessionStorage;
   }
   function getToken(){
@@ -175,7 +172,7 @@
     let n = Number(raw);
     if(!Number.isFinite(n)){ const t = Date.parse(raw); if(Number.isFinite(t)) n=t; }
     if(!Number.isFinite(n)) return null;
-    if(n < 1e12) n*=1000; // giây -> ms
+    if(n < 1e12) n*=1000; 
     return n;
   }
   function getJwtExpMs(token){
@@ -191,7 +188,7 @@
     const {token,store} = getToken();
     let exp = parseExpireAt(store.getItem('tokenExpireAt'));
     if(!exp && token) exp = getJwtExpMs(token);
-    if(!exp) return true; // không biết -> cho đi tiếp rồi server chặn
+    if(!exp) return true; 
     return Date.now() <= (exp + 5000);
   }
   function ensureAuthOrRedirect(){
@@ -213,7 +210,6 @@
     );
   }
 
-  // ==== fetch helper: sửa triệt để lỗi 415 ====
   async function fetchWithAuth(url, opt = {}) {
     const opts = { method:'GET', ...opt };
     const headers = buildHeaders(opts.headers);
@@ -221,10 +217,10 @@
     const hasBody = Object.prototype.hasOwnProperty.call(opts, 'body') && opts.body != null;
     if (hasBody) {
       if (typeof opts.body !== 'string') {
-        opts.body = JSON.stringify(opts.body);       // stringify nếu là object
+        opts.body = JSON.stringify(opts.body);       
       }
       if (!headers['Content-Type'] && !headers['content-type']) {
-        headers['Content-Type'] = 'application/json'; // đảm bảo header
+        headers['Content-Type'] = 'application/json'; 
       }
     }
     opts.headers = headers;
@@ -253,11 +249,9 @@
   async function loadProfile(){
     if(!ensureAuthOrRedirect()) return;
     try{
-      // Lấy tên/claims nhanh (tùy server)
       const me = await fetchWithAuth(URL.me(), {method:'GET'}).catch(()=>null);
       const nameFromToken = me?.User || '';
 
-      // Lấy hồ sơ chi tiết
       const p = await fetchWithAuth(URL.profile(), {method:'GET'});
       original = p || {};
 
@@ -280,38 +274,70 @@
 
   // ==== Submit ====
   form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    if(!ensureAuthOrRedirect()) return;
+  e.preventDefault();
+  if(!ensureAuthOrRedirect()) return;
 
-    if(!form.checkValidity()){
-      form.classList.add('was-validated');
-      return;
-    }
+  const errors = [];
 
-    const payload = {
-      Name: (f.Name.value||'').trim(),
-      Email: (f.Email.value||'').trim() || null,
-      PhoneNumber: (f.PhoneNumber.value||'').trim() || null
-    };
+  if (!f.Name.value.trim()) {
+    errors.push('Vui lòng nhập họ tên');
+  }
 
-    setBusy(true);
-    clearAlert();
-    try{
-      // body là object -> fetchWithAuth tự stringify + set Content-Type
-      await fetchWithAuth(URL.profile(), { method:'PUT', body: payload });
-      showAlert('Đã cập nhật thông tin của bạn.', 'success', false);
-      original = { ...original, ...payload };
-    }catch(err){
-      showAlert('Cập nhật thất bại: ' + (err?.message || err), 'danger');
-      console.error(err);
-    }finally{
-      setBusy(false);
-    }
-  });
+  const emailVal = (f.Email.value || '').trim();
+if (!emailVal) {
+  errors.push('Email là bắt buộc');
+
+  f.Email.classList.add('is-invalid');
+
+} else if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(emailVal)) {
+
+  errors.push('Email phải có dạng @gmail.com');
+
+  f.Email.classList.add('is-invalid');
+} else {
+  f.Email.classList.remove('is-invalid');
+}
+
+  const phoneVal = (f.PhoneNumber.value || '').trim();
+  if (!phoneVal) {
+    errors.push('Số điện thoại là bắt buộc');
+    f.PhoneNumber.classList.add('is-invalid');
+  } else if (!/^[0-9]{10}$/.test(phoneVal)) {
+    errors.push('Số điện thoại phải gồm đúng 10 số');
+    f.PhoneNumber.classList.add('is-invalid');
+  } else {
+    f.PhoneNumber.classList.remove('is-invalid');
+  }
+
+  if (errors.length) {
+    form.classList.add('was-validated');
+    showAlert('Cập nhật thất bại: ' + errors.join(' · '), 'danger');
+    return;
+  }
+
+  const payload = {
+    Name: (f.Name.value||'').trim(),
+    Email: emailVal || null,
+    PhoneNumber: phoneVal || null
+  };
+
+  setBusy(true);
+  clearAlert();
+  try{
+    await fetchWithAuth(URL.profile(), { method:'PUT', body: payload });
+    showAlert('Đã cập nhật thông tin của bạn.', 'success', false);
+    original = { ...original, ...payload };
+  }catch(err){
+    showAlert('Cập nhật thất bại: ' + (err?.message || err), 'danger');
+    console.error(err);
+  }finally{
+    setBusy(false);
+  }
+});
 
   btnReset.addEventListener('click', resetForm);
 
-  // init
+  
   loadProfile();
 })();
 </script>

@@ -48,7 +48,7 @@ namespace InventoryManagement.Controllers
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == usernameInput.ToLower());
 
             if (user is null || user.PasswordHash is null || user.PasswordHash.Length == 0)
-                return Unauthorized("Invalid username or password.");
+                return Unauthorized("Sai tên tài khoản hoặc mật khẩu.");
 
             string hash = Encoding.UTF8.GetString(user.PasswordHash).Trim();
             if (!(hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || hash.StartsWith("$2y$")))
@@ -66,7 +66,7 @@ namespace InventoryManagement.Controllers
                 ? Enumerable.Empty<string>()
                 : new[] { roleName! };
 
-            // 5) SupplierId theo Email (nếu có)
+            /// 5) SupplierId theo Email
             int? supplierId = null;
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
@@ -82,7 +82,7 @@ namespace InventoryManagement.Controllers
                 .Select(s => (int?)s.StoreID)
                 .FirstOrDefaultAsync();
 
-            // 7) Thêm extra claims và tạo token
+            /// 7) Thêm extra claims và tạo token
             var extraClaims = new Dictionary<string, string>
             {
                 { "user_id", user.UserID.ToString() }
@@ -98,12 +98,6 @@ namespace InventoryManagement.Controllers
             var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
             var exp = _jwt.GetExpiry();
 
-            // Nếu muốn nhét store_id vào token, thêm overload IJwtService:
-            // var extraClaims = new Dictionary<string,string>();
-            // if (supplierId.HasValue) extraClaims["supplier_id"] = supplierId.Value.ToString();
-            // if (storeId.HasValue)    extraClaims["store_id"]    = storeId.Value.ToString();
-            // var token = _jwt.CreateToken(user.Username, user.Username, roles, extraClaims);
-
 
             return Ok(new LoginResponse
             {
@@ -118,7 +112,7 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// Đăng ký tài khoản mới và tự động phát JWT (auto-login).
+        /// Đăng ký tài khoản mới và tự động phát JWT
         [HttpPost("register")]
         [AllowAnonymous]
         [Consumes("application/json")]
@@ -143,7 +137,7 @@ namespace InventoryManagement.Controllers
 
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(name))
                 return BadRequest("Username, Password, Name are required.");
-            if (password.Length < 6) return BadRequest("Password must be at least 6 characters.");
+            if (password.Length < 6) return BadRequest("Mật khẩu tối thiểu 6 ký tự.");
 
             var existed = await _db.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower());
             if (existed) return Conflict("Tài khoản này đã tồn tại");

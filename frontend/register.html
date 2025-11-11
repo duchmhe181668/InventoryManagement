@@ -28,7 +28,6 @@
     .title i{ color:#1c64f2; }
     .sub{ color:var(--muted); }
 
-    /* pill input group */
     .input-group.pill{
       border:1px solid var(--border); border-radius:var(--radius-pill);
       overflow:hidden; background:var(--field);
@@ -140,13 +139,7 @@
           </div>
         </div>
 
-        <div class="col-md-6 d-flex align-items-center">
-          <div class="form-check mt-3">
-            <input id="remember" class="form-check-input" type="checkbox">
-            <label class="form-check-label" for="remember">Đăng nhập sau khi tạo</label>
-          </div>
-        </div>
-      </div>
+        
 
       <div class="divider"></div>
 
@@ -237,7 +230,7 @@
           const msg = typeof data==='string' ? data : (data.title || data.message || 'Đăng ký thất bại');
           throw new Error(msg);
         }
-        return data; // LoginResponse từ server
+        return data; 
       }catch(e){ last = e; }
     }
     throw last || new Error('Không thể gọi API đăng ký.');
@@ -247,7 +240,6 @@
   frm.addEventListener('submit', async (e)=>{
     e.preventDefault(); clearAlert();
 
-    // HTML5 validity
     if (!frm.checkValidity()){
       frm.classList.add('was-validated');
 
@@ -256,6 +248,8 @@
   const errs = [];
   if (em && !/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(em)) errs.push('Email phải là @gmail.com');
   if (ph && !/^\d{10}$/.test(ph)) errs.push('Số điện thoại phải gồm 10 số');
+  if (pw1.value.length < 6) errs.push('Mật khẩu tối thiểu 6 ký tự');
+  if (pw2.value && pw1.value !== pw2.value) errs.push('Xác nhận mật khẩu không khớp');
   if (errs.length) showAlert(errs.join('. ') + '.', 'danger');
 
       return;
@@ -268,30 +262,41 @@
     const p1 = pw1.value;
     const p2 = pw2.value;
     const role = document.getElementById('role').value;
-    const remember = document.getElementById('remember').checked;
+    const remember = false;
 
-    if (p1.length < 6){ showAlert('Mật khẩu tối thiểu 6 ký tự.'); return; }
-    if (p1 !== p2){ showAlert('Xác nhận mật khẩu không khớp.'); return; }
+    if (p1.length < 6){                      
+  showAlert('Mật khẩu tối thiểu 6 ký tự.'); 
+  return; }
+    if (p1 !== p2){
+   showAlert('Xác nhận mật khẩu không khớp.');
+  return; }
+  if (p1 !== p2){ 
+    showAlert('Xác nhận mật khẩu không khớp.'); 
+  return; }
 
     busy(true);
     try{
-      const payload = {
-        username: u,
-        password: p1,
-        name: n,
-        email: em || null,
-        phoneNumber: ph || null,
-        roleName: role
-      };
-      const result = await register(payload);
-      persistAuth(result, remember);
-      showAlert('✅ Đăng ký thành công!', 'success');
-      setTimeout(()=> redirectByRole(result.role), 500);
-    }catch(err){
-      showAlert(err?.message || 'Đăng ký thất bại');
-    }finally{
-      busy(false);
-    }
+  const payload = {
+    username: u,
+    password: p1,
+    name: n,
+    email: em || null,
+    phoneNumber: ph || null,
+    roleName: role
+  };
+
+  const result = await register(payload);
+
+  showAlert('✅ Đăng ký tài khoản thành công.', 'success');
+
+  frm.reset();
+  frm.classList.remove('was-validated');
+} catch(err){
+  showAlert(err?.message || 'Đăng ký thất bại');
+} finally {
+  busy(false);
+}
+
   });
 })();
 </script>
