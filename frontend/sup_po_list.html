@@ -91,7 +91,7 @@
             </tr>
           </thead>
           <tbody id="poTableBody">
-  <tr><td colspan="6" class="text-center-muted">Không có dữ liệu</td></tr>
+      <tr><td colspan="7" class="text-center align-middle muted">Không có dữ liệu</td></tr>
 </tbody>
         </table>
       </div>
@@ -111,6 +111,16 @@
     const API_BASE = "https://localhost:7225";
     const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
     const supplierId = sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId");
+    const userid = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+
+    // 🧩 Debug thông tin đăng nhập hiện tại
+console.log("🔍 [DEBUG] AccessToken:", token ? token.substring(0, 30) + "..." : "❌ null");
+console.log("🔍 [DEBUG] supplierId:", supplierId ?? "❌ null");
+console.log("🔍 [DEBUG] userid:", userid ?? "❌ null");
+console.log("🔍 [DEBUG] Storage type:", 
+  sessionStorage.getItem("accessToken") ? "sessionStorage" : 
+  localStorage.getItem("accessToken") ? "localStorage" : "❌ none"
+);
 
     let currentOpenRowId = null;
     let currentDetailTr = null;
@@ -125,12 +135,21 @@
 
     function setMsg(t, cls = "muted") {
       const m = document.getElementById("msg");
-      if (m) { m.className = cls; m.textContent = t; }
+      if (m) { m.style.display = 'none'; m.className = cls; m.textContent = t; }
     }
 
     // ==== LOAD DANH SÁCH PO ====
     async function loadPOs() {
-      if (!token || !supplierId) { location.href = "login.html"; return; }
+      if (!token) { location.href = "login.html"; return; }
+
+      if (!supplierId) {
+        alert("⚠️ Tài khoản của bạn chưa được gán nhà cung cấp (supplier).");
+        sessionStorage.clear(); localStorage.clear();
+        location.href = "login.html";
+        throw new Error("SupplierID is missing, redirecting to login.");
+      }
+
+
       setMsg("Đang tải danh sách...");
       try {
         const status = document.getElementById("status").value;
@@ -148,7 +167,7 @@
         const tbody = document.getElementById("poTableBody");
 
         if (!res.ok) {
-          tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center align-middle muted">Không có dữ liệu</td></tr>`;
           document.getElementById("pageInfo").textContent = "";
           setMsg("Không thể tải dữ liệu.", "text-danger");
           return;
@@ -159,7 +178,7 @@
         totalCount = result.total ?? allPOs.length;
 
         if (!allPOs.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center align-middle muted">Không có dữ liệu</td></tr>`;
           document.getElementById("pageInfo").textContent = "";
           setMsg("Không có dữ liệu.", "muted");
           return;
@@ -205,7 +224,7 @@
       tbody.innerHTML = "";
 
       if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center align-middle muted">Không có dữ liệu</td></tr>`;
         document.getElementById("pageInfo").textContent = "";
         return;
       }

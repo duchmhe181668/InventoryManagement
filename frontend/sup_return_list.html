@@ -105,29 +105,66 @@
     let allReturns = []; let currentPage = 1; const pageSize = 10;
 
     const authHeaders = () => ({ "Authorization": `Bearer ${token}`, "Content-Type": "application/json" });
-    const setMsg = (t, cls="muted") => { const el=document.getElementById("msg"); el.className=cls; el.textContent=t; };
+    const setMsg = (t, cls="muted") => { 
+      const el=document.getElementById("msg"); 
+      el.style.display = 'none';
+      el.className=cls; 
+      el.textContent=t; 
+    };
 
     async function loadReturns() {
       if (!token || !supplierId) { alert("⚠️ Phiên đăng nhập hết hạn!"); location.href="login.html"; return; }
       setMsg("Đang tải danh sách phiếu trả...");
       try {
-        const status=document.getElementById("status").value;
-        const from=document.getElementById("fromDate").value;
-        const to=document.getElementById("toDate").value;
-        const poid=document.getElementById("poid").value;
+  const status = document.getElementById("status").value;
+  const from = document.getElementById("fromDate").value;
+  const to = document.getElementById("toDate").value;
+  const poid = document.getElementById("poid").value;
 
-        const url=new URL(`${API_BASE}/api/ReturnOrders/by-supplier/${supplierId}`);
-        if(status)url.searchParams.set("status",status);
-        if(from)url.searchParams.set("from",from);
-        if(to)url.searchParams.set("to",to);
-        if(poid)url.searchParams.set("poid",poid);
+  const url = new URL(`${API_BASE}/api/ReturnOrders/by-supplier/${supplierId}`);
+  if (status) url.searchParams.set("status", status);
+  if (from) url.searchParams.set("from", from);
+  if (to) url.searchParams.set("to", to);
+  if (poid) url.searchParams.set("poid", poid);
 
-        const res=await fetch(url,{headers:authHeaders()});
-        if(!res.ok){document.getElementById("returnTableBody").innerHTML=`<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`;setMsg("Không thể tải dữ liệu.","text-danger");return;}
-        const data=await res.json();
-        allReturns=data||[]; currentPage=1; renderTablePage();
-        setMsg(`Đã tải ${allReturns.length} phiếu trả hàng.`,"ok");
-      }catch(e){console.error(e);setMsg("❌ Lỗi khi tải dữ liệu.","text-danger");}
+  // 🧩 GỌI API trước khi đọc phản hồi
+  const res = await fetch(url, { headers: authHeaders() });
+
+  // 🧩 Đọc phản hồi an toàn tránh lỗi "Unexpected end of JSON input"
+  let data = [];
+  const text = await res.text();
+
+  if (text && text.trim().length > 0) {
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.warn("⚠️ Không thể parse JSON:", err);
+      data = [];
+    }
+  } else {
+    console.log("ℹ️ API trả về 204 hoặc body rỗng.");
+    data = [];
+  }
+
+  // 🔍 Nếu API không trả gì -> hiển thị “Không có dữ liệu”
+  if (!Array.isArray(data) || data.length === 0) {
+    const tbody = document.getElementById("returnTableBody");
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`;
+    document.getElementById("pageInfo").textContent = "";
+    setMsg("Không tìm thấy phiếu trả hàng nào.", "muted");
+    return;
+  }
+
+  allReturns = data;
+  currentPage = 1;
+  renderTablePage();
+  setMsg(`Đã tải ${allReturns.length} phiếu trả hàng.`, "ok");
+}
+catch (e) {
+  console.error(e);
+  setMsg("❌ Lỗi khi tải dữ liệu.", "text-danger");
+}
+
     }
 
     function renderTablePage(){

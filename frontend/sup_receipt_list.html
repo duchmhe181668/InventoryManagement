@@ -110,7 +110,7 @@
             </tr>
           </thead>
           <tbody id="tbReceipts">
-            <tr><td colspan="6" class="text-center-muted">Không có dữ liệu</td></tr>
+            <tr><td colspan="7" class="text-center-muted">Không có dữ liệu</td></tr>
           </tbody>
         </table>
       </div>
@@ -141,6 +141,7 @@
 
     function setMsg(t, cls = "muted") {
       const m = el("msg");
+      m.style.display = 'none';
       m.textContent = t;
       m.className = cls;
     }
@@ -178,13 +179,38 @@
           return;
         }
 
-        const data = await res.json();
-        if (!data.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="text-center-muted">Không có dữ liệu</td></tr>`;
-          el("pagingInfo").textContent = "";
-          setMsg("Không có dữ liệu.", "muted");
-          return;
-        }
+        // const data = await res.json();
+        // if (!data.length) {
+        //   tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+        //   el("pagingInfo").textContent = "";
+        //   setMsg("Không có dữ liệu.", "muted");
+        //   return;
+        // }
+        
+        // 🧩 Đọc phản hồi an toàn tránh lỗi "Unexpected end of JSON input"
+let data = [];
+const text = await res.text(); // đọc raw text
+
+if (text && text.trim().length > 0) {
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    console.warn("⚠️ Không thể parse JSON:", err);
+    data = [];
+  }
+} else {
+  console.log("ℹ️ API trả về 204 hoặc body rỗng.");
+  data = [];
+}
+
+// 🔍 Nếu API không trả gì -> hiển thị “Không có dữ liệu”
+if (!Array.isArray(data) || data.length === 0) {
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+  el("pagingInfo").textContent = "";
+  setMsg("Không tìm thấy biên lai nào.", "muted");
+  return;
+}
+
 
         data.forEach(r => {
           const tr = document.createElement("tr");
@@ -302,7 +328,7 @@
               <th>Hạn sử dụng</th>
             </tr>
           </thead>
-          <tbody>${lines || `<tr><td colspan="6" class="text-center muted">Không có dòng</td></tr>`}</tbody>
+          <tbody>${lines || `<tr><td colspan="7" class="text-center muted">Không có dòng</td></tr>`}</tbody>
         </table>
       `;
     }
