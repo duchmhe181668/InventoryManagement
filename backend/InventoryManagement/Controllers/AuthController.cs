@@ -14,8 +14,6 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Collections.Concurrent;
-using System.Linq;
 
 namespace InventoryManagement.Controllers
 {
@@ -114,7 +112,7 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// Đăng ký tài khoản mới và tự động phát JWT
+        /// Đăng ký tài khoản mới 
         [HttpPost("register")]
         [AllowAnonymous]
         [Consumes("application/json")]
@@ -302,6 +300,7 @@ namespace InventoryManagement.Controllers
             return Ok(user);
         }
 
+        /// Tự cập nhật thông tin của mình 
         [HttpGet("profile")]
         [Authorize]
         [Produces("application/json")]
@@ -317,14 +316,6 @@ namespace InventoryManagement.Controllers
 
             if (u == null) return NotFound("User not found.");
 
-            // === LOGIC MỚI (ĐÃ SỬA LỖI TRANSLATE) ===
-            var store = await _db.Locations.AsNoTracking()
-                .Where(l => l.IsActive && l.LocationType != null && l.LocationType.ToLower() == "store") // <--- ĐÃ SỬA
-                .OrderBy(l => l.LocationID)
-                .Select(l => new { l.LocationID, l.Name })
-                .FirstOrDefaultAsync();
-            // === KẾT THÚC LOGIC MỚI ===
-
             return Ok(new
             {
                 userId = u.UserID,
@@ -332,11 +323,7 @@ namespace InventoryManagement.Controllers
                 name = u.Name,
                 email = u.Email,
                 phoneNumber = u.PhoneNumber,
-                roleName = u.Role != null ? u.Role.RoleName : null,
-
-                // === TRƯỜNG MỚI TỪ TRANSFER CONTROLLER ===
-                storeDefaultLocationId = store?.LocationID,
-                storeDefaultLocationName = store?.Name
+                roleName = u.Role != null ? u.Role.RoleName : null
             });
         }
 
@@ -376,7 +363,7 @@ namespace InventoryManagement.Controllers
             return NoContent();
         }
 
-        // =================== Forgot/Reset (KHÔNG đụng DB) ===================
+        ///Forgot/Reset 
 
         private static readonly ConcurrentDictionary<string, (string Code, DateTimeOffset ExpireAt)>
             _resetCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -385,7 +372,7 @@ namespace InventoryManagement.Controllers
         {
             var sb = new StringBuilder(length);
             for (int i = 0; i < length; i++)
-                sb.Append(RandomNumberGenerator.GetInt32(0, 10)); // 0..9
+                sb.Append(RandomNumberGenerator.GetInt32(0, 10)); 
             return sb.ToString();
         }
 
@@ -410,7 +397,6 @@ namespace InventoryManagement.Controllers
         {
             if (string.IsNullOrWhiteSpace(toEmail)) return;
 
-            // Đọc cấu hình SMTP qua ENV (đơn giản – không đụng DI/config cũ)
             var host = Environment.GetEnvironmentVariable("SMTP_HOST") ?? "smtp.gmail.com";
             var portStr = Environment.GetEnvironmentVariable("SMTP_PORT");
             var user = Environment.GetEnvironmentVariable("SMTP_USER");
@@ -430,7 +416,7 @@ namespace InventoryManagement.Controllers
             var body = $"Mã xác minh của bạn là: {code}\nMã sẽ hết hạn sau {ttlMinutes} phút.";
 
             using var msg = new MailMessage(from!, toEmail, subject, body) { IsBodyHtml = false };
-            try { await smtp.SendMailAsync(msg); } catch { /* ignore */ }
+            try { await smtp.SendMailAsync(msg); } catch {}
         }
 
         public sealed class ForgotRequest
@@ -447,7 +433,7 @@ namespace InventoryManagement.Controllers
             public string? NewPassword { get; set; }
         }
 
-        /// <summary>Gửi mã 6 số đặt lại mật khẩu (lưu In-Memory, không tạo bảng).</summary>
+        ///Gửi mã 6 số đặt lại mật khẩu (lưu In-Memory, không tạo bảng).
         [HttpPost("forgot")]
         [AllowAnonymous]
         [Consumes("application/json")]
@@ -465,7 +451,6 @@ namespace InventoryManagement.Controllers
                     (!string.IsNullOrEmpty(username) && u.Username == username) ||
                     (!string.IsNullOrEmpty(email) && u.Email == email));
 
-            // Phản hồi chung để tránh dò tài khoản
             if (user == null)
             {
                 return Ok(new
@@ -494,9 +479,9 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// <summary>Xác minh mã & đặt mật khẩu mới (không tạo bảng).</summary>
-        [HttpPost("reset")]               // tương thích UI cũ
-        [HttpPost("reset-password")]      // route mới
+        ///Xác minh mã & đặt mật khẩu mới (không tạo bảng)
+        [HttpPost("reset")]               
+        [HttpPost("reset-password")]      
         [AllowAnonymous]
         [Consumes("application/json")]
         [Produces("application/json")]
