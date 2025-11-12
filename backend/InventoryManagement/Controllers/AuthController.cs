@@ -14,6 +14,8 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Collections.Concurrent;
+using System.Linq;
 
 namespace InventoryManagement.Controllers
 {
@@ -300,7 +302,6 @@ namespace InventoryManagement.Controllers
             return Ok(user);
         }
 
-        /// Tự cập nhật thông tin của mình 
         [HttpGet("profile")]
         [Authorize]
         [Produces("application/json")]
@@ -316,6 +317,14 @@ namespace InventoryManagement.Controllers
 
             if (u == null) return NotFound("User not found.");
 
+            // === LOGIC MỚI (ĐÃ SỬA LỖI TRANSLATE) ===
+            var store = await _db.Locations.AsNoTracking()
+                .Where(l => l.IsActive && l.LocationType != null && l.LocationType.ToLower() == "store") // <--- ĐÃ SỬA
+                .OrderBy(l => l.LocationID)
+                .Select(l => new { l.LocationID, l.Name })
+                .FirstOrDefaultAsync();
+            // === KẾT THÚC LOGIC MỚI ===
+
             return Ok(new
             {
                 userId = u.UserID,
@@ -323,7 +332,11 @@ namespace InventoryManagement.Controllers
                 name = u.Name,
                 email = u.Email,
                 phoneNumber = u.PhoneNumber,
-                roleName = u.Role != null ? u.Role.RoleName : null
+                roleName = u.Role != null ? u.Role.RoleName : null,
+
+                // === TRƯỜNG MỚI TỪ TRANSFER CONTROLLER ===
+                storeDefaultLocationId = store?.LocationID,
+                storeDefaultLocationName = store?.Name
             });
         }
 
