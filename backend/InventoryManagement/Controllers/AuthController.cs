@@ -164,6 +164,22 @@ namespace InventoryManagement.Controllers
             await _db.SaveChangesAsync();
 
             int? supplierId = null;
+
+            if (role.RoleName == "Supplier")
+            {
+                var newSupplier = new Supplier
+                {
+                    Name = name,
+                    Email = email,
+                    PhoneNumber = phone
+                };
+
+                _db.Suppliers.Add(newSupplier);
+                await _db.SaveChangesAsync();
+
+                supplierId = newSupplier.SupplierID;
+            }
+
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
                 var supplier = await _db.Suppliers

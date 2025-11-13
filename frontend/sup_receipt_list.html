@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <title>Supplier — Biên lai</title>
@@ -14,16 +15,19 @@
       --muted: #6b7280;
       --border: #e5e7eb;
     }
+
     body {
       padding: 20px;
       background: var(--bg);
       color: var(--text);
     }
+
     .layout {
       display: flex;
       gap: 24px;
       align-items: flex-start;
     }
+
     #sidebar {
       position: sticky;
       top: 20px;
@@ -36,26 +40,55 @@
       display: flex;
       flex-direction: column;
     }
+
     #sidebar .nav-link {
       color: rgba(255, 255, 255, 0.92);
       padding-left: 0;
     }
+
     #sidebar .nav-link.active {
       font-weight: 600;
       color: #fff;
     }
-    .table-narrow th, .table-narrow td {
+
+    .table-narrow th,
+    .table-narrow td {
       padding: .4rem .6rem;
       border-color: var(--border);
     }
-    .muted { color: var(--muted); }
-    .detail-cell { padding: 0 !important; background: #fafafa; }
-    .slide { overflow: hidden; max-height: 0; transition: max-height 280ms ease; border-top: 1px solid var(--border); }
-    .slide-inner { padding: 12px 16px; }
-    tr.clickable:hover { background: #f8fafc; cursor: pointer; }
-    #msg { color: #e0e7ff; font-size: .9rem; }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .detail-cell {
+      padding: 0 !important;
+      background: #fafafa;
+    }
+
+    .slide {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 280ms ease;
+      border-top: 1px solid var(--border);
+    }
+
+    .slide-inner {
+      padding: 12px 16px;
+    }
+
+    tr.clickable:hover {
+      background: #f8fafc;
+      cursor: pointer;
+    }
+
+    #msg {
+      color: #e0e7ff;
+      font-size: .9rem;
+    }
   </style>
 </head>
+
 <body>
   <div class="layout">
     <!-- Sidebar -->
@@ -63,11 +96,12 @@
       <div>
         <h5 class="mb-3">Mục lục</h5>
         <ul class="nav flex-column">
-          <li class="nav-item"><a href="index.html" class="nav-link">Trang chủ</a></li>
           <li class="nav-item"><a href="sup_po_list.html" class="nav-link">Đơn hàng</a></li>
           <li class="nav-item"><a href="sup_receipt_list.html" class="nav-link active">Biên lai</a></li>
           <li class="nav-item"><a href="sup_return_list.html" class="nav-link">Phiếu trả hàng</a></li>
-          <!-- <li class="nav-item"><a href="login.html" class="nav-link">Đăng xuất</li> -->
+          <li class="nav-item"><a href="login.html" onclick="logout(); return false;" class="nav-link text-danger">
+              <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất
+            </a></li>
         </ul>
       </div>
       <div id="msg" class="mt-3 small"></div>
@@ -78,7 +112,8 @@
       <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
         <h2 class="m-0">Danh sách biên lai</h2>
         <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-          <input id="poid" type="number" placeholder="POID" class="form-control form-control-sm" style="width: 110px;" min="1" />
+          <input id="poid" type="number" placeholder="POID" class="form-control form-control-sm" style="width: 110px;"
+            min="1" />
           <label class="form-label m-0">Từ</label>
           <input id="from" type="date" class="form-control form-control-sm" style="width:150px;" />
           <label class="form-label m-0">Đến</label>
@@ -110,7 +145,9 @@
             </tr>
           </thead>
           <tbody id="tbReceipts">
-            <tr><td colspan="7" class="text-center-muted">Không có dữ liệu</td></tr>
+            <tr>
+              <td colspan="7" class="text-center-muted">Không có dữ liệu</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -127,12 +164,18 @@
   </div>
 
   <script>
+    function logout() {
+      sessionStorage.clear();
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
     const API_BASE = "https://localhost:7225";
     const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
     const supplierId = Number(sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId"));
     const el = id => document.getElementById(id);
 
-    let page = 1, pageSize = 20;
+    let page = 1, pageSize = 10;
     let currentOpenId = null, currentDetailTr = null;
 
     function authHeaders() {
@@ -179,37 +222,28 @@
           return;
         }
 
-        // const data = await res.json();
-        // if (!data.length) {
-        //   tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
-        //   el("pagingInfo").textContent = "";
-        //   setMsg("Không có dữ liệu.", "muted");
-        //   return;
-        // }
-        
-        // 🧩 Đọc phản hồi an toàn tránh lỗi "Unexpected end of JSON input"
-let data = [];
-const text = await res.text(); // đọc raw text
 
-if (text && text.trim().length > 0) {
-  try {
-    data = JSON.parse(text);
-  } catch (err) {
-    console.warn("⚠️ Không thể parse JSON:", err);
-    data = [];
-  }
-} else {
-  console.log("ℹ️ API trả về 204 hoặc body rỗng.");
-  data = [];
-}
+        let data = [];
+        const text = await res.text(); // đọc raw text
 
-// 🔍 Nếu API không trả gì -> hiển thị “Không có dữ liệu”
-if (!Array.isArray(data) || data.length === 0) {
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
-  el("pagingInfo").textContent = "";
-  setMsg("Không tìm thấy biên lai nào.", "muted");
-  return;
-}
+        if (text && text.trim().length > 0) {
+          try {
+            data = JSON.parse(text);
+          } catch (err) {
+            console.warn("⚠️ Không thể parse JSON:", err);
+            data = [];
+          }
+        } else {
+          console.log("ℹ️ API trả về 204 hoặc body rỗng.");
+          data = [];
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Không có dữ liệu</td></tr>`;
+          el("pagingInfo").textContent = "";
+          setMsg("Không tìm thấy biên lai nào.", "muted");
+          return;
+        }
 
 
         data.forEach(r => {
@@ -306,7 +340,7 @@ if (!Array.isArray(data) || data.length === 0) {
         <tr>
           <td>${d.goodName ?? ""}</td>
           <td>${d.unit ?? d.good?.unit ?? "—"}</td>
-          <td>${d.orderedQuantity }</td>
+          <td>${d.orderedQuantity}</td>
           <td>${d.quantity}</td>
           <td>${d.unitCost}</td>
           <td>${d.batchNo ?? ""}</td>
@@ -348,4 +382,5 @@ if (!Array.isArray(data) || data.length === 0) {
     loadReceipts();
   </script>
 </body>
+
 </html>
