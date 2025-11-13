@@ -236,16 +236,26 @@ namespace InventoryManagement.Controllers
             if (user == null)
                 return NotFound("User not found.");
 
-            user.Username = req.Username?.Trim() ?? user.Username;
-            user.Name = req.Name?.Trim() ?? user.Name;
-            user.Email = req.Email?.Trim() ?? user.Email;
-            user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+            switch (user.Role?.RoleName) 
+            { 
+                case "Supplier":
+                user.Name = req.Name?.Trim() ?? user.Name;
+                user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+                break;
 
-            if (!string.IsNullOrWhiteSpace(req.RoleName))
-            {
-                var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
-                if (role != null)
-                    user.RoleID = role.RoleID;
+            default:
+                user.Username = req.Username?.Trim() ?? user.Username;
+                user.Name = req.Name?.Trim() ?? user.Name;
+                user.Email = string.IsNullOrWhiteSpace(req.Email) ? user.Email : req.Email.Trim();
+                user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+
+                if (!string.IsNullOrWhiteSpace(req.RoleName))
+                {
+                    var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
+                    if (role != null)
+                        user.RoleID = role.RoleID;
+                }
+                break;
             }
 
             await _db.SaveChangesAsync();
