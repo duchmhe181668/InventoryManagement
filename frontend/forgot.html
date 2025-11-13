@@ -62,19 +62,19 @@
     <form id="step1" novalidate>
       <div class="mb-2 step">Bước 1/2 — Gửi mã xác minh</div>
       <div class="mb-3">
-        <label class="form-label">Tài khoản</label>
+        <label class="form-label">Tài khoản <span class="text-danger">*</span></label>
         <div class="input-group pill">
           <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-          <input id="username" class="form-control" placeholder="username">
+          <input id="username" class="form-control" autocomplete="username" placeholder="username" required>
         </div>
       </div>
       <div class="mb-2">
-        <label class="form-label">Hoặc Email</label>
+        <label class="form-label">Email <span class="text-danger">*</span></label>
         <div class="input-group pill">
           <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-          <input id="email" type="email" class="form-control" placeholder="you@example.com">
+          <input id="email" type="email" class="form-control" autocomplete="email" placeholder="you@example.com" required>
         </div>
-        <div class="form-text hint">Cần ít nhất một trong hai thông tin.</div>
+        <div class="form-text hint">Bắt buộc nhập <b>cả Username và Email</b>.</div>
       </div>
 
       <div class="d-flex gap-2 mt-3">
@@ -132,7 +132,7 @@
 
 <script>
 (function(){
-  // ====== Config endpoints (đổi nếu backend khác) ======
+  // ====== Config endpoints 
   const ENDPOINTS = {
     forgot: [
       'https://localhost:7225/api/Auth/forgot',
@@ -245,11 +245,11 @@
 
     const u = username.value.trim();
     const em = email.value.trim();
-    if(!u && !em){ showAlert('Vui lòng nhập Username hoặc Email.'); return; }
+    if(!u || !em){ showAlert('Vui lòng nhập đầy đủ Username và Email.'); return; }
 
     busySend(true);
     try{
-      await postJson(ENDPOINTS.forgot, { username: u || null, email: em || null });
+      await postJson(ENDPOINTS.forgot, { username: u, email: em });
       showAlert('✅ Đã gửi mã xác minh. Vui lòng kiểm tra hộp thư hoặc kênh nhận mã của bạn.', 'success');
       gotoStep2();
     }catch(err){
@@ -279,28 +279,33 @@
   step2.addEventListener('submit', async (e)=>{
     e.preventDefault(); clearAlert();
 
+    // 1) Kiểm tra mật khẩu trước
+    if(newPw.value.length < 6){ showAlert('Mật khẩu tối thiểu 6 ký tự.'); newPw.focus(); return; }
+    if(newPw.value !== cfPw.value){ showAlert('Xác nhận mật khẩu không khớp.'); cfPw.focus(); return; }
+
+    // 2) (giữ nguyên) Kiểm tra mã xác minh theo regex JS
+    if(!/^\d{6}$/.test(code.value.trim())){ showAlert('Mã xác minh gồm 6 chữ số.'); code.focus(); return; }
+
+    // 3) Sau cùng mới gọi built-in validity
     if(!step2.checkValidity()){
-      step2.classList.add('was-validated'); return;
+      step2.classList.add('was-validated');
+      step2.reportValidity();
+      return;
     }
-    if(newPw.value.length < 6){ showAlert('Mật khẩu tối thiểu 6 ký tự.'); return; }
-    if(newPw.value !== cfPw.value){ showAlert('Xác nhận mật khẩu không khớp.'); return; }
-    if(!/^\d{6}$/.test(code.value.trim())){ showAlert('Mã xác minh gồm 6 chữ số.'); return; }
 
     busyReset(true);
     try{
-      const u = username.value.trim();
-      const em = email.value.trim();
-      const payload = {
-        username: u || null,
-        email: em || null,
+      await postJson(ENDPOINTS.reset, {
+        username: username.value.trim(),
+        email: email.value.trim(),
         code: code.value.trim(),
         newPassword: newPw.value
-      };
-      await postJson(ENDPOINTS.reset, payload);
-      showAlert('✅ Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.', 'success');
-      setTimeout(()=> window.location.href='login.html', 900);
+      });
+      showAlert('✅ Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.', 'success');
+      // Optional: chuyển về login
+      // setTimeout(()=> location.href='login.html', 800);
     }catch(err){
-      showAlert(err?.message || 'Không đặt lại được mật khẩu.');
+      showAlert(err?.message || 'Đặt lại mật khẩu thất bại.');
     }finally{
       busyReset(false);
     }
