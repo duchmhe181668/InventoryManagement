@@ -224,33 +224,49 @@ namespace InventoryManagement.Controllers
         }
 
 
+        /// <summary>
         /// Cập nhật thông tin người dùng
+        /// </summary>
         [HttpPut("update/{userId}")]
-        [AllowAnonymous]
+        [Authorize] // hoặc [AllowAnonymous] nếu chưa bật auth
         [Consumes("application/json")]
         [Produces("application/json")]
         public async Task<ActionResult> UpdateUser(int userId, [FromBody] UpdateUserRequest req)
         {
-            var user = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == userId);
+            var user = await _db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.UserID == userId);
 
             if (user == null)
                 return NotFound("User not found.");
 
-            user.Username = req.Username?.Trim() ?? user.Username;
-            user.Name = req.Name?.Trim() ?? user.Name;
-            user.Email = req.Email?.Trim() ?? user.Email;
-            user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
-
-            if (!string.IsNullOrWhiteSpace(req.RoleName))
+            switch (user.Role?.RoleName)
             {
-                var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
-                if (role != null)
-                    user.RoleID = role.RoleID;
+                case "Supplier":
+                    user.Name = req.Name?.Trim() ?? user.Name;
+                    user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+                    break;
+
+                default:
+                    user.Username = req.Username?.Trim() ?? user.Username;
+                    user.Name = req.Name?.Trim() ?? user.Name;
+                    user.Email = string.IsNullOrWhiteSpace(req.Email) ? user.Email : req.Email.Trim();
+                    user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+
+                    if (!string.IsNullOrWhiteSpace(req.RoleName))
+                    {
+                        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
+                        if (role != null)
+                            user.RoleID = role.RoleID;
+                    }
+                    break;
             }
 
+            // Lưu thay đổi
             await _db.SaveChangesAsync();
-            return NoContent();
+            return Ok(new { message = "User updated successfully." });
         }
+
 
         /// Xóa người dùng
         [HttpDelete("delete/{userId}")]
