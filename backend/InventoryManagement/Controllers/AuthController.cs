@@ -41,7 +41,7 @@ namespace InventoryManagement.Controllers
             var passwordInput = req?.Password;
 
             if (string.IsNullOrWhiteSpace(usernameInput) || string.IsNullOrWhiteSpace(passwordInput))
-                return BadRequest("Username/Password is required.");
+                return BadRequest("Tên tài khoản/mật khẩu là bắt buộc");
 
             var user = await _db.Users
                 .Include(u => u.Role)
@@ -59,7 +59,7 @@ namespace InventoryManagement.Controllers
             bool ok;
             try { ok = BCrypt.Net.BCrypt.Verify(passwordInput, hash); }
             catch { return BadRequest("PasswordHash is not a valid BCrypt string. Please update the user with a BCrypt hash."); }
-            if (!ok) return Unauthorized("Invalid username or password.");
+            if (!ok) return Unauthorized("Sai tên tài khoản hoặc mật khẩu.");
 
             var roleName = user.Role?.RoleName;
             var roles = string.IsNullOrWhiteSpace(roleName)
@@ -515,6 +515,57 @@ namespace InventoryManagement.Controllers
 
             ClearResetCode(user.Username);
             return NoContent();
+        }
+
+        // DTO cho đổi mật khẩu khi đang đăng nhập
+        public sealed class ChangePasswordRequest
+        {
+            public string? CurrentPassword { get; set; }
+            public string? NewPassword { get; set; }
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        [Consumes("application/json")]
+        [Produces("application/json")]
+        public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+        {
+            if (req == null) return BadRequest("Invalid payload.");
+            var current = req.CurrentPassword?.Trim() ?? "";
+            var newer = req.NewPassword?.Trim() ?? "";
+
+            if (newer.Length < 6) return BadRequest("Mật khẩu mới tối thiểu 6 ký tự.");
+
+            // Lấy username từ JWT (AuthController đang tạo token với Name = Username)
+            var username = User?.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(username))
+                return Unauthorized("Không xác định người dùng.");
+
+            var user = await _db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+
+            if (user == null) return NotFound("User không tồn tại.");
+
+            // Đọc hash đang lưu (dự phòng trường hợp cũ mã hoá Unicode)
+            string savedHash = Encoding.UTF8.GetString(user.PasswordHash).Trim();
+            if (!(savedHash.StartsWith("$2a$") || savedHash.StartsWith("$2b$") || savedHash.StartsWith("$2y$")))
+            {
+                savedHash = Encoding.Unicode.GetString(user.PasswordHash).Trim();
+            }
+
+            bool ok;
+            try { ok = BCrypt.Net.BCrypt.Verify(current, savedHash); }
+            catch { return BadRequest("Hash mật khẩu hiện tại không hợp lệ."); }
+
+            if (!ok) return Unauthorized("Mật khẩu hiện tại không đúng.");
+
+            // Cập nhật mật khẩu mới
+            var newHash = BCrypt.Net.BCrypt.HashPassword(newer, workFactor: 11);
+            user.PasswordHash = Encoding.UTF8.GetBytes(newHash);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Đổi mật khẩu thành công." });
         }
 
     }
