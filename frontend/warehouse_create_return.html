@@ -154,7 +154,7 @@ async function confirmReturn() {
     return;
   }
 
-  const body = { receiptId, supplierId, userId, note: "Phiếu trả hàng từ Warehouse", items };
+  const body = { receiptId, supplierId, userId, note: "Phiếu trả hàng từ Kho", items };
 
   try {
     const res = await fetch(`${API_BASE}/ReturnOrders`, {

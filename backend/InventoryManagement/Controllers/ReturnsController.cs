@@ -83,7 +83,6 @@ namespace InventoryManagement.Controllers
 
         // GET: /api/ReturnOrders/by-warehouse/{warehouseId}?status=Submitted&from=2025-10-01&to=2025-10-31&poid=1&supplierName=ABC
         [HttpGet("by-warehouse/{warehouseId:int}")]
-        [Authorize(Roles = "WarehouseManager")]
         public async Task<ActionResult<IEnumerable<object>>> GetByWarehouse(
             int warehouseId,
             [FromQuery] string? status,
@@ -329,7 +328,7 @@ namespace InventoryManagement.Controllers
                         QuantityReturned = item.QuantityToReturn,
                         UnitCost = unitCost,
                         Reason = item.Reason,
-                        Note = "Warehouse tạo phiếu trả hàng"
+                        Note = "Kho tạo phiếu trả hàng"
                     });
                 }
 

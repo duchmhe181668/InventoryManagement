@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <title>Supplier — Phiếu trả hàng</title>
@@ -14,22 +15,80 @@
       --muted: #6b7280;
       --border: #e5e7eb;
     }
-    body { padding: 20px; background: var(--bg); color: var(--text); }
-    .layout { display: flex; gap: 24px; align-items: flex-start; }
-    #sidebar {
-      position: sticky; top: 20px; min-height: calc(100vh - 40px);
-      width: 260px; background: var(--primary); color: #fff;
-      border-radius: 10px; display: flex; flex-direction: column; padding: 16px;
+
+    body {
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
     }
-    #sidebar .nav-link { color: rgba(255,255,255,0.92); padding-left: 0; }
-    #sidebar .nav-link.active { font-weight: 600; color: #fff; }
-    .muted { color: var(--muted); }
-    .table-narrow th,.table-narrow td { padding: .4rem .6rem; border-color: var(--border); }
-    tr.clickable:hover { background: #f8fafc; cursor: pointer; }
-    .detail-cell { padding: 0!important; background: #fafafa; }
-    .slide { overflow: hidden; max-height: 0; transition: max-height 280ms ease; border-top: 1px solid var(--border); }
-    .slide-inner { padding: 12px 16px; }
-    #msg { color: #e0e7ff; }
+
+    .layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    #sidebar {
+      position: sticky;
+      top: 20px;
+      min-height: calc(100vh - 40px);
+      width: 260px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    #sidebar .nav-link {
+      color: rgba(255, 255, 255, 0.92);
+      padding-left: 0;
+    }
+
+    #sidebar .nav-link.active {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .table-narrow th,
+    .table-narrow td {
+      padding: .4rem .6rem;
+      border-color: var(--border);
+    }
+
+    tr.clickable:hover {
+      background: #f8fafc;
+      cursor: pointer;
+    }
+
+    .detail-cell {
+      padding: 0 !important;
+      background: #fafafa;
+    }
+
+    .slide {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 280ms ease;
+      border-top: 1px solid var(--border);
+    }
+
+    .slide-inner {
+      padding: 12px 16px;
+    }
+
+    #msg {
+      color: #e0e7ff;
+    }
+
+    .btn-outline-primary i {
+      margin-right: 4px;
+    }
   </style>
 </head>
 
@@ -38,12 +97,14 @@
     <!-- Sidebar -->
     <aside id="sidebar">
       <div>
-        <h5 class="mb-3">Menu</h5>
+        <h5 class="mb-3">Mục lục</h5>
         <ul class="nav flex-column">
-          <li class="nav-item"><a href="index.html" class="nav-link">Trang chủ</a></li>
           <li class="nav-item"><a href="sup_po_list.html" class="nav-link">Đơn hàng</a></li>
           <li class="nav-item"><a href="sup_receipt_list.html" class="nav-link">Biên lai</a></li>
           <li class="nav-item"><a href="sup_return_list.html" class="nav-link active">Phiếu trả hàng</a></li>
+          <li class="nav-item"><a href="login.html" onclick="logout(); return false;" class="nav-link text-danger">
+            <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất
+          </a></li>
         </ul>
       </div>
       <div id="msg" class="mt-3 small"></div>
@@ -51,22 +112,21 @@
 
     <!-- Main -->
     <main class="flex-grow-1">
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
         <h2 class="m-0">Danh sách phiếu trả hàng</h2>
         <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-          <label class="form-label m-0">POID</label>
-          <input type="number" id="poid" class="form-control form-control-sm" style="width:100px" placeholder="Nhập POID" />
-          <label class="form-label m-0">Từ ngày</label>
+          <input type="number" id="poid" class="form-control form-control-sm" style="width:110px" placeholder="POID" />
+          <label class="form-label m-0">Từ</label>
           <input type="date" id="fromDate" class="form-control form-control-sm" style="width:150px" />
-          <label class="form-label m-0">Đến ngày</label>
+          <label class="form-label m-0">Đến</label>
           <input type="date" id="toDate" class="form-control form-control-sm" style="width:150px" />
           <label class="form-label m-0">Trạng thái</label>
-          <select id="status" class="form-select form-select-sm" style="width:160px">
+          <select id="status" class="form-select form-select-sm" style="width:150px">
             <option value="">Tất cả</option>
             <option value="Submitted">Đã gửi</option>
             <option value="Confirmed">Đã xác nhận</option>
           </select>
-          <button id="btnReload" class="btn btn-sm btn-outline-light border-light">
+          <button id="btnReload" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-funnel"></i> Lọc
           </button>
         </div>
@@ -97,6 +157,12 @@
   </div>
 
   <script>
+    function logout() {
+      sessionStorage.clear();
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
     const API_BASE = "https://localhost:7225";
     const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
     const supplierId = sessionStorage.getItem("supplierId") || localStorage.getItem("supplierId");
@@ -105,103 +171,128 @@
     let allReturns = []; let currentPage = 1; const pageSize = 10;
 
     const authHeaders = () => ({ "Authorization": `Bearer ${token}`, "Content-Type": "application/json" });
-    const setMsg = (t, cls="muted") => { const el=document.getElementById("msg"); el.className=cls; el.textContent=t; };
+    const setMsg = (t, cls = "muted") => {
+      const el = document.getElementById("msg");
+      el.style.display = 'none';
+      el.className = cls;
+      el.textContent = t;
+    };
 
     async function loadReturns() {
-      if (!token || !supplierId) { alert("⚠️ Phiên đăng nhập hết hạn!"); location.href="login.html"; return; }
+      if (!token || !supplierId) { alert("⚠️ Phiên đăng nhập hết hạn!"); location.href = "login.html"; return; }
       setMsg("Đang tải danh sách phiếu trả...");
       try {
-        const status=document.getElementById("status").value;
-        const from=document.getElementById("fromDate").value;
-        const to=document.getElementById("toDate").value;
-        const poid=document.getElementById("poid").value;
+        const status = document.getElementById("status").value;
+        const from = document.getElementById("fromDate").value;
+        const to = document.getElementById("toDate").value;
+        const poid = document.getElementById("poid").value;
 
-        const url=new URL(`${API_BASE}/api/ReturnOrders/by-supplier/${supplierId}`);
-        if(status)url.searchParams.set("status",status);
-        if(from)url.searchParams.set("from",from);
-        if(to)url.searchParams.set("to",to);
-        if(poid)url.searchParams.set("poid",poid);
+        const url = new URL(`${API_BASE}/api/ReturnOrders/by-supplier/${supplierId}`);
+        if (status) url.searchParams.set("status", status);
+        if (from) url.searchParams.set("from", from);
+        if (to) url.searchParams.set("to", to);
+        if (poid) url.searchParams.set("poid", poid);
 
-        const res=await fetch(url,{headers:authHeaders()});
-        if(!res.ok){document.getElementById("returnTableBody").innerHTML=`<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`;setMsg("Không thể tải dữ liệu.","text-danger");return;}
-        const data=await res.json();
-        allReturns=data||[]; currentPage=1; renderTablePage();
-        setMsg(`Đã tải ${allReturns.length} phiếu trả hàng.`,"ok");
-      }catch(e){console.error(e);setMsg("❌ Lỗi khi tải dữ liệu.","text-danger");}
+        const res = await fetch(url, { headers: authHeaders() });
+        let data = [];
+        const text = await res.text();
+
+        if (text && text.trim().length > 0) {
+          try { data = JSON.parse(text); } catch (err) { console.warn("⚠️ Không thể parse JSON:", err); data = []; }
+        } else { data = []; }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          const tbody = document.getElementById("returnTableBody");
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`;
+          document.getElementById("pageInfo").textContent = "";
+          setMsg("Không tìm thấy phiếu trả hàng nào.", "muted");
+          return;
+        }
+
+        allReturns = data;
+        currentPage = 1;
+        renderTablePage();
+        setMsg(`Đã tải ${allReturns.length} phiếu trả hàng.`, "ok");
+      }
+      catch (e) {
+        console.error(e);
+        setMsg("❌ Lỗi khi tải dữ liệu.", "text-danger");
+      }
     }
 
-    function renderTablePage(){
-      const total=allReturns.length,totalPages=Math.ceil(total/pageSize)||1;
-      const start=(currentPage-1)*pageSize;
-      renderTable(allReturns.slice(start,start+pageSize));
-      document.getElementById("pageInfo").textContent=`Trang ${currentPage}/${totalPages} — ${total} phiếu`;
-      document.getElementById("prevPage").disabled=currentPage<=1;
-      document.getElementById("nextPage").disabled=currentPage>=totalPages;
+    function renderTablePage() {
+      const total = allReturns.length, totalPages = Math.ceil(total / pageSize) || 1;
+      const start = (currentPage - 1) * pageSize;
+      renderTable(allReturns.slice(start, start + pageSize));
+      document.getElementById("pageInfo").textContent = `Trang ${currentPage}/${totalPages} — ${total} phiếu`;
+      document.getElementById("prevPage").disabled = currentPage <= 1;
+      document.getElementById("nextPage").disabled = currentPage >= totalPages;
     }
-    document.getElementById("prevPage").onclick=()=>{if(currentPage>1){currentPage--;renderTablePage();}};
-    document.getElementById("nextPage").onclick=()=>{if(currentPage<Math.ceil(allReturns.length/pageSize)){currentPage++;renderTablePage();}};
 
-    function renderTable(list){
-      const tbody=document.getElementById("returnTableBody");
-      tbody.innerHTML="";
-      if(!list.length){tbody.innerHTML=`<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`;return;}
-      list.forEach(ro=>{
-        const id=ro.returnID??ro.id;
-        const createdAt=ro.createdAt?new Date(ro.createdAt).toLocaleString():"";
-        const confirmedAt=ro.confirmedAt?new Date(ro.confirmedAt).toLocaleString():"—";
-        const tr=document.createElement("tr");
-        tr.className="clickable"; tr.dataset.id=id;
-        tr.innerHTML=`
+    document.getElementById("prevPage").onclick = () => { if (currentPage > 1) { currentPage--; renderTablePage(); } };
+    document.getElementById("nextPage").onclick = () => { if (currentPage < Math.ceil(allReturns.length / pageSize)) { currentPage++; renderTablePage(); } };
+
+    function renderTable(list) {
+      const tbody = document.getElementById("returnTableBody");
+      tbody.innerHTML = "";
+      if (!list.length) { tbody.innerHTML = `<tr><td colspan="6" class="text-center muted">Không có dữ liệu</td></tr>`; return; }
+      list.forEach(ro => {
+        const id = ro.returnID ?? ro.id;
+        const createdAt = ro.createdAt ? new Date(ro.createdAt).toLocaleString() : "";
+        const confirmedAt = ro.confirmedAt ? new Date(ro.confirmedAt).toLocaleString() : "—";
+        const tr = document.createElement("tr");
+        tr.className = "clickable"; tr.dataset.id = id;
+        tr.innerHTML = `
           <td>${id}</td>
           <td>${createdAt}</td>
           <td>${confirmedAt}</td>
-          <td>${ro.status??""}</td>
-          <td>${ro.note??""}</td>`;
-        tr.onclick=async()=>{if(currentOpenRowId===id){await closeDetail();return;}await closeDetail();await openDetailBelow(tbody,tr,id,ro.status);};
+          <td>${ro.status ?? ""}</td>
+          <td>${ro.note ?? ""}</td>`;
+        tr.onclick = async () => { if (currentOpenRowId === id) { await closeDetail(); return; } await closeDetail(); await openDetailBelow(tbody, tr, id, ro.status); };
         tbody.appendChild(tr);
       });
     }
 
-    async function openDetailBelow(tbody,anchorTr,id,status){
-      const detailTr=document.createElement("tr");
-      detailTr.className="detail-row";
-      const td=document.createElement("td");
-      td.colSpan=6; td.className="detail-cell";
-      td.innerHTML=`<div class="slide"><div class="slide-inner" id="detail-${id}"><div class="muted">Đang tải chi tiết phiếu #${id}...</div></div></div>`;
-      detailTr.appendChild(td); anchorTr.insertAdjacentElement("afterend",detailTr);
-      try{
-        const res=await fetch(`${API_BASE}/api/ReturnOrders/${id}`,{headers:authHeaders()});
-        const box=document.getElementById(`detail-${id}`);
-        if(!res.ok) box.innerHTML=`<p class="text-danger">Lỗi tải chi tiết.</p>`;
-        else box.innerHTML=renderDetailHtml(await res.json(),status);
-      }catch{document.getElementById(`detail-${id}`).innerHTML=`<p class="text-danger">Không thể tải chi tiết.</p>`;}
-      const slide=detailTr.querySelector(".slide");
-      requestAnimationFrame(()=>{slide.style.maxHeight=slide.scrollHeight+"px";});
-      currentOpenRowId=id; currentDetailTr=detailTr;
+    async function openDetailBelow(tbody, anchorTr, id, status) {
+      const detailTr = document.createElement("tr");
+      detailTr.className = "detail-row";
+      const td = document.createElement("td");
+      td.colSpan = 6; td.className = "detail-cell";
+      td.innerHTML = `<div class="slide"><div class="slide-inner" id="detail-${id}"><div class="muted">Đang tải chi tiết phiếu #${id}...</div></div></div>`;
+      detailTr.appendChild(td); anchorTr.insertAdjacentElement("afterend", detailTr);
+      try {
+        const res = await fetch(`${API_BASE}/api/ReturnOrders/${id}`, { headers: authHeaders() });
+        const box = document.getElementById(`detail-${id}`);
+        if (!res.ok) box.innerHTML = `<p class="text-danger">Lỗi tải chi tiết.</p>`;
+        else box.innerHTML = renderDetailHtml(await res.json(), status);
+      } catch { document.getElementById(`detail-${id}`).innerHTML = `<p class="text-danger">Không thể tải chi tiết.</p>`; }
+      const slide = detailTr.querySelector(".slide");
+      requestAnimationFrame(() => { slide.style.maxHeight = slide.scrollHeight + "px"; });
+      currentOpenRowId = id; currentDetailTr = detailTr;
     }
 
-    function closeDetail(){return new Promise(resolve=>{if(!currentDetailTr)return resolve();const slide=currentDetailTr.querySelector(".slide");slide.addEventListener("transitionend",()=>{currentDetailTr.remove();currentDetailTr=null;currentOpenRowId=null;resolve();},{once:true});slide.style.maxHeight="0px";});}
+    function closeDetail() { return new Promise(resolve => { if (!currentDetailTr) return resolve(); const slide = currentDetailTr.querySelector(".slide"); slide.addEventListener("transitionend", () => { currentDetailTr.remove(); currentDetailTr = null; currentOpenRowId = null; resolve(); }, { once: true }); slide.style.maxHeight = "0px"; }); }
 
-    function renderDetailHtml(ro,status){
-      const lines=(ro.details??[]).map(d=>`
+    function renderDetailHtml(ro, status) {
+      const lines = (ro.details ?? []).map(d => `
         <tr>
           <td>${d.goodID}</td>
-          <td>${d.good?.name??""}</td>
-          <td>${d.unit??d.good?.unit??"—"}</td>
-          <td>${d.batch?.batchNo??"—"}</td>
-          <td>${d.orderedQuantity??0}</td>
-          <td>${d.quantityReturned??0}</td>
-          <td class="text-end">${d.unitCost?.toLocaleString()??0}</td>
-          <td>${d.reason??""}</td>
+          <td>${d.good?.name ?? ""}</td>
+          <td>${d.unit ?? d.good?.unit ?? "—"}</td>
+          <td>${d.batch?.batchNo ?? "—"}</td>
+          <td>${d.orderedQuantity ?? 0}</td>
+          <td>${d.quantityReturned ?? 0}</td>
+          <td class="text-end">${d.unitCost?.toLocaleString() ?? 0}</td>
+          <td>${d.reason ?? ""}</td>
         </tr>`).join("");
-      const confirmBtn = status==="Submitted"
+      const confirmBtn = status === "Submitted"
         ? `<button class="btn btn-sm btn-success mt-2" onclick="confirmReturn(${ro.returnID})">
             <i class='bi bi-check-circle'></i> Xác nhận đã nhận hàng trả
            </button>`
         : `<span class="badge bg-secondary mt-2">Đã xác nhận</span>`;
       return `
         <div class="d-flex justify-content-between align-items-start">
-          <div><strong>Ghi chú:</strong> ${ro.note??""}</div>
+          <div><strong>Ghi chú:</strong> ${ro.note ?? ""}</div>
           ${confirmBtn}
         </div>
         <div class="mt-2">
@@ -212,27 +303,28 @@
                 <th>Số lượng đặt</th><th>Số lượng trả</th><th>Đơn giá</th><th>Lý do</th>
               </tr>
             </thead>
-            <tbody>${lines||`<tr><td colspan="8" class="text-center muted">Không có chi tiết</td></tr>`}</tbody>
+            <tbody>${lines || `<tr><td colspan="8" class="text-center muted">Không có chi tiết</td></tr>`}</tbody>
           </table>
         </div>`;
     }
 
-    async function confirmReturn(id){
-      if(!confirm(`Xác nhận đã nhận hàng trả từ kho cho phiếu #${id}?`))return;
-      try{
-        const res=await fetch(`${API_BASE}/api/ReturnOrders/${id}/confirm?supplierId=${supplierId}`,{method:"PATCH",headers:authHeaders()});
-        const data=await res.json();
-        if(!res.ok)throw new Error(data.error||JSON.stringify(data));
-        alert("✅ "+data.message);
+    async function confirmReturn(id) {
+      if (!confirm(`Xác nhận đã nhận hàng trả từ kho cho phiếu #${id}?`)) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/ReturnOrders/${id}/confirm?supplierId=${supplierId}`, { method: "PATCH", headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+        alert("✅ " + data.message);
         await closeDetail(); await loadReturns();
-      }catch(e){console.error(e);alert("❌ Lỗi khi xác nhận: "+e.message);}
+      } catch (e) { console.error(e); alert("❌ Lỗi khi xác nhận: " + e.message); }
     }
 
-    ["btnReload","status","fromDate","toDate","poid"].forEach(id=>{
-      const el=document.getElementById(id);
-      if(id==="btnReload")el.onclick=loadReturns;else el.onchange=loadReturns;
+    ["btnReload", "status", "fromDate", "toDate", "poid"].forEach(id => {
+      const el = document.getElementById(id);
+      if (id === "btnReload") el.onclick = loadReturns; else el.onchange = loadReturns;
     });
-    loadReturns(); window.confirmReturn=confirmReturn;
+    loadReturns(); window.confirmReturn = confirmReturn;
   </script>
 </body>
+
 </html>
