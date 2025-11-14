@@ -350,6 +350,13 @@
         quantity: parseFloat(r.querySelector(".qty-input").value) || 0
       }));
 
+      for (const item of items) {
+  if (item.quantity < 0) {
+    alert("❌ Số lượng không được âm!");
+    return;
+  }
+}
+
       const body = { receivedBy: receivedById, items };
 
       try {
@@ -385,24 +392,34 @@
 
     // ==== Cập nhật tổng tiền real-time khi chỉnh số lượng ====
     function updateTotalRealTime() {
-      const rows = document.querySelectorAll("#modalReceiptLines tr");
-      let total = 0;
+  const rows = document.querySelectorAll("#modalReceiptLines tr");
+  let total = 0;
 
-      rows.forEach(row => {
-        const qtyInput = row.querySelector(".qty-input");
-        const priceCell = row.querySelector("td:nth-child(5)"); // cột đơn giá
-        const amountCell = row.querySelector("td:nth-child(6)"); // cột thành tiền
+  rows.forEach(row => {
+    const qtyInput = row.querySelector(".qty-input");
+    const priceCell = row.querySelector("td:nth-child(5)");
+    const amountCell = row.querySelector("td:nth-child(6)");
 
-        const price = parseFloat(priceCell.textContent.replace(/\D/g, "")) || 0;
-        const qty = parseFloat(qtyInput.value) || 0;
+    let qty = parseFloat(qtyInput.value) || 0;
 
-        const amount = qty * price;
-        amountCell.textContent = amount.toLocaleString("vi-VN");
-        total += amount;
-      });
-
-      document.getElementById("modalTotal").textContent = total.toLocaleString("vi-VN");
+    // 🔥 Không cho nhập số lượng âm
+    if (qty < 0) {
+      alert("❌ Không được nhập số lượng âm!");
+      qtyInput.value = 0; // Reset về 0
+      qty = 0;
     }
+
+    const price = parseFloat(priceCell.textContent.replace(/\D/g, "")) || 0;
+    const amount = qty * price;
+
+    amountCell.textContent = amount.toLocaleString("vi-VN");
+    total += amount;
+  });
+
+  document.getElementById("modalTotal").textContent = total.toLocaleString("vi-VN");
+}
+
+
 
 
     // ==== Load mặc định khi mở trang ====

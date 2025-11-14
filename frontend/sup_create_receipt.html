@@ -175,7 +175,7 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
         const tr = document.createElement("tr");
         tr.dataset.goodId = l.goodID;
 
-        // gợi ý UnitPrice theo PO (placeholder), supplier sẽ nhập/sửa
+        
         const hintPrice = (l.unitPrice != null) ? Number(l.unitPrice) : "";
 
         tr.innerHTML = `
