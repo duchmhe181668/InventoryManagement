@@ -1,9 +1,9 @@
 /* =========================
    Transfer (TẠO MỚI / SỬA / XEM)
-   (Đã sửa để hỗ trợ ?id=... từ URL)
+   (Đã sửa để hỗ trợ ?id=... từ URL
+   và sửa lỗi UI "Xem phiếu")
    ========================= */
 
-// === SỬA ĐỔI: Sửa API_BASE để fix lỗi 404 (/api/api/...) ===
 const API_BASE = 'https://localhost:7225';
 
 // ===== AUTH (Dán trực tiếp) =====
@@ -68,9 +68,8 @@ let ITEMS = [];     // {goodId, sku, name, available, qty, batchId: null}
 
 let goodBox, goodUl;
 
-// === SỬA ĐỔI: Thêm State cho chế độ Sửa/Xem ===
 let CURRENT_TRANSFER_ID = null;
-let IS_VIEW_ONLY = false; // Chế độ "Xem" (khóa tất cả)
+let IS_VIEW_ONLY = false; 
 
 
 // ===== Boot =====
@@ -81,7 +80,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   goodBox = el('goodResults'); goodUl = goodBox.querySelector('ul');
 
   // events
-  el('btnClearAll').addEventListener('click', ()=>{ if (ITEMS.length && confirm('Xoá hết mặt hàng?')) { ITEMS=[]; renderItems(); } });
+  el('btnClearAll').addEventListener('click', ()=>{ if (ITEMS.length && confirm('Bạn chắc chắn muốn xoá hết mặt hàng?')) { ITEMS=[]; renderItems(); } });
   el('btnDraft').addEventListener('click', ()=> saveOrSubmit(true));
   el('btnSubmit').addEventListener('click', ()=> saveOrSubmit(false));
   el('goodSearch').addEventListener('input', debounce(onSearchGoods, 300));
@@ -93,33 +92,30 @@ window.addEventListener('DOMContentLoaded', async () => {
       goodBox.classList.add('d-none');
   });
   
-  // === SỬA ĐỔI: Kiểm tra URL (Đây là phần quan trọng nhất) ===
   const urlParams = new URLSearchParams(window.location.search);
   const id = urlParams.get('id');
   const isEdit = urlParams.get('edit') === 'true';
 
   if (id) {
-    // Đây là chế độ Sửa hoặc Xem
     CURRENT_TRANSFER_ID = parseInt(id, 10);
-    IS_VIEW_ONLY = !isEdit; // Nếu không có ?edit=true -> Chuyển sang chế độ CHỈ XEM
+    IS_VIEW_ONLY = !isEdit; 
     
     await loadForEdit(CURRENT_TRANSFER_ID, IS_VIEW_ONLY);
     
   } else {
-    // Đây là chế độ Tạo mới
     try { 
-      await loadHeaderNew(); // Tải header cho phiếu mới
+      await loadHeaderNew(); 
     } catch (e) { 
-      showToast('Không tải được dữ liệu ban đầu', 'error'); 
+      showToast('Không tải được dữ liệu ban đầu. ' + e.message, 'error'); 
     }
   }
 
-  renderItems(); // Vẽ bảng (có thể trống nếu là phiếu mới)
+  renderItems(); 
 });
 
 // ===== API helper =====
 async function api(path, method='GET', body=null, mustOk=false) {
-  const res = await fetch(`${API_BASE}${path}`, { // Sửa lỗi 404: API_BASE không chứa /api
+  const res = await fetch(`${API_BASE}${path}`, { 
     method,
     headers: {
       'Authorization': `Bearer ${AUTH_TOKEN}`,
@@ -128,13 +124,12 @@ async function api(path, method='GET', body=null, mustOk=false) {
     body: body ? JSON.stringify(body) : null
   });
   if (!res.ok) {
-    if (res.status === 401) { alert('Phiên đăng nhập đã hết hạn.'); location.href='../login.html'; }
+    if (res.status === 401) { alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'); location.href='../login.html'; }
     if (res.status === 403) { alert('Bạn không có quyền thực hiện.'); location.href='../home.html'; }
     
-    let txt = `HTTP ${res.status}`;
+    let txt = `Lỗi HTTP ${res.status}`;
     try {
         const errData = await res.json();
-        // Lấy lỗi chi tiết từ ASP.NET Core (nếu có)
         txt = errData.detail || errData.title || errData.message || JSON.stringify(errData);
     } catch(e) {
         txt = await res.text() || txt;
@@ -147,14 +142,18 @@ async function api(path, method='GET', body=null, mustOk=false) {
 
 // ===== Header (Cho phiếu MỚI) =====
 async function loadHeaderNew() {
-  // warehouses
-  const whs = await api('/api/locations?type=WAREHOUSE&active=true', 'GET', null, true);
-  const sel = el('fromLocation');
-  sel.innerHTML = (whs||[]).map(x => `<option value="${x.locationID}">${esc(x.name || ('#'+x.locationID))}</option>`).join('');
-  FROM_ID = whs?.[0]?.locationID || null;
-  sel.addEventListener('change', ()=>{ FROM_ID = Number(sel.value); ITEMS=[]; renderItems(); });
+  // === SỬA ĐỔI: Gọi /api/lookups/locations ===
+  const whs = await api('/api/lookups/locations?type=WAREHOUSE&active=true', 'GET', null, true);
+  
+  // Đổ dữ liệu vào <input> (đã sửa ở HTML)
+  const defaultWh = whs?.[0];
+  if (defaultWh) {
+      el('fromLocationName').value = esc(defaultWh.name);
+      el('fromLocation').value = defaultWh.locationID;
+      FROM_ID = defaultWh.locationID;
+  }
 
-  // profile → store & created by
+  // API /api/auth/profile vẫn giữ nguyên
   const me = await api('/api/auth/profile', 'GET', null, true);
   TO_ID = me?.storeDefaultLocationId || null;
   el('toLocation').value = TO_ID || '';
@@ -162,52 +161,53 @@ async function loadHeaderNew() {
   el('createdByName').value = me?.name || me?.username || '';
 }
 
-// === SỬA ĐỔI: Hàm mới (Tải dữ liệu cho chế độ Sửa/Xem) ===
+// ===== Tải dữ liệu cho chế độ Sửa/Xem =====
 async function loadForEdit(id, isViewOnly) {
   try {
-    // Gọi API GetTransfer (đã sửa ở Backend, trả về cả Barcode)
+    // Gọi API GetTransfer (đã sửa ở Bước 1)
     const t = await api(`/api/transfers/${id}`, 'GET', null, true);
     
-    // 1. Đổ dữ liệu vào State
     FROM_ID = t.fromLocationID;
     TO_ID = t.toLocationID;
     
-    // === SỬA ĐỔI: API GetTransfer giờ đã trả về tên/sku/barcode ===
+    // === SỬA ĐỔI: Đọc 'available' từ API (fix lỗi 'undefined') ===
     ITEMS = t.items.map(item => ({
         goodId: item.goodID,
         sku: item.sku,
         name: item.name,
-        barcode: item.barcode, // Thêm Barcode
-        available: 0, // API này không trả về 'available', chấp nhận
+        barcode: item.barcode, 
+        available: item.available, 
         qty: item.quantity,
         batchId: null
     }));
     
-    // 2. Đổ dữ liệu vào Form
-    el('fromLocation').innerHTML = `<option value="${t.fromLocationID}">${esc(t.fromLocationName)}</option>`;
+    el('fromLocationName').value = esc(t.fromLocationName);
+    el('fromLocation').value = t.fromLocationID;
     el('toLocationName').value = esc(t.toLocationName);
     el('toLocation').value = t.toLocationID;
-    
-    el('createdByName').value = `User ID: ${t.createdBy}`; 
+    el('createdByName').value = esc(t.createdByName || `User ID: ${t.createdBy}`); 
 
-    // 3. Khóa giao diện nếu là "Xem" (View Only)
     if (isViewOnly) {
       el('pageTitle').textContent = `Xem Phiếu Xin Hàng #${id}`;
-      el('fromLocation').disabled = true;
+      el('fromLocationName').disabled = true; 
       el('goodSearch').disabled = true;
       el('goodSearch').placeholder = 'Chế độ chỉ xem';
       el('btnClearAll').style.display = 'none';
       el('btnDraft').style.display = 'none';
       el('btnSubmit').style.display = 'none';
+
+      // === SỬA ĐỔI: Ẩn 2 cột <th> khi CHỈ XEM ===
+      el('th-available').style.display = 'none';
+      el('th-delete').style.display = 'none';
+
     } else {
       el('pageTitle').textContent = `Sửa Phiếu Xin Hàng #${id}`;
-      el('fromLocation').disabled = true; // Không cho đổi kho khi Sửa
+      el('fromLocationName').disabled = true; 
     }
     
   } catch(e) {
       showToast('Lỗi khi tải phiếu: ' + e.message, 'error');
-      // Khóa hết nếu tải lỗi
-      el('fromLocation').disabled = true;
+      el('fromLocationName').disabled = true;
       el('goodSearch').disabled = true;
       el('btnDraft').style.display = 'none';
       el('btnSubmit').style.display = 'none';
@@ -219,14 +219,20 @@ async function onSearchGoods(e){
   const q = e.target.value.trim();
   if (!q || !FROM_ID) { goodBox.classList.add('d-none'); goodUl.innerHTML=''; return; }
   try {
-    // API (đã sửa) giờ trả về cả Barcode
-    const data = await api(`/api/stocks/available?locationId=${FROM_ID}&kw=${encodeURIComponent(q)}`, 'GET', null, true);
+    // === SỬA ĐỔI: Gọi /api/lookups/stock-available ===
+    const data = await api(`/api/lookups/stock-available?locationId=${FROM_ID}&kw=${encodeURIComponent(q)}`, 'GET', null, true);
     goodUl.innerHTML = '';
-    (data || []).forEach(g => {
+    
+    if (!data || data.length === 0) {
+        goodUl.innerHTML = '<li class="list-group-item text-muted">Không tìm thấy sản phẩm.</li>';
+        goodBox.classList.remove('d-none');
+        return;
+    }
+    
+    data.forEach(g => {
       const li = document.createElement('li');
       li.className = 'list-group-item list-group-item-action';
       
-      // === SỬA ĐỔI: Hiển thị Barcode ===
       li.innerHTML = `
         <div class="d-flex justify-content-between">
           <div>
@@ -234,29 +240,28 @@ async function onSearchGoods(e){
             <div class="small text-muted">SKU: ${esc(g.sku||'')} | Barcode: ${esc(g.barcode||'')}</div>
           </div>
           <div class="text-end">
-            <div class="small text-muted">Available</div>
+            <div class="small text-muted">Tồn khả dụng</div>
             <div class="fw-semibold">${g.available}</div>
           </div>
         </div>`;
         
       li.addEventListener('click', ()=>{
         const idx = ITEMS.findIndex(x => x.goodId === g.goodID); 
+        
         if (idx >= 0) {
-          const newQty = ITEMS[idx].qty + 1;
-          ITEMS[idx].qty = Math.min(newQty, Number(g.available)||999999); 
+          ITEMS[idx].qty += 1; 
         } else {
-          // === SỬA ĐỔI: Lưu cả Barcode ===
           ITEMS.push({
             goodId: g.goodID, 
             sku: g.sku, 
             name: g.goodName,
-            barcode: g.barcode, // Thêm Barcode
+            barcode: g.barcode, 
             available: Number(g.available)||0, 
             qty: 1, 
             batchId: null
           });
         }
-        renderItems();
+        renderItems(); 
         goodUl.innerHTML=''; goodBox.classList.add('d-none');
         el('goodSearch').value = '';
       });
@@ -264,63 +269,82 @@ async function onSearchGoods(e){
     });
     goodBox.classList.toggle('d-none', !data || data.length===0);
   } catch (err) {
-    console.error(err); showToast('Không tải được danh sách hàng', 'error');
+    console.error(err); showToast('Không tải được danh sách hàng: ' + err.message, 'error');
   }
 }
 
 // ===== Render lines =====
-// ===== Render lines =====
 function renderItems(){
   const tb = el('itemsBody');
   
-  // === SỬA ĐỔI: Colspan = 7 (vì thêm Barcode) ===
+  // === SỬA ĐỔI: Cập nhật colspan động (7 khi Sửa, 5 khi Xem) ===
+  const colspan = IS_VIEW_ONLY ? 5 : 7;
+  
   if (!ITEMS.length) { 
-    tb.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No items</td></tr>`; 
+    tb.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted">Chưa có mặt hàng nào</td></tr>`; 
+    el('totalItems').textContent = '0'; 
     return;
   }
 
-  const readOnly = IS_VIEW_ONLY ? 'readonly disabled' : '';
+  tb.innerHTML = ITEMS.map((x, i)=> {
+    
+    const isOver = x.qty > x.available;
+    const invalidClass = isOver ? 'is-invalid' : ''; 
 
-  tb.innerHTML = ITEMS.map((x, i)=>`
+    const qtyCell = IS_VIEW_ONLY ?
+      `<td class="text-center ${isOver ? 'text-danger fw-bold' : ''}">${x.qty}</td>` :
+      `<td>
+         <input type="number" min="1" step="1" class="form-control form-control-sm qty-input ${invalidClass}"
+                value="${x.qty}" data-idx="${i}">
+       </td>`;
+
+    // === SỬA ĐỔI: Ẩn <td> 'Available' và 'Delete' khi Chỉ Xem ===
+    const availableCell = IS_VIEW_ONLY ? 
+        '' : // Ẩn khi Chỉ Xem
+        `<td class="text-center ${isOver ? 'text-danger fw-bold' : ''}">${x.available}</td>`;
+        
+    const deleteCell = IS_VIEW_ONLY ?
+        '' : // Ẩn khi Chỉ Xem
+        `<td class="text-center">
+           <button class="btn btn-sm btn-outline-danger icon-btn" data-del="${i}">
+             <i class="fa-solid fa-trash-can fa-sm"></i>
+           </button>
+         </td>`;
+
+    return `
       <tr>
         <td>${i+1}</td>
         <td>${esc(x.sku||'')}</td>
-        <td>${esc(x.barcode||'')}</td> <td>${esc(x.name||'')}</td>
+        <td>${esc(x.barcode||'')}</td>
+        <td>${esc(x.name||'')}</td>
         
-        ${CURRENT_TRANSFER_ID ? 
-          '<td class="text-center text-muted">--</td>' : 
-          `<td class="text-center">${x.available}</td>`
-        }
-        
-        <td>
-          <input type="number" min="1" step="1" class="form-control form-control-sm qty-input"
-                 value="${x.qty}" data-idx="${i}" ${readOnly}>
-        </td>
-        <td class="text-center">
-          ${IS_VIEW_ONLY ? '---' : 
-          `<button class="btn btn-sm btn-outline-danger icon-btn" data-del="${i}">
-            <i class="fa-solid fa-trash-can fa-sm"></i>
-           </button>`}
-        </td>
-      </tr>
-    `).join('');
+        ${availableCell} ${qtyCell}
+        ${deleteCell} </tr>
+    `;
+  }).join('');
 
   el('totalItems').textContent = String(ITEMS.length);
 
-  // bind inputs (Chỉ bind nếu không phải View Only)
   if (!IS_VIEW_ONLY) {
+    
     tb.querySelectorAll('input[data-idx]').forEach(inp=>{
-      inp.addEventListener('change', e=>{
+      inp.addEventListener('input', e=>{ 
         const i = Number(e.target.dataset.idx);
+        if (!ITEMS[i]) return;
+
         let v = Number(e.target.value);
-        if (!Number.isFinite(v) || v < 1) v = 1;
+        if (!Number.isFinite(v) || v < 1) {}
         
-        if (!CURRENT_TRANSFER_ID && v > ITEMS[i].available) {
-           showToast(`Vượt Available (${ITEMS[i].available}).`, 'warning');
-           v = ITEMS[i].available;
+        ITEMS[i].qty = v; 
+        
+        const isOver = v > ITEMS[i].available;
+        e.target.classList.toggle('is-invalid', isOver);
+        
+        const availableCell = e.target.closest('tr').querySelector('td:nth-child(5)');
+        if (availableCell) {
+            availableCell.classList.toggle('text-danger', isOver);
+            availableCell.classList.toggle('fw-bold', isOver);
         }
-        
-        ITEMS[i].qty = v; e.target.value = v;
       });
     });
 
@@ -335,21 +359,36 @@ function renderItems(){
 
 // ===== Save Draft / Submit =====
 function validateBeforeSave(){
-  if (IS_VIEW_ONLY) return false; // Không cho lưu ở chế độ xem
-  if (!FROM_ID) { showToast('Chọn From (Warehouse).','warning'); return false; }
-  if (!TO_ID)   { showToast('Không xác định được Store.','warning'); return false; }
-  if (!ITEMS.length) { showToast('Chưa có mặt hàng.','warning'); return false; }
-  if (ITEMS.some(x => !x.goodId || !x.qty || x.qty < 1)) { showToast('Số lượng không hợp lệ.','warning'); return false; }
-  return true;
-}
+  if (IS_VIEW_ONLY) return false; 
+  if (!FROM_ID) { showToast('Vui lòng chọn Kho (From).','warning'); return false; }
+  if (!TO_ID)   { showToast('Không xác định được Cửa hàng (To).','warning'); return false; }
+  if (!ITEMS.length) { showToast('Chưa có mặt hàng nào.','warning'); return false; }
 
+  let hasError = false;
+  
+  for (const item of ITEMS) {
+    if (!item.goodId || !item.qty || item.qty < 1) {
+      showToast(`Số lượng của sản phẩm trong phiếu vượt mức tồn kho! Vui lòng kiểm tra lại!`,'warning'); 
+      hasError = true;
+      break;
+    }
+    
+    // === SỬA ĐỔI: Luôn check tồn kho (kể cả khi Sửa) ===
+    if (item.qty > item.available) {
+        showToast(`Số lượng của sản phẩm trong phiếu vượt mức tồn kho! Vui lòng kiểm tra lại!`, 'danger');
+        hasError = true;
+        break; 
+    }
+  }
+  
+  return !hasError; 
+}
 async function saveOrSubmit(isDraft){
   if (!validateBeforeSave()) return;
 
-  // === SỬA ĐỔI: Quyết định API (POST hay PUT) ===
   const isEditMode = !!CURRENT_TRANSFER_ID;
   const method = isEditMode ? 'PUT' : 'POST';
-  const apiPath = '/api/transfers';
+  const apiPath = '/api/transfers'; 
 
   try {
     const body = {
@@ -358,30 +397,25 @@ async function saveOrSubmit(isDraft){
       items: ITEMS.map(x => ({ goodId: x.goodId, quantity: x.qty, batchId: null }))
     };
 
-    // Nếu là Sửa (PUT), cần thêm TransferID vào body
     if (isEditMode) {
       body.transferID = CURRENT_TRANSFER_ID;
     }
 
     const created = await api(apiPath, method, body, true);
     
-    // Lấy ID (hoặc từ POST, hoặc dùng ID cũ)
     const tid = created?.transferID || created?.TransferID || CURRENT_TRANSFER_ID;
     if (!tid) throw new Error('Không xác định được ID phiếu.');
 
-    // 2) Nếu submit: gọi /submit
     if (!isDraft) {
-      // Chỉ submit nếu đang là Draft (hoặc mới tạo)
       await api(`/api/transfers/${tid}/submit`, 'POST', null, true);
-      showToast('Đã gửi yêu cầu transfer.', 'success');
+      showToast('Đã gửi yêu cầu thành công.', 'success');
     } else {
-      showToast('Đã lưu nháp transfer.', 'success');
+      showToast('Đã lưu nháp thành công.', 'success');
     }
 
-    // Quay về trang danh sách
     setTimeout(()=> location.href = '../transfer_list/transfer_list.html', 800);
   } catch (e) {
     console.error(e);
-    showToast(`Lỗi: ${e.message}`, 'error');
+    showToast(`Lỗi khi lưu: ${e.message}`, 'error');
   }
 }

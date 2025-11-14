@@ -1,4 +1,4 @@
-﻿using InventoryManagement.Data;
+﻿﻿using InventoryManagement.Data;
 using InventoryManagement.Models;
 using InventoryManagement.Dto.ReceiptDto;
 using Microsoft.AspNetCore.Mvc;

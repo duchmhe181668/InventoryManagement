@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
 using InventoryManagement.Data;
+using InventoryManagement.Models; // Cần using Models
 using InventoryManagement.Models.Views;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace InventoryManagement.Controllers
 {
     [Route("api/lookups")]
-    [Authorize(Roles = "WarehouseManager,StoreManager,Administrator")] // Quyền chung
+    [Authorize(Roles = "WarehouseManager,StoreManager,Administrator")] 
     public class LookupsController : BaseApiController 
     {
         private readonly AppDbContext _db;
@@ -43,11 +44,24 @@ namespace InventoryManagement.Controllers
         }
 
         [HttpGet("locations")]
-        public async Task<IActionResult> LookupLocations([FromQuery] string? type)
+        public async Task<IActionResult> LookupLocations([FromQuery] string? type, [FromQuery] bool? active) // Thêm active
         {
-            var q = _db.Locations.AsNoTracking().Select(l => new { l.LocationID, l.Name, l.LocationType, l.ParentLocationID, l.IsActive });
-            if (!string.IsNullOrWhiteSpace(type)) q = q.Where(x => x.LocationType == type);
-            return Ok(await q.OrderBy(x => x.Name).ToListAsync());
+            var q = _db.Locations.AsNoTracking().AsQueryable();
+            
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                // Sửa lỗi LINQ
+                var typeLower = type.ToLower();
+                q = q.Where(l => l.LocationType != null && l.LocationType.ToLower() == typeLower); 
+            }
+            if (active != null)
+                q = q.Where(l => l.IsActive == active);
+
+            var list = await q.OrderBy(l => l.Name) 
+                .Select(l => new { locationID = l.LocationID, name = l.Name, type = l.LocationType, active = l.IsActive })
+                .ToListAsync();
+
+            return Ok(list);
         }
 
         [HttpGet("suppliers")]
@@ -61,6 +75,46 @@ namespace InventoryManagement.Controllers
                 s = s.Where(x => x.Name.Contains(key));
             }
             return Ok(await s.OrderBy(x => x.Name).Take(top).ToListAsync());
+        }
+        
+        // === API MỚI (Chuyển từ TransferController) ===
+        // GET /api/lookups/stock-available?locationId=...&kw=...
+        [HttpGet("stock-available")]
+        [Authorize(Roles = "StoreManager,Administrator")] 
+        public async Task<IActionResult> StockAvailable([FromQuery] int locationId, [FromQuery] string? kw)
+        {
+            if (locationId <= 0) return BadRequest("locationId là bắt buộc.");
+
+            var stockQ = _db.Stocks.AsNoTracking()
+                .Where(s => s.LocationID == locationId)
+                .GroupBy(s => s.GoodID)
+                .Select(g => new { GoodID = g.Key, Available = g.Sum(x => x.OnHand - x.Reserved - x.InTransit) });
+
+            var q =
+                from s in stockQ
+                join g in _db.Goods on s.GoodID equals g.GoodID
+                select new
+                {
+                    s.GoodID,
+                    sku = EF.Property<string>(g, "SKU"),
+                    goodName = EF.Property<string>(g, "Name"),
+                    unit = EF.Property<string>(g, "Unit"),
+                    barcode = EF.Property<string>(g, "Barcode"),
+                    available = s.Available
+                };
+
+            if (!string.IsNullOrWhiteSpace(kw))
+            {
+                var key = kw.Trim().ToLower();
+                q = q.Where(x =>
+                    (x.goodName ?? "").ToLower().Contains(key) ||
+                    (x.sku ?? "").ToLower().Contains(key) ||
+                    (x.barcode ?? "").ToLower().Contains(key) 
+                );
+            }
+
+            var list = await q.OrderByDescending(x => x.available).ThenBy(x => x.goodName).Take(50).ToListAsync();
+            return Ok(list);
         }
     }
 }

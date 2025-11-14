@@ -12,7 +12,7 @@
     .btn-outline-secondary{border-color:#d0d7e2;color:#334155}
     .btn-outline-secondary:hover{background:#f1f5ff;border-color:#c2d0ff;color:#1d4ed8}
     
-    /* === FIX DROPDOWN BỊ VỠ (LẦN 2) === */
+    
     .result-list{
         position:absolute;
         z-index:20;
