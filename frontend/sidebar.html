@@ -37,13 +37,13 @@
         </li>
         
         <li>
-            <a href="" class="nav-link">
+            <a href="/wm_transfer_list/wm_transfer_list.html" class="nav-link">
                 <i class="bi bi-box-arrow-up me-2"></i> Xuất kho
             </a>
         </li>
 
         <li>
-            <a href="sales.html" class="nav-link">
+            <a id="menu-sales" href="sales.html" class="nav-link">
                 <i class="bi bi-cart me-2"></i> Bán hàng
             </a>
         </li>
@@ -83,20 +83,18 @@
 </div>
 
 <script>
+  // ===== Logout =====
   function logout() {
     try {
-      console.log("🚪 Đăng xuất khỏi hệ thống...");
-
       sessionStorage.clear();
       localStorage.clear();
-
-      console.log("✅ Đã xóa toàn bộ bộ nhớ, chuyển hướng về login.html");
-
+    } finally {
       window.location.href = "login.html";
-    } catch (e) {
-      console.error("❌ Lỗi khi đăng xuất:", e);
-      window.location.href = "login.html"; 
     }
   }
+
+  
 </script>
+
+
 
