@@ -326,7 +326,6 @@ namespace InventoryManagement.Controllers
             return Ok(user);
         }
 
-        /// Tự cập nhật thông tin của mình 
         [HttpGet("profile")]
         [Authorize]
         [Produces("application/json")]
@@ -342,6 +341,34 @@ namespace InventoryManagement.Controllers
 
             if (u == null) return NotFound("User not found.");
 
+            // === BỔ SUNG LOGIC LẤY STORE ===
+            var store = await _db.Stores
+                .Include(s => s.Location) 
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserID == u.UserID); 
+
+            if (store == null && u.Role?.RoleName == "StoreManager")
+            {
+                var firstStore = await _db.Locations.AsNoTracking()
+                   .Where(l => l.IsActive && l.LocationType != null && l.LocationType.ToLower() == "store")
+                   .OrderBy(l => l.LocationID)
+                   .Select(l => new { l.LocationID, l.Name })
+                   .FirstOrDefaultAsync();
+
+                return Ok(new
+                {
+                    userId = u.UserID,
+                    username = u.Username,
+                    name = u.Name,
+                    email = u.Email,
+                    phoneNumber = u.PhoneNumber,
+                    roleName = u.Role != null ? u.Role.RoleName : null,
+                    storeId = (int?)null,
+                    storeDefaultLocationId = firstStore?.LocationID,
+                    storeDefaultLocationName = firstStore?.Name
+                });
+            }
+
             return Ok(new
             {
                 userId = u.UserID,
@@ -349,7 +376,12 @@ namespace InventoryManagement.Controllers
                 name = u.Name,
                 email = u.Email,
                 phoneNumber = u.PhoneNumber,
-                roleName = u.Role != null ? u.Role.RoleName : null
+                roleName = u.Role != null ? u.Role.RoleName : null,
+
+                // Trả thêm thông tin Store
+                storeId = store?.StoreID,
+                storeDefaultLocationId = store?.LocationID,
+                storeDefaultLocationName = store?.Location?.Name
             });
         }
 
@@ -359,6 +391,7 @@ namespace InventoryManagement.Controllers
             public string? Email { get; set; }
             public string? PhoneNumber { get; set; }
         }
+
 
         [HttpPut("profile")]
         [Authorize]

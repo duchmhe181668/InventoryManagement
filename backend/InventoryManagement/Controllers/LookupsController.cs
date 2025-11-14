@@ -57,7 +57,7 @@ namespace InventoryManagement.Controllers
             if (active != null)
                 q = q.Where(l => l.IsActive == active);
 
-            var list = await q.OrderBy(l => l.Name) // Sửa: OrderBy Name
+            var list = await q.OrderBy(l => l.Name) 
                 .Select(l => new { locationID = l.LocationID, name = l.Name, type = l.LocationType, active = l.IsActive })
                 .ToListAsync();
 
@@ -80,7 +80,7 @@ namespace InventoryManagement.Controllers
         // === API MỚI (Chuyển từ TransferController) ===
         // GET /api/lookups/stock-available?locationId=...&kw=...
         [HttpGet("stock-available")]
-        [Authorize(Roles = "StoreManager,Administrator")] // Chỉ SM cần
+        [Authorize(Roles = "StoreManager,Administrator")] 
         public async Task<IActionResult> StockAvailable([FromQuery] int locationId, [FromQuery] string? kw)
         {
             if (locationId <= 0) return BadRequest("locationId là bắt buộc.");
