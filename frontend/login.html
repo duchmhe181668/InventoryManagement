@@ -270,15 +270,26 @@
   }
 
   function redirectByRole(role) {
-    const r = (role || '').toString().toLowerCase();
-    if (['administrator', 'warehousemanager', 'storemanager'].includes(r)) {
-      window.location.href = 'home.html';
-    } else if (r === 'supplier') {
-      window.location.href = 'sup_po_list.html';
-    } else {
-      window.location.href = 'home.html';
-    }
+  const r = (role || '').toString().toLowerCase();
+
+  // StoreManager: chuyển sang dashboard riêng
+  if (r === 'storemanager') {
+    window.location.href = 'dashboard_store/dashboard_store.html';
+
+  // Admin & Warehouse: vẫn vào home như cũ
+  } else if (r === 'administrator' || r === 'warehousemanager') {
+    window.location.href = 'home.html';
+
+  // Supplier: danh sách PO của nhà cung cấp
+  } else if (r === 'supplier') {
+    window.location.href = 'sup_po_list.html';
+
+  // Role lạ -> fallback
+  } else {
+    window.location.href = 'home.html';
   }
+}
+
 
     //  - Prefill bằng Credential API nếu có; nếu không, dùng fallback localStorage
     //  - Sau khi đăng nhập, nếu tick #remember thì lưu credential (CMA) và fallback

@@ -1,91 +1,149 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard - Quản lý Cửa Hàng</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="dashboard_store.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <title>Store Manager — Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap core -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <link href="../assets/css/app-ui.css" rel="stylesheet" />
+  <link href="dashboard_store.css" rel="stylesheet" />
 </head>
-<body>
+<body class="bg-light">
 
-  <div id="sidebar-container" class="sidebar">
-    </div>
-
-  <div class="content">
-    <div class="container-fluid">
-      <h1 class="h3 mb-3">Dashboard (Store Manager)</h1>
-
-      <div class="row">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title">Chào mừng bạn!</h5>
-              <p class="card-text">
-                Đây là trang dashboard của Quản lý Cửa hàng. Bạn có thể sử dụng sidebar bên trái để điều hướng:
-              </p>
-              <ul>
-                <li><strong>Sản phẩm:</strong> Xem và quản lý tồn kho sản phẩm tại cửa hàng.</li>
-                <li><strong>Điều chuyển kho:</strong> Tạo yêu cầu lấy hàng từ kho tổng.</li>
-                <li><strong>Bán hàng:</strong> Ghi nhận giao dịch bán hàng (xuất kho).</li>
-              </ul>
-            </div>
-          </div>
+  <div class="store-layout">
+    <!-- SIDEBAR -->
+    <aside class="store-sidebar">
+      <div class="sidebar-header d-flex align-items-center mb-3">
+        <div class="avatar-circle me-2">
+          <i class="bi bi-shop-window"></i>
+        </div>
+        <div>
+          <div class="fw-semibold small">Store Manager</div>
+          <div class="text-muted extra-small" id="sm-username">sm1</div>
         </div>
       </div>
+
+      <nav class="nav flex-column mb-4" id="module-nav">
+        <button class="nav-link active d-flex align-items-center gap-2" data-module="sales">
+          <i class="bi bi-cash-register"></i>
+          <span>Bán hàng</span>
+        </button>
+        <button class="nav-link d-flex align-items-center gap-2" data-module="products">
+          <i class="bi bi-box-seam"></i>
+          <span>Quản lý sản phẩm</span>
+        </button>
+        <button class="nav-link d-flex align-items-center gap-2" data-module="import">
+          <i class="bi bi-box-arrow-in-down"></i>
+          <span>Nhập kho</span>
+        </button>
+        <button class="nav-link d-flex align-items-center gap-2" data-module="report">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Báo cáo</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer small text-muted">
+        Đang đăng nhập với vai trò<br />
+        <strong>Store Manager</strong>.
       </div>
+    </aside>
+
+    <!-- MAIN AREA — ONLY MODULE -->
+    <main class="store-main">
+
+      <!-- MODULE CONTAINER -->
+      <section class="module-wrapper">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h2 class="h6 mb-0" id="module-title">Bán hàng</h2>
+            <p class="small text-muted mb-0" id="module-desc">
+              Giao diện Bán hàng gốc từ <code>sales.html</code>, được mở bên trong dashboard.
+            </p>
+          </div>
+        </div>
+
+        <div class="module-frame-wrapper">
+          <iframe
+            id="module-frame"
+            title="Store module"
+            src="../sales.html"
+            frameborder="0"
+            loading="lazy"
+          ></iframe>
+        </div>
+
+        <p class="small text-muted mt-2">
+          Các chức năng sử dụng giao diện gốc:
+          <code>sales.html</code>, <code>store-goods.html</code>,
+          <code>transfer/transfer.html</code>, <code>home.html</code> (phần Báo cáo).
+        </p>
+      </section>
+
+    </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <script src="../js/auth-helpers.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Hàm tải và xử lý sidebar
-    async function loadSidebar() {
-      try {
-        // 1. Tải HTML của sidebar (file nằm CÙNG THƯ MỤC)
-        const response = await fetch('sidebar_store.html');
-        if (!response.ok) throw new Error('Không thể tải sidebar.html');
-        
-        const sidebarHTML = await response.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
-
-        // 2. Thêm sự kiện cho nút Đăng xuất
-        // Phải thêm ở đây vì nút #logout-button chỉ tồn tại sau khi fetch
-        const logoutButton = document.getElementById('logout-button');
-        if (logoutButton) {
-          logoutButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-              logout('../login.html'); // Gọi hàm từ auth-helpers.js
-            }
-          });
-        }
-        
-        // 3. Đánh dấu 'active' cho link hiện tại
-        // Lấy tên file của trang hiện tại (dashboard_store.html)
-        const currentPage = window.location.pathname.split('/').pop(); 
-        
-        // Xóa active cũ (nếu có)
-        const activeLink = document.querySelector('.sidebar .nav-link.active');
-        if(activeLink) activeLink.classList.remove('active');
-        
-        // Thêm active cho link mới
-        if (currentPage.includes('dashboard_store')) {
-           document.getElementById('nav-dashboard').classList.add('active');
-        }
-        // (Bạn có thể mở rộng logic này nếu cần)
-
-      } catch (error) {
-        console.error('Lỗi khi tải sidebar:', error);
-        document.getElementById('sidebar-container').innerHTML = '<div class="p-3 text-white-50">Lỗi tải sidebar.</div>';
+    // Map module -> URL + text
+    const MODULES = {
+      sales: {
+        url: "../sales.html",
+        title: "Bán hàng",
+        desc: "Giao diện Bán hàng gốc từ sales.html."
+      },
+      products: {
+        url: "../store-goods.html",
+        title: "Quản lý sản phẩm",
+        desc: "Mở màn hình Store — Stock & Prices (store-goods.html)."
+      },
+      import: {
+        url: "../transfer/transfer.html",
+        title: "Nhập kho",
+        desc: "Mở màn hình tạo phiếu nhập hàng (transfer/transfer.html)."
+      },
+      report: {
+        url: "../home.html",
+        title: "Báo cáo",
+        desc: "Dùng khu vực Báo cáo trong home.html (ấn nút Mở báo cáo)."
       }
+    };
+
+    function setActiveModule(key) {
+      const mod = MODULES[key];
+      if (!mod) return;
+
+      document.getElementById("module-frame").src = mod.url;
+      document.getElementById("module-title").textContent = mod.title;
+      document.getElementById("module-desc").textContent = mod.desc;
+
+      document.querySelectorAll("#module-nav .nav-link").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.module === key);
+      });
     }
 
-    // Chạy hàm khi trang được tải
-    document.addEventListener('DOMContentLoaded', loadSidebar);
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-module]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          setActiveModule(btn.dataset.module);
+        });
+      });
+
+      // Load info user từ local/session storage (nếu có)
+      try {
+        const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
+        if (raw) {
+          const u = JSON.parse(raw);
+          if (u.userName) document.getElementById("sm-username").textContent = u.userName;
+        }
+      } catch {}
+
+      setActiveModule("sales");
+    });
   </script>
 
 </body>
