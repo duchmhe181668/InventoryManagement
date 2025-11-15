@@ -333,17 +333,6 @@
 
           f.Username.value = p?.username ?? nameFromToken ?? '';
           f.RoleName.value = p?.roleName ?? p?.role ?? '';
-
-          // Nếu là Supplier -> khóa ô email
-          if ((f.RoleName.value || '').toLowerCase() === 'supplier') {
-            f.Email.readOnly = true;
-            f.Email.classList.add('bg-light');
-            const note = document.createElement('div');
-            note.className = 'form-text text-muted';
-            note.textContent = 'Không thể đổi';
-            f.Email.parentElement.parentElement.appendChild(note);
-          }
-
           f.Name.value = p?.name ?? '';
           f.Email.value = p?.email ?? '';
           f.PhoneNumber.value = p?.phoneNumber ?? p?.phone ?? '';
@@ -371,13 +360,7 @@
         }
 
         let emailVal = (f.Email.value || '').trim();
-        const roleVal = (f.RoleName.value || '').toLowerCase();
-
-        // Nếu là Supplier -> không validate & không gửi email
-        if (roleVal === 'supplier') {
-          emailVal = null;
-          f.Email.classList.remove('is-invalid');
-        } else {
+        
           if (!emailVal) {
             errors.push('Email là bắt buộc');
             f.Email.classList.add('is-invalid');
@@ -387,7 +370,7 @@
           } else {
             f.Email.classList.remove('is-invalid');
           }
-        }
+        
 
         const phoneVal = (f.PhoneNumber.value || '').trim();
         if (!phoneVal) {
