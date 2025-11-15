@@ -635,7 +635,7 @@
         if (res.status === 401 || res.status === 403) { alert("Phiên hết hạn. Đăng nhập lại."); logout(); return true; }
         return false;
       }
-      document.getElementById("btn-logout").addEventListener("click", (e)=>{ e.preventDefault(); logout(); });
+      // document.getElementById("btn-logout").addEventListener("click", (e)=>{ e.preventDefault(); logout(); });
 
       // ====== UI helpers ======
       const VND = new Intl.NumberFormat("vi-VN");
