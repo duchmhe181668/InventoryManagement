@@ -155,12 +155,12 @@
 
 <script>
 (function(){
-  // ===== API endpoints =====
+  //  API endpoints 
   const ENDPOINTS = [
     'https://localhost:7225/api/Auth/register',
   ];
 
-  // ===== DOM =====
+  //  DOM 
   const alertBox = document.getElementById('alert');
   const frm = document.getElementById('frm');
   const btn = document.getElementById('btnReg');
@@ -182,7 +182,7 @@
     i.classList.toggle('bi-eye'); i.classList.toggle('bi-eye-slash');
   });
 
-  // ===== UI helpers =====
+  //  UI helpers 
   function showAlert(msg, type='danger'){
     alertBox.textContent = msg;
     alertBox.className = 'alert alert-'+type;
@@ -191,7 +191,7 @@
   function clearAlert(){ alertBox.className = 'alert d-none'; alertBox.textContent = ''; }
   function busy(b){ btn.disabled = b; spn.classList.toggle('d-none', !b); }
 
-  // ===== Auth helpers =====
+  //  Auth helpers 
   function persistAuth(result, remember) {
     const store = remember ? localStorage : sessionStorage;
     try { store.setItem('authUser', JSON.stringify(result)); } catch {}
@@ -215,7 +215,7 @@
     else location.href = 'home.html';
   }
 
-  // ===== Register call =====
+  //  Register call 
   async function register(payload){
     let last;
     for (const url of ENDPOINTS){
@@ -236,7 +236,7 @@
     throw last || new Error('Không thể gọi API đăng ký.');
   }
 
-  // ===== Submit =====
+  //  Submit 
   frm.addEventListener('submit', async (e)=>{
     e.preventDefault(); clearAlert();
 

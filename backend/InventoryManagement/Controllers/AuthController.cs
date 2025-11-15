@@ -30,7 +30,7 @@ namespace InventoryManagement.Controllers
             _jwt = jwt;
         }
 
-        /// Đăng nhập, trả về JWT.
+        /// Login
         [HttpPost("login")]
         [AllowAnonymous]
         [Consumes("application/json")]
@@ -66,7 +66,7 @@ namespace InventoryManagement.Controllers
                 ? Enumerable.Empty<string>()
                 : new[] { roleName! };
 
-            /// 5) SupplierId theo Email
+            /// Supplier nào / Store nào
             int? supplierId = null;
             if (!string.IsNullOrWhiteSpace(user.Email))
             {
@@ -82,7 +82,6 @@ namespace InventoryManagement.Controllers
                 .Select(s => (int?)s.StoreID)
                 .FirstOrDefaultAsync();
 
-            /// 7) Thêm extra claims và tạo token
             var extraClaims = new Dictionary<string, string>
             {
                 { "user_id", user.UserID.ToString() }
@@ -112,7 +111,7 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// Đăng ký tài khoản mới 
+        /// Đăng ký tài khoản 
         [HttpPost("register")]
         [AllowAnonymous]
         [Consumes("application/json")]
@@ -146,7 +145,7 @@ namespace InventoryManagement.Controllers
             var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName);
             if (role == null)
                 return BadRequest("Invalid role name.");
-
+            ///Hash mật khẩu và tạo User
             var bcrypt = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
             var hashBytes = Encoding.UTF8.GetBytes(bcrypt);
 
@@ -210,7 +209,7 @@ namespace InventoryManagement.Controllers
             });
         }
 
-        /// Test token: trả lại danh tính & claims
+        /// Test token trả lại danh tính & claims là gì trên Swagger
         [HttpGet("me")]
         [AllowAnonymous]
         [Produces("application/json")]
@@ -300,7 +299,7 @@ namespace InventoryManagement.Controllers
             return Ok(users);
         }
 
-        /// Lấy thông tin chi tiết người dùng
+        /// Profile cá nhân
         [HttpGet("user/{userId}")]
         [AllowAnonymous]
         [Produces("application/json")]
@@ -341,7 +340,7 @@ namespace InventoryManagement.Controllers
 
             if (u == null) return NotFound("User not found.");
 
-            // === BỔ SUNG LOGIC LẤY STORE ===
+            ///Lấy số Store của Supplier
             var store = await _db.Stores
                 .Include(s => s.Location) 
                 .AsNoTracking()
@@ -378,7 +377,7 @@ namespace InventoryManagement.Controllers
                 phoneNumber = u.PhoneNumber,
                 roleName = u.Role != null ? u.Role.RoleName : null,
 
-                // Trả thêm thông tin Store
+                
                 storeId = store?.StoreID,
                 storeDefaultLocationId = store?.LocationID,
                 storeDefaultLocationName = store?.Location?.Name
@@ -392,7 +391,7 @@ namespace InventoryManagement.Controllers
             public string? PhoneNumber { get; set; }
         }
 
-
+        /// Tự cập nhật profile cá nhân
         [HttpPut("profile")]
         [Authorize]
         [Consumes("application/json")]
@@ -422,10 +421,10 @@ namespace InventoryManagement.Controllers
             return NoContent();
         }
 
-        ///Forgot/Reset 
+        /// Forgot / Reset Password
 
         private static readonly ConcurrentDictionary<string, (string Code, DateTimeOffset ExpireAt)>
-            _resetCodes = new(StringComparer.OrdinalIgnoreCase);
+            _resetCodes = new(StringComparer.OrdinalIgnoreCase); /// Lấy user trong  RAM ko dùng DB
 
         private static string MakeNumericCode(int length)
         {
@@ -434,7 +433,7 @@ namespace InventoryManagement.Controllers
                 sb.Append(RandomNumberGenerator.GetInt32(0, 10)); 
             return sb.ToString();
         }
-
+        /// Check/sửa/xoá mã
         private static void PutResetCode(string username, string code, TimeSpan ttl)
         {
             _resetCodes[username] = (code, DateTimeOffset.UtcNow.Add(ttl));
@@ -451,7 +450,7 @@ namespace InventoryManagement.Controllers
         {
             _resetCodes.TryRemove(username, out _);
         }
-
+        /// Gửi Email
         private async Task TrySendResetCodeEmailAsync(string? toEmail, string code, int ttlMinutes)
         {
             if (string.IsNullOrWhiteSpace(toEmail)) return;
@@ -463,7 +462,7 @@ namespace InventoryManagement.Controllers
             var from = Environment.GetEnvironmentVariable("SMTP_FROM") ?? user;
 
             if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass) || string.IsNullOrWhiteSpace(from))
-                return; // chưa cấu hình SMTP → bỏ qua gửi thật
+                return; /// chưa cấu hình cho email thì bỏ qua 
 
             using var smtp = new SmtpClient(host, int.TryParse(portStr, out var p) ? p : 587)
             {
@@ -534,11 +533,11 @@ namespace InventoryManagement.Controllers
             {
                 message = "Nếu tài khoản tồn tại, mã đã được gửi.",
                 expiresInMinutes = ttlMinutes,
-                devCode = isDev ? code : null // chỉ trả code khi Development
+                devCode = isDev ? code : null /// trả Dev code để test trên Swagger 
             });
         }
 
-        ///Xác minh mã & đặt mật khẩu mới (không tạo bảng)
+        /// Xác minh mã / đặt mật khẩu mới 
         [HttpPost("reset")]               
         [HttpPost("reset-password")]      
         [AllowAnonymous]
@@ -576,7 +575,7 @@ namespace InventoryManagement.Controllers
             return NoContent();
         }
 
-        // DTO cho đổi mật khẩu khi đang đăng nhập
+        /// Đổi mật khẩu
         public sealed class ChangePasswordRequest
         {
             public string? CurrentPassword { get; set; }
@@ -595,7 +594,7 @@ namespace InventoryManagement.Controllers
 
             if (newer.Length < 6) return BadRequest("Mật khẩu mới tối thiểu 6 ký tự.");
 
-            // Lấy username từ JWT (AuthController đang tạo token với Name = Username)
+            // Lấy username từ JWT 
             var username = User?.Identity?.Name;
             if (string.IsNullOrWhiteSpace(username))
                 return Unauthorized("Không xác định người dùng.");
@@ -606,7 +605,7 @@ namespace InventoryManagement.Controllers
 
             if (user == null) return NotFound("User không tồn tại.");
 
-            // Đọc hash đang lưu (dự phòng trường hợp cũ mã hoá Unicode)
+            // Đọc hash đang lưu 
             string savedHash = Encoding.UTF8.GetString(user.PasswordHash).Trim();
             if (!(savedHash.StartsWith("$2a$") || savedHash.StartsWith("$2b$") || savedHash.StartsWith("$2y$")))
             {

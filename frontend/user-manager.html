@@ -166,64 +166,82 @@
   </div>
 
   <!-- Edit -->
-  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <form id="editForm" class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Sửa người dùng</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">   
+    <form id="editForm" class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Sửa người dùng</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div id="editModalAlert" class="alert d-none" role="alert"></div>
+
+        <input type="hidden" name="UserID">
+
+        <!-- Username -->
+        <div class="mb-2">
+          <label class="form-label">Username</label>
+          <div class="input-group pill">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            <input name="Username" class="form-control" readonly>
+          </div>
         </div>
-        <div class="modal-body">
-          <input type="hidden" name="UserID">
-          <div class="mb-2">
-            <label class="form-label">Username</label>
-            <div class="input-group pill">
-              <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-              <input name="Username" class="form-control">
-            </div>
+
+        <!-- Name -->
+        <div class="mb-2">
+          <label class="form-label">Name *</label>
+          <div class="input-group pill">
+            <span class="input-group-text"><i class="bi bi-person-badge-fill"></i></span>
+            <input name="Name" class="form-control" required>
           </div>
-          <div class="mb-2">
-            <label class="form-label">Name</label>
-            <div class="input-group pill">
-              <span class="input-group-text"><i class="bi bi-person-badge-fill"></i></span>
-              <input name="Name" class="form-control">
-            </div>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-2">
+          <label class="form-label">Email</label>
+          <div class="input-group pill">
+            <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+            <input name="Email" type="email" class="form-control"
+                   pattern="^[\w.+-]+@gmail\.com$">
           </div>
-          <div class="mb-2">
-            <label class="form-label">Email</label>
-            <div class="input-group pill">
-              <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-              <input name="Email" type="email" class="form-control">
-            </div>
+          <div class="invalid-feedback">Email phải có dạng @gmail.com</div>
+        </div>
+
+        <!-- Phone -->
+        <div class="mb-2">
+          <label class="form-label">Phone</label>
+          <div class="input-group pill">
+            <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
+            <input name="PhoneNumber" class="form-control"
+                   inputmode="numeric" maxlength="10" pattern="^\d{10}$">
           </div>
-          <div class="mb-2">
-            <label class="form-label">Phone</label>
-            <div class="input-group pill">
-              <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
-              <input name="PhoneNumber" class="form-control">
-            </div>
+          <div class="invalid-feedback">Số điện thoại phải gồm đúng 10 số</div>
+        </div>
+
+        <!-- RoleName -->
+        <div class="mb-2">
+          <label class="form-label">RoleName</label>
+          <div class="input-group pill">
+            <span class="input-group-text"><i class="bi bi-people-fill"></i></span>
+            <select name="RoleName" class="form-select" style="border:0;background:transparent;">
+              <option value="">— Giữ nguyên —</option>
+              <option value="Supplier">Supplier</option>
+              <option value="StoreManager">StoreManager</option>
+              <option value="WarehouseManager">WarehouseManager</option>
+            </select>
           </div>
-          <div>
-  <label class="form-label">RoleName</label>
-  <div class="input-group pill">
-    <span class="input-group-text"><i class="bi bi-people-fill"></i></span>
-    <select name="RoleName" class="form-select" style="border:0;background:transparent;">
-      <option value="">— Giữ nguyên —</option>
-      <option value="Supplier">Supplier</option>
-      <option value="StoreManager">StoreManager</option>
-      <option value="WarehouseManager">WarehouseManager</option>
-      
-    </select>
+        </div>
+      </div> <!-- /modal-body -->
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Đóng</button>
+        <button class="btn btn-primary" type="submit">Cập nhật</button>
+      </div>
+    </form>
   </div>
 </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Đóng</button>
-          <button class="btn btn-primary" type="submit">Cập nhật</button>
-        </div>
-      </form>
-    </div>
-  </div>
+
 
   <!-- Delete -->
   <div class="modal fade" id="delModal" tabindex="-1" aria-hidden="true">

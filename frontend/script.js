@@ -1,15 +1,14 @@
-// ===== User Manager (Admin only) — Danh sách + Thêm + Sửa + Xoá =====
-// API base cố định theo yêu cầu:
+
 let API_BASE = 'https://localhost:7225/api/Auth';
-API_BASE = API_BASE.replace(/\/+$/,''); // bỏ dấu / cuối
+API_BASE = API_BASE.replace(/\/+$/,''); 
 
 // ===== Endpoints =====
 const URL = {
   list:     () => `${API_BASE}/users`,
   byId:     (id) => `${API_BASE}/user/${id}`,
-  register: () => `${API_BASE}/register`,        // Backend đang mở AllowAnonymous; dùng cho tạo user
-  update:   (id) => `${API_BASE}/update/${id}`,  // [Authorize(Roles="Administrator")]
-  del:      (id) => `${API_BASE}/delete/${id}`,  // [Authorize(Roles="Administrator")]
+  register: () => `${API_BASE}/register`,        
+  update:   (id) => `${API_BASE}/update/${id}`,  
+  del:      (id) => `${API_BASE}/delete/${id}`,  
 };
 
 // ===== DOM =====
@@ -27,19 +26,43 @@ const addModal  = new bootstrap.Modal(document.getElementById('addModal'));
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 const delModal  = new bootstrap.Modal(document.getElementById('delModal'));
 
-// ===== UI helpers =====
-function showAlert(msg, type='danger', sticky=true) {
+//  UI helpers 
+function showAlert(msg, type = 'danger', sticky = true) {
+  const host =
+    document.querySelector('.modal.show .modal-body') ||
+    document.querySelector('.modal.show .modal-content');
+
+  if (host) {
+    let box = host.querySelector('.front-alert');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'alert front-alert mt-2';
+      host.prepend(box); // hiện ngay trên cùng modal
+    }
+    box.className = `alert alert-${type} front-alert mt-2`;
+    box.textContent = msg;
+    if (!sticky) setTimeout(() => box?.remove(), 3500);
+    return;
+  }
+
+  // nếu không có modal thì hiển thị ở alertBox như cũ
   if (!alertBox) return;
   alertBox.textContent = msg;
   alertBox.className = `alert alert-${type}`;
   alertBox.classList.remove('d-none');
   if (!sticky) setTimeout(() => alertBox.classList.add('d-none'), 3500);
 }
+
 function clearAlert() {
-  if (!alertBox) return;
-  alertBox.className = 'alert d-none';
-  alertBox.textContent = '';
+  // Ẩn alert trang chính
+  if (alertBox) {
+    alertBox.className = 'alert d-none';
+    alertBox.textContent = '';
+  }
+  // Gỡ mọi alert đang gắn trong modal 
+  document.querySelectorAll('.modal .front-alert').forEach(el => el.remove());
 }
+
 function setEmptyState(show) {
   emptyState?.classList.toggle('d-none', !show);
 }
@@ -50,9 +73,9 @@ function escapeHtml(s) {
     .replaceAll("'",'&#39;');
 }
 
-// ===== Token & Auth =====
+//  Token & Auth 
 function getStore() {
-  // Ưu tiên sessionStorage (nếu login KHÔNG tick “Ghi nhớ”), sau đó mới tới localStorage
+  // Ưu tiên sessionStorage, sau đó mới tới localStorage
   if (sessionStorage.getItem('accessToken') || sessionStorage.getItem('authToken')) return sessionStorage;
   if (localStorage.getItem('accessToken') || localStorage.getItem('authToken'))     return localStorage;
   return localStorage;
@@ -63,7 +86,6 @@ function getToken() {
   const type  = store.getItem('tokenType') || 'Bearer';
   return { token, type, store, has: !!token };
 }
-// Fallback: decode JWT 'exp' (seconds) → ms
 function getJwtExpMs(token) {
   try {
     const parts = token.split('.');
@@ -81,13 +103,13 @@ function parseExpireAt(raw) {
     if (Number.isFinite(t)) n = t;
   }
   if (!Number.isFinite(n)) return null;
-  if (n < 1e12) n *= 1000; // nếu là giây → ms
+  if (n < 1e12) n *= 1000; 
   return n;
 }
 function checkTokenExpiry() {
   const { token, store } = getToken();
   let expireAt = parseExpireAt(store.getItem('tokenExpireAt'));
-  if (!expireAt && token) expireAt = getJwtExpMs(token); // fallback từ JWT exp
+  if (!expireAt && token) expireAt = getJwtExpMs(token); 
   if (!expireAt) return true; // không biết hạn → cho qua
   return Date.now() <= (expireAt + 5000); // tolerance 5s
 }
@@ -122,7 +144,7 @@ async function fetchWithAuth(url, options = {}) {
     throw new Error('401 Unauthorized');
   }
   if (res.status === 403) {
-    // Không đủ quyền (không phải Admin) — không chuyển trang, chỉ cảnh báo
+    // Không đủ quyền (không phải Admin) — không chuyển trang
     showAlert('Bạn không có quyền thực hiện thao tác này (chỉ Administrator).', 'warning');
     throw new Error('403 Forbidden');
   }
@@ -138,13 +160,13 @@ async function fetchWithAuth(url, options = {}) {
   return data;
 }
 
-// ===== Role helpers (ẩn UI nếu không phải Admin) =====
+//  Role helpers (ẩn UI nếu không phải Admin) 
 function getRoleLower() {
   const store = getStore();
   const role = store.getItem('authRole');
   if (role) return role.toLowerCase();
 
-  // Fallback: thử đọc role từ JWT payload (các claim: "role" hoặc ClaimTypes.Role)
+  // Fallback: thử đọc role từ JWT payload 
   const { token } = getToken();
   if (!token) return '';
   try {
@@ -163,7 +185,7 @@ function hideAdminUiIfNeeded(){
   return isAdmin;
 }
 
-// ===== Misc helpers =====
+//  Misc helpers 
 function pick(obj, ...keys) {
   for (const k of keys) if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
   return undefined;
@@ -186,7 +208,7 @@ function unwrapList(data) {
   return [];
 }
 
-// ===== LOAD LIST =====
+//  LOAD LIST 
 async function loadUsers() {
   clearAlert();
   if (!ensureAuthOrRedirect()) return;
@@ -200,8 +222,7 @@ async function loadUsers() {
   } catch (e) {
     render([]);
     setEmptyState(true);
-    // showAlert đã hiển thị phù hợp trong fetchWithAuth (401/403),
-    // ở đây thêm chi tiết khi là lỗi khác:
+    
     if (!/401|403/.test(String(e))) {
       showAlert('Lỗi khi tải danh sách người dùng: ' + (e.message || e), 'danger', true);
     }
@@ -234,7 +255,7 @@ function render(list) {
         </button>`;
 
     const tr = document.createElement('tr');
-    tr.dataset.role = role || ''; // để guard ở click handler
+    tr.dataset.role = role || ''; 
     tr.innerHTML = `
       <td>${id}</td>
       <td>${escapeHtml(usern)}</td>
@@ -248,12 +269,11 @@ function render(list) {
   }
   tbody.appendChild(frag);
 
-  // Ẩn nút nếu người XEM không phải admin (giữ behavior cũ)
   hideAdminUiIfNeeded();
 }
 
 
-// ===== ADD =====
+//  ADD 
 addBtn?.addEventListener('click', () => {
   addForm.reset();
   clearAlert();
@@ -283,12 +303,11 @@ addForm?.addEventListener('submit', async (e) => {
     showAlert('Tạo người dùng thành công!', 'success', false);
     loadUsers();
   } catch (e2) {
-    // 403 sẽ được bắt sẵn trong fetchWithAuth
     if (!/401|403/.test(String(e2))) showAlert('Tạo thất bại: ' + e2.message, 'danger', true);
   }
 });
 
-// ===== ROW ACTIONS =====
+//  ROW ACTIONS 
 tbody.addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
@@ -319,21 +338,45 @@ tbody.addEventListener('click', async (e) => {
   }
 });
 
-// ===== UPDATE =====
+//  UPDATE 
 editForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  clearAlert();
+  clearAlert(); 
+
+  // alert ngay trong modal
+  const mAlert = document.getElementById('editModalAlert');
+  const showModalMsg = (msg, type='danger') => {
+    if (!mAlert) return;
+    mAlert.textContent = msg;
+    mAlert.className = `alert alert-${type}`;
+    mAlert.classList.remove('d-none');
+  };
+  // ẩn alert modal mỗi lần submit lại
+  if (mAlert) { mAlert.className = 'alert d-none'; mAlert.textContent = ''; }
+
   if (!ensureAuthOrRedirect()) return;
 
   const f = editForm;
   const id = f.UserID.value;
 
+  // --- VALIDATE như yêu cầu ---
+  const name = f.Name.value.trim();
+  const email = f.Email.value.trim();
+  const phone = f.PhoneNumber.value.trim();
+
+  if (!name) return showModalMsg('Vui lòng nhập Name.');
+  if (email && !/^[\w.+-]+@gmail\.com$/i.test(email))
+    return showModalMsg('Email phải có dạng @gmail.com');
+  if (phone && !/^\d{10}$/.test(phone))
+    return showModalMsg('Số điện thoại phải gồm đúng 10 số');
+
+  // --- KHÔNG cho sửa username: không đưa vào payload ---
   const payload = {};
-  if (f.Username.value.trim())    payload.Username    = f.Username.value.trim();
-  if (f.Name.value.trim())        payload.Name        = f.Name.value.trim();
-  if (f.Email.value.trim())       payload.Email       = f.Email.value.trim();
-  if (f.PhoneNumber.value.trim()) payload.PhoneNumber = f.PhoneNumber.value.trim();
-  if (f.RoleName.value.trim())    payload.RoleName    = f.RoleName.value.trim();
+  if (name)         payload.Name        = name;
+  if (email)        payload.Email       = email;
+  if (phone)        payload.PhoneNumber = phone;
+  if (f.RoleName.value.trim())
+                    payload.RoleName    = f.RoleName.value.trim();
 
   try {
     await fetchWithAuth(URL.update(id), { method: 'PUT', body: payload });
@@ -341,11 +384,12 @@ editForm?.addEventListener('submit', async (e) => {
     showAlert('Cập nhật thành công!', 'success', false);
     loadUsers();
   } catch (e2) {
+    // lỗi sẽ hiện trên nền trước (alert chung)
     if (!/401|403/.test(String(e2))) showAlert('Cập nhật thất bại: ' + e2.message, 'danger', true);
   }
 });
 
-// ===== DELETE =====
+//  DELETE 
 delForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert();
@@ -362,13 +406,12 @@ delForm?.addEventListener('submit', async (e) => {
   }
 });
 
-// ===== INIT =====
+//  INIT 
 document.addEventListener('DOMContentLoaded', () => {
   if (!ensureAuthOrRedirect()) return;
 
   const isAdmin = hideAdminUiIfNeeded();
   if (!isAdmin) {
-    // Không gọi API để tránh spam 403; chỉ báo quyền hạn
     showAlert('Trang này chỉ dành cho Administrator.', 'warning');
     setEmptyState(true);
     return;

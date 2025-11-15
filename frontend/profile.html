@@ -124,7 +124,6 @@
       <a id="btnBack" class="btn btn-light">
         <i class="bi bi-arrow-left me-1"></i> Về trang chủ
       </a>
-      <!-- <a href="home.html" class="btn btn-light"><i class="bi bi-arrow-left me-1"></i> Về trang chủ</a> -->
     </div>
     <div id="alert" class="alert d-none" role="alert"></div>
 
@@ -193,7 +192,7 @@
   <script>
     const btn = document.getElementById("btnBack");
     const rawRole = (sessionStorage.getItem("authRole") || localStorage.getItem("authRole") || "");
-    const role = rawRole.replace(/\s+/g, "").toLowerCase(); // chuẩn hóa "StoreManager" / "Store Manager"
+    const role = rawRole.replace(/\s+/g, "").toLowerCase(); 
 
     if (role === "supplier") {
       btn.href = "sup_po_list.html";
@@ -210,7 +209,7 @@
         profile: () => `${API_BASE}/profile`
       };
 
-      // ==== DOM ====
+      //  DOM 
       const f = {
         Username: document.getElementById('Username'),
         RoleName: document.getElementById('RoleName'),
@@ -224,7 +223,7 @@
       const btnReset = document.getElementById('btnReset');
       const spnLoad = document.getElementById('spnLoad');
 
-      // ==== UI helpers ====
+      //  UI helpers 
       function showAlert(msg, type = 'danger', sticky = true) {
         alertBox.textContent = msg;
         alertBox.className = `alert alert-${type}`;
@@ -234,7 +233,7 @@
       function clearAlert() { alertBox.className = 'alert d-none'; alertBox.textContent = ''; }
       function setBusy(b) { btnSave.disabled = b; spnLoad.classList.toggle('d-none', !b); }
 
-      // ==== Auth helpers ====
+      //  Auth helpers 
       function preferLocal() {
         return (localStorage.getItem('accessToken') || localStorage.getItem('authToken')) ? localStorage : sessionStorage;
       }
@@ -320,7 +319,7 @@
         return data;
       }
 
-      // ==== Load & Fill ====
+      //  Load & Fill 
       let original = null;
 
       async function loadProfile() {
@@ -360,7 +359,7 @@
         f.PhoneNumber.value = original.phoneNumber ?? original.phone ?? '';
       }
 
-      // ==== Submit ====
+      //  Submit 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!ensureAuthOrRedirect()) return;

@@ -112,6 +112,7 @@
     .tiny-link:hover{ text-decoration:underline; }
 
     .divider{ height:1px;background:#edf1f7;margin:14px 0 0; }
+    /* Form */
   </style>
 </head>
 <body>
@@ -167,7 +168,7 @@
       </a>
     </form>
   </div>
-
+<!-- Logic đăng nhập -->
 <script>
 (function () {
   const ENDPOINTS = [
@@ -230,7 +231,7 @@
     throw lastError || new Error('Không thể gọi API đăng nhập');
   }
 
-  // Fallback: đọc exp từ JWT nếu không có expiresInSeconds
+  // Đọc exp từ JWT nếu không có expiresInSeconds
   function getJwtExpMs(token) {
     try {
       const parts = token.split('.');
@@ -240,7 +241,7 @@
       return payload.exp * 1000; 
     } catch { return null; }
   }
-
+// Lưu role / storeId / supplierId sau khi login
   function persistAuth(result, remember) {
    
     const store = remember ? localStorage : sessionStorage;
@@ -249,7 +250,7 @@
 
     const token = result.accessToken || '';
     try { store.setItem('accessToken', token); } catch {}
-    try { store.setItem('authToken',  token); } catch {}       // alias cho code cũ
+    try { store.setItem('authToken',  token); } catch {}       
     try { store.setItem('tokenType', result.tokenType || 'Bearer'); } catch {}
     try { store.setItem('authRole',  result.role || ''); } catch {}
     try { store.setItem('authUserName', result.username || ''); } catch {}
@@ -268,31 +269,31 @@
       if (expMs) { try { store.setItem('tokenExpireAt', String(expMs)); } catch {} }
     }
   }
-
+// Đi trang nào theo role
   function redirectByRole(role) {
   const r = (role || '').toString().toLowerCase();
 
-  // StoreManager: chuyển sang dashboard riêng
+  // StoreManager
   if (r === 'storemanager') {
     window.location.href = 'dashboard_store/dashboard_store.html';
 
-  // Admin & Warehouse: vẫn vào home như cũ
+  // Admin & Warehouse
   } else if (r === 'administrator' || r === 'warehousemanager') {
     window.location.href = 'home.html';
 
-  // Supplier: danh sách PO của nhà cung cấp
+  // Supplier
   } else if (r === 'supplier') {
     window.location.href = 'sup_po_list.html';
 
-  // Role lạ -> fallback
   } else {
     window.location.href = 'home.html';
   }
 }
 
 
-    //  - Prefill bằng Credential API nếu có; nếu không, dùng fallback localStorage
-    //  - Sau khi đăng nhập, nếu tick #remember thì lưu credential (CMA) và fallback
+    //  - Prefill bằng Credential API nếu có; 
+    //  - Nếu không, dùng fallback localStorage
+    //  - Sau khi đăng nhập, nếu tick Ghi nhớ đăng nhập thì lưu credential và fallback
   function saveRememberFallback(username, password){
     try {
       localStorage.setItem('rememberUser', username);
@@ -324,7 +325,7 @@
           const r = document.getElementById('remember'); if (r) r.checked = true;
           return;
         }
-      } catch(e) { /* ignore */ }
+      } catch(e) {}
     }
     prefillRememberFallback();
   })();
@@ -356,6 +357,7 @@
     const remember = true;
 
     setBusy(true);
+    // Gọi phân quyền sau khi đăng nhập thành công
     try {
       const result = await login(username, password);
 
@@ -363,15 +365,13 @@
       localStorage.clear();
       persistAuth(result, remember);
 
-      // Lưu credential nếu tick "Ghi nhớ đăng nhập"
       if (document.getElementById('remember')?.checked) {
         if ('credentials' in navigator && window.PasswordCredential) {
           try {
             const cred = new PasswordCredential({ id: username, name: username, password });
             await navigator.credentials.store(cred);
-          } catch(e) { /* ignore */ }
+          } catch(e) {}
         }
-        // Luôn lưu fallback để đảm bảo có dữ liệu tự điền nếu CMA không trả về
         saveRememberFallback(username, password);
       }
 

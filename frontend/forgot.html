@@ -132,13 +132,13 @@
 
 <script>
 (function(){
-  // ====== Config endpoints 
+  //  Config endpoints 
   const ENDPOINTS = {
   forgot: ['https://localhost:7225/api/Auth/forgot'],
   reset:  ['https://localhost:7225/api/Auth/reset-password']
   };
 
-  // ====== DOM ======
+  //  DOM 
   const alertBox = document.getElementById('alert');
   const step1 = document.getElementById('step1');
   const step2 = document.getElementById('step2');
@@ -162,7 +162,7 @@
   const togglePw1 = document.getElementById('togglePw1');
   const togglePw2 = document.getElementById('togglePw2');
 
-  // ====== UI helpers ======
+  //  UI helpers 
   function showAlert(msg, type='danger'){
     alertBox.textContent = msg;
     alertBox.className = 'alert alert-' + type;
@@ -176,7 +176,7 @@
   togglePw1.addEventListener('click', ()=>{ const i=togglePw1.querySelector('i'); newPw.type = newPw.type==='password'?'text':'password'; i.classList.toggle('bi-eye'); i.classList.toggle('bi-eye-slash'); });
   togglePw2.addEventListener('click', ()=>{ const i=togglePw2.querySelector('i'); cfPw.type  = cfPw.type==='password'?'text':'password';  i.classList.toggle('bi-eye'); i.classList.toggle('bi-eye-slash'); });
 
-  // ====== Fetch helpers (no auth) ======
+  //  Fetch helpers (no auth) 
   async function postJson(urls, payload){
     let last;
     for(const u of urls){
@@ -198,7 +198,7 @@
     throw last || new Error('Không thể gọi API.');
   }
 
-  // ====== Resend countdown ======
+  //  Resend countdown 
   let timer = null, remain = 0;
   function startCountdown(sec=60){
     remain = sec;
@@ -220,7 +220,7 @@
     }
   }
 
-  // ====== Step control ======
+  //  Step control 
   function gotoStep2(){
     step1.classList.add('d-none');
     step2.classList.remove('d-none');
@@ -232,7 +232,7 @@
     clearAlert();
   });
 
-  // ====== Actions ======
+  //  Actions 
   // Step 1: gửi mã
   step1.addEventListener('submit', async (e)=>{
     e.preventDefault(); clearAlert();
@@ -296,8 +296,6 @@
         newPassword: newPw.value
       });
       showAlert('✅ Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.', 'success');
-      // Optional: chuyển về login
-      // setTimeout(()=> location.href='login.html', 800);
     }catch(err){
       showAlert(err?.message || 'Đặt lại mật khẩu thất bại.');
     }finally{
