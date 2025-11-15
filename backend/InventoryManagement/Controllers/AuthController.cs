@@ -231,34 +231,74 @@ namespace InventoryManagement.Controllers
         [Produces("application/json")]
         public async Task<ActionResult> UpdateUser(int userId, [FromBody] UpdateUserRequest req)
         {
-            var user = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == userId);
+            // 1️⃣ Tìm User
+            var user = await _db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.UserID == userId);
 
             if (user == null)
                 return NotFound("User not found.");
 
-            switch (user.Role?.RoleName) 
-            { 
+            // 2️⃣ Lưu email cũ để tìm Supplier
+            var oldEmail = user.Email;
+
+            // 3️⃣ Cập nhật thông tin User
+            switch (user.Role?.RoleName)
+            {
                 case "Supplier":
-                user.Name = req.Name?.Trim() ?? user.Name;
-                user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
-                break;
+                    user.Name = req.Name?.Trim() ?? user.Name;
+                    user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
 
-            default:
-                user.Username = req.Username?.Trim() ?? user.Username;
-                user.Name = req.Name?.Trim() ?? user.Name;
-                user.Email = string.IsNullOrWhiteSpace(req.Email) ? user.Email : req.Email.Trim();
-                user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+                    // ✅ CẬP NHẬT EMAIL NẾU CÓ
+                    if (!string.IsNullOrWhiteSpace(req.Email))
+                    {
+                        user.Email = req.Email.Trim();
+                    }
+                    break;
 
-                if (!string.IsNullOrWhiteSpace(req.RoleName))
-                {
-                    var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
-                    if (role != null)
-                        user.RoleID = role.RoleID;
-                }
-                break;
+                default:
+                    user.Username = req.Username?.Trim() ?? user.Username;
+                    user.Name = req.Name?.Trim() ?? user.Name;
+                    user.Email = string.IsNullOrWhiteSpace(req.Email)
+                        ? user.Email
+                        : req.Email.Trim();
+                    user.PhoneNumber = req.PhoneNumber?.Trim() ?? user.PhoneNumber;
+
+                    if (!string.IsNullOrWhiteSpace(req.RoleName))
+                    {
+                        var role = await _db.Roles
+                            .FirstOrDefaultAsync(r => r.RoleName == req.RoleName);
+                        if (role != null)
+                            user.RoleID = role.RoleID;
+                    }
+                    break;
             }
 
+            // 4️⃣ CẬP NHẬT SUPPLIER (nếu là Supplier role)
+            if (user.Role?.RoleName == "Supplier" && !string.IsNullOrWhiteSpace(oldEmail))
+            {
+                // Tìm Supplier theo email cũ
+                var supplier = await _db.Suppliers
+                    .FirstOrDefaultAsync(s => s.Email == oldEmail);
+
+                if (supplier != null)
+                {
+                    // ✅ Cập nhật thông tin Supplier
+                    supplier.Name = req.Name?.Trim() ?? supplier.Name;
+                    supplier.PhoneNumber = req.PhoneNumber?.Trim() ?? supplier.PhoneNumber;
+
+                    // Cập nhật email nếu có thay đổi
+                    if (!string.IsNullOrWhiteSpace(req.Email))
+                    {
+                        supplier.Email = req.Email.Trim();
+                    }
+                   
+                }
+            }
+
+            // 5️⃣ Lưu tất cả thay đổi
             await _db.SaveChangesAsync();
+
             return NoContent();
         }
 
@@ -439,7 +479,7 @@ namespace InventoryManagement.Controllers
         {
             _resetCodes[username] = (code, DateTimeOffset.UtcNow.Add(ttl));
         }
-
+        
         private static bool CheckResetCode(string username, string code)
         {
             if (!_resetCodes.TryGetValue(username, out var entry)) return false;
