@@ -1,12 +1,8 @@
-/* =========================
-   Transfer (TẠO MỚI / SỬA / XEM)
-   (Đã sửa để hỗ trợ ?id=... từ URL
-   và sửa lỗi UI "Xem phiếu")
-   ========================= */
+
 
 const API_BASE = 'https://localhost:7225';
 
-// ===== AUTH (Dán trực tiếp) =====
+// AUTH (Dán trực tiếp)
 function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -144,8 +140,6 @@ async function api(path, method='GET', body=null, mustOk=false) {
 async function loadHeaderNew() {
   // === SỬA ĐỔI: Gọi /api/lookups/locations ===
   const whs = await api('/api/lookups/locations?type=WAREHOUSE&active=true', 'GET', null, true);
-  
-  // Đổ dữ liệu vào <input> (đã sửa ở HTML)
   const defaultWh = whs?.[0];
   if (defaultWh) {
       el('fromLocationName').value = esc(defaultWh.name);
@@ -161,7 +155,7 @@ async function loadHeaderNew() {
   el('createdByName').value = me?.name || me?.username || '';
 }
 
-// ===== Tải dữ liệu cho chế độ Sửa/Xem =====
+// Tải dữ liệu cho chế độ Sửa/Xem 
 async function loadForEdit(id, isViewOnly) {
   try {
     // Gọi API GetTransfer (đã sửa ở Bước 1)
@@ -196,7 +190,6 @@ async function loadForEdit(id, isViewOnly) {
       el('btnDraft').style.display = 'none';
       el('btnSubmit').style.display = 'none';
 
-      // === SỬA ĐỔI: Ẩn 2 cột <th> khi CHỈ XEM ===
       el('th-available').style.display = 'none';
       el('th-delete').style.display = 'none';
 
