@@ -174,8 +174,6 @@
           </div>
         </div>
 
-
-
         <div class="divider"></div>
 
         <div class="d-flex gap-2 mt-3">
@@ -184,17 +182,26 @@
               aria-hidden="true"></span>
             <i class="bi bi-save2 me-1"></i> Lưu thay đổi
           </button>
-          <button type="button" id="btnReset" class="btn btn-light"><i class="bi bi-arrow-clockwise me-1"></i> Hoàn
-            tác</button>
+          <button type="button" id="btnReset" class="btn btn-light">
+            <i class="bi bi-arrow-clockwise me-1"></i> Hoàn tác
+          </button>
         </div>
+      </div>
     </form>
   </div>
 
   <script>
     const btn = document.getElementById("btnBack");
-    const role = (sessionStorage.getItem("authRole") || localStorage.getItem("authRole") || "").toLowerCase();
-    btn.href = role === "supplier" ? "sup_po_list.html" : "home.html";
+    const rawRole = (sessionStorage.getItem("authRole") || localStorage.getItem("authRole") || "");
+    const role = rawRole.replace(/\s+/g, "").toLowerCase(); // chuẩn hóa "StoreManager" / "Store Manager"
 
+    if (role === "supplier") {
+      btn.href = "sup_po_list.html";
+    } else if (role === "storemanager") {
+      btn.href = "dashboard_store/dashboard_store.html";
+    } else {
+      btn.href = "home.html";
+    }
 
     (function () {
       const API_BASE = 'https://localhost:7225/api/Auth';
@@ -406,7 +413,6 @@
         };
         if (emailVal) payload.Email = emailVal; // chỉ gửi nếu có
 
-
         setBusy(true);
         clearAlert();
         try {
@@ -422,7 +428,6 @@
       });
 
       btnReset.addEventListener('click', resetForm);
-
 
       loadProfile();
     })();
