@@ -175,7 +175,7 @@ const sort = $('#sort').value;
 const onlyAvail = $('#onlyAvail').checked;
 
 const qs = new URLSearchParams();
-if (search) qs.set('search', search);      // để nguyên, nó tự encode
+if (search) qs.set('search', search);      // encode
 if (cat) qs.set('categoryId', cat);
 if (onlyAvail) qs.set('onlyAvailable', 'true');
 qs.set('page', state.page);
