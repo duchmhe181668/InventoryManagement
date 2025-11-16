@@ -96,7 +96,6 @@ async function load(){
       <td>${escapeHtml(it.categoryName ?? '')}</td>
       <td class="text-end">${fmt(it.onHand)}</td>
       <td class="text-end">${fmt(it.reserved)}</td>
-      <td class="text-end">${fmt(it.inTransit)}</td>
       <td class="text-end fw-semibold">${fmt(it.available)}</td>
     `;
     tb.appendChild(tr);

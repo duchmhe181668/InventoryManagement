@@ -108,15 +108,24 @@ searchInput.addEventListener('keypress', e=>{ if(e.key==='Enter'){ state.search=
 btnPrev.addEventListener('click', ()=>{ if(state.page>1){ state.page--; fetchGoods(); }});
 btnNext.addEventListener('click', ()=>{ const m = /\/(\d+)/.exec(pageInfo.textContent); const pageCount = m ? Number(m[1]) : 1; if(state.page < pageCount){ state.page++; fetchGoods(); }});
 
-// ===== Categories load/list =====
+/// ===== Categories load/list & manage =====
 async function loadCategories(selectedId){
   try{
     const res = await fetch(API_CATS());
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const cats = await res.json();
     const sel = $('#catSelect');
-    sel.innerHTML = `<option value="">(Không)</option>` + (cats||[]).map(c=>`<option value="${c.categoryID??c.CategoryID}">${c.categoryName??c.CategoryName}</option>`).join('');
-    if(selectedId) sel.value = selectedId;
-  }catch{ /* ignore */ }
+    if(sel){
+      sel.innerHTML = `<option value="">(Không)</option>` + (cats||[]).map(c=>{
+        const id = c.categoryID ?? c.CategoryID;
+        const name = c.categoryName ?? c.CategoryName ?? '';
+        return `<option value="${id}">${name}</option>`;
+      }).join('');
+      if(selectedId) sel.value = selectedId;
+    }
+  }catch(err){
+    console.error('loadCategories error', err);
+  }
 }
 
 $('#btn-manage-cats').addEventListener('click', async ()=>{
@@ -128,7 +137,7 @@ async function refreshCatList(){
   catMsg.textContent = '';
   try{
     const res = await fetch(API_CATS());
-    if(!res.ok) throw 0;
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const cats = await res.json();
     catList.innerHTML = (cats||[]).map(c=>{
       const id = c.categoryID ?? c.CategoryID;
@@ -136,42 +145,105 @@ async function refreshCatList(){
       return `<li class="list-group-item d-flex justify-content-between align-items-center">
         <span>${name}</span>
         <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-primary" data-cat-edit="${id}" data-name="${name}"><i class="fa fa-pen"></i></button>
-          <button class="btn btn-outline-danger" data-cat-del="${id}"><i class="fa fa-trash"></i></button>
+          <button type="button" class="btn btn-outline-primary" data-cat-edit="${id}" data-name="${name}">
+            <i class="fa fa-pen"></i>
+          </button>
+          <button type="button" class="btn btn-outline-danger" data-cat-del="${id}">
+            <i class="fa fa-trash"></i>
+          </button>
         </div>
       </li>`;
     }).join('');
-  }catch{ catMsg.textContent = 'Không tải được danh mục'; }
+  }catch(err){
+    console.error('refreshCatList error', err);
+    catMsg.textContent = 'Không tải được danh mục';
+  }
 }
 
+// Thêm Category
 $('#btnCatAdd').addEventListener('click', async ()=>{
   const name = ($('#catName').value||'').trim();
-  if(!name){ catMsg.textContent = 'Nhập tên danh mục'; return; }
-  const res = await fetch(API_CATS(), {
-    method:'POST', headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({ categoryName: name })
-  });
-  if(res.ok){ $('#catName').value=''; await refreshCatList(); await loadCategories(); }
-  else catMsg.textContent = 'Không thêm được danh mục';
+  if(!name){
+    catMsg.textContent = 'Nhập tên danh mục';
+    return;
+  }
+  catMsg.textContent = '';
+  try{
+    const res = await fetch(API_CATS(), {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ categoryName: name })
+    });
+    if(res.ok){
+      $('#catName').value='';
+      await refreshCatList();
+      await loadCategories();
+    }else{
+      const msg = await res.text();
+      catMsg.textContent = msg || 'Không thêm được danh mục';
+    }
+  }catch(err){
+    console.error('add category error', err);
+    catMsg.textContent = 'Không thêm được danh mục (lỗi mạng/API)';
+  }
 });
 
+// Sửa / Xoá Category
 catList.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
+
+  // Sửa
   if(btn.dataset.catEdit){
-    const id = +btn.dataset.catEdit;
-    const old = btn.dataset.name;
-    const name = prompt('Tên mới', old||''); if(name==null) return;
-    const res = await fetch(`${API_CATS()}/${id}`, {
-      method:'PUT', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ categoryID:id, categoryName:name })
-    });
-    if(res.ok){ await refreshCatList(); await loadCategories(); } else catMsg.textContent='Không cập nhật được';
+    const id  = +btn.dataset.catEdit;
+    const old = btn.dataset.name || '';
+    const name = prompt('Tên mới', old);
+    if(name == null) return; // cancel
+    const trimmed = name.trim();
+    if(!trimmed){
+      catMsg.textContent = 'Tên danh mục không được để trống';
+      return;
+    }
+    catMsg.textContent = '';
+    try{
+      const res = await fetch(`${API_CATS()}/${id}`, {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ categoryID:id, categoryName:trimmed })
+      });
+      if(res.ok){
+        await refreshCatList();
+        await loadCategories();
+      }else{
+        const msg = await res.text();
+        catMsg.textContent = msg || 'Không cập nhật được danh mục';
+      }
+    }catch(err){
+      console.error('edit category error', err);
+      catMsg.textContent = 'Không cập nhật được danh mục (lỗi mạng/API)';
+    }
+    return;
   }
+
+  // Xoá
   if(btn.dataset.catDel){
     const id = +btn.dataset.catDel;
     if(!confirm('Xoá danh mục?')) return;
-    const res = await fetch(`${API_CATS()}/${id}`, { method:'DELETE' });
-    if(res.ok){ await refreshCatList(); await loadCategories(); } else catMsg.textContent='Không xoá được';
+    catMsg.textContent = '';
+    try{
+      const res = await fetch(`${API_CATS()}/${id}`, {
+        method:'DELETE'
+      });
+      if(res.ok){
+        await refreshCatList();
+        await loadCategories();
+      }else{
+        const msg = await res.text();
+        catMsg.textContent = msg || 'Không xoá được danh mục';
+      }
+    }catch(err){
+      console.error('delete category error', err);
+      catMsg.textContent = 'Không xoá được danh mục (lỗi mạng/API)';
+    }
   }
 });
 

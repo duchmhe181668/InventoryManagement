@@ -7,21 +7,46 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <style>
-    .img-120 { width:120px; height:120px; object-fit:cover; border-radius:16px; background:#f3f4f6; }
-    .kv { display:flex; align-items:center; gap:.5rem; }
-    .kv .k { min-width:120px; color:#6b7280; }
-    .shadow-soft { box-shadow:0 10px 30px rgba(0,0,0,.06); }
-    .stat { padding:.75rem 1rem; border-radius:12px; background:#f8fafc; text-align:center; }
-    .stat .h5 { margin:0; }
+    .img-120 {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 16px;
+      background: #f3f4f6;
+    }
+    .kv {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .kv .k {
+      min-width: 120px;
+      color: #6b7280;
+    }
+    .shadow-soft {
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .06);
+    }
+    .stat {
+      padding: .75rem 1rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      text-align: center;
+    }
+    .stat .h5 {
+      margin: 0;
+    }
   </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
     <div class="d-flex align-items-center gap-2 mb-3">
-      <a class="btn btn-sm btn-outline-secondary" href="store-goods.html"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
+      <a class="btn btn-sm btn-outline-secondary" href="store-goods.html">
+        <i class="fa-solid fa-arrow-left"></i> Quay lại
+      </a>
       <h3 class="m-0">Chi tiết hàng hóa (Store)</h3>
       <div class="ms-auto d-flex align-items-center gap-2">
-        <input id="api-base" class="form-control form-control-sm" style="width:320px" placeholder="https://localhost:7225">
+        <input id="api-base" class="form-control form-control-sm" style="width:320px"
+               placeholder="https://localhost:7225">
         <button id="btn-set-api" class="btn btn-sm btn-outline-primary">Set API</button>
       </div>
     </div>
@@ -35,30 +60,44 @@
           <div class="flex-grow-1">
             <h4 id="goodName" class="mb-1">—</h4>
             <div class="text-muted" id="goodCategory">—</div>
+
             <div class="row g-2 mt-2">
               <div class="col-md-6">
-                <div class="kv"><div class="k">SKU</div><div id="goodSKU">—</div></div>
-                <div class="kv"><div class="k">Barcode</div><div id="goodBarcode">—</div></div>
-                <div class="kv"><div class="k">Đơn vị</div><div id="goodUnit">—</div></div>
+                <div class="kv">
+                  <div class="k">SKU</div>
+                  <div id="goodSKU">—</div>
+                </div>
+                <div class="kv">
+                  <div class="k">Barcode</div>
+                  <div id="goodBarcode">—</div>
+                </div>
+                <div class="kv">
+                  <div class="k">Đơn vị</div>
+                  <div id="goodUnit">—</div>
+                </div>
               </div>
+
               <div class="col-md-6">
-                <div class="kv"><div class="k">Giá nhập</div><div id="goodCost">—</div></div>
-                <div class="kv"><div class="k">Giá bán</div><div id="goodSell">—</div></div>
-                <div class="kv"><div class="k">Available</div><div id="goodAvailable">—</div></div>
+                <div class="kv">
+                  <div class="k">Giá nhập</div>
+                  <div id="goodCost">—</div>
+                </div>
+                <div class="kv">
+                  <div class="k">Giá bán</div>
+                  <div id="goodSell">—</div>
+                </div>
+                
               </div>
             </div>
           </div>
         </div>
 
-        <div class="row g-3 mt-3">
-          <div class="col-md-3"><div class="stat"><div class="small text-muted">OnHand</div><div class="h5" id="statOnHand">—</div></div></div>
-          <div class="col-md-3"><div class="stat"><div class="small text-muted">Reserved</div><div class="h5" id="statReserved">—</div></div></div>
-          <div class="col-md-3"><div class="stat"><div class="small text-muted">InTransit</div><div class="h5" id="statInTransit">—</div></div></div>
-          <div class="col-md-3"><div class="stat"><div class="small text-muted">Available</div><div class="h5" id="statAvailable">—</div></div></div>
-        </div>
+
 
         <div class="mt-3 d-flex gap-2">
-          <button id="btn-edit-price" class="btn btn-primary"><i class="fa-solid fa-pen-to-square"></i> Sửa giá</button>
+          <button id="btn-edit-price" class="btn btn-primary">
+            <i class="fa-solid fa-pen-to-square"></i> Sửa giá
+          </button>
         </div>
       </div>
     </div>

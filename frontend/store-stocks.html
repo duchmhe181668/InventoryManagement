@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Warehouse — Stock Overview</title>
+  <title>Store — Stock Overview</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/css/app-ui.css" rel="stylesheet">
@@ -11,11 +11,14 @@
   <header class="page-hero">
     <div class="container-xxl d-flex align-items-center justify-content-between">
       <div>
-        <h1 class="page-title">Kho · Hàng tồn</h1>
-        <p class="page-subtitle text-muted">Xem số lượng OnHand , Reserved và Available</p>
+        <h1 class="page-title">Cửa hàng · Hàng tồn</h1>
+        <p class="small text-muted mb-0">
+          Store ID: <span id="storeLabel" class="fw-semibold">—</span>
+        </p>
       </div>
-      <div class="d-flex gap-2 align-items-center d-none">
-        <input id="api-base" class="form-control form-control-sm" style="width:320px" placeholder="https://localhost:7225" />
+      <div class="d-flex gap-2 align-items-center">
+        <input id="api-base" class="form-control form-control-sm" style="width:320px"
+               placeholder="https://localhost:7225" />
         <button id="btn-set-api" class="btn btn-sm btn-outline-secondary">Set API</button>
       </div>
     </div>
@@ -24,46 +27,52 @@
   <main class="container-xxl mt-3">
     <div class="card shadow-sm">
       <div class="card-body">
+        <!-- Bộ lọc -->
         <div class="row g-2 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label">Kho</label>
-            <select id="wh" class="form-select"></select>
+          <div class="col-md-4">
+            <label class="form-label">Tìm kiếm</label>
+            <input id="search" class="form-control" placeholder="SKU hoặc tên hàng..." />
           </div>
+
           <div class="col-md-3">
-            <label class="form-label">Search</label>
-            <input id="search" class="form-control" placeholder="SKU / Tên / Barcode">
-          </div>
-          <div class="col-md-2">
             <label class="form-label">Category</label>
             <select id="category" class="form-select">
-              <option value="">-- All --</option>
+              <option value="">Tất cả</option>
             </select>
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Sort</label>
+
+          <div class="col-md-3">
+            <label class="form-label">Sắp xếp</label>
             <select id="sort" class="form-select">
-              <option value="sku_asc">SKU ↑</option>
-              <option value="name_asc">Name ↑</option>
-              <option value="name_desc">Name ↓</option>
-              <option value="available_desc">Available ↓</option>
-              <option value="available_asc">Available ↑</option>
-              <option value="onhand_desc">OnHand ↓</option>
-              <option value="onhand_asc">OnHand ↑</option>
-            </select>
+    <option value="sku_asc">SKU ↑</option>
+    <option value="name_asc">Tên hàng (A → Z)</option>
+    <option value="name_desc">Tên hàng (Z → A)</option>
+    <option value="available_desc">Available giảm dần</option>
+    <option value="available_asc">Available tăng dần</option>
+</select>
+
           </div>
+
           <div class="col-md-2">
-            <div class="form-check mt-4 d-none">
-              <input id="onlyAvail" type="checkbox" class="form-check-input">
-              <label for="onlyAvail" class="form-check-label">Chỉ hiện Available &gt; 0</label>
+            <label class="form-label d-block">&nbsp;</label>
+            <div class="d-flex align-items-center gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="onlyAvail">
+                <label class="form-check-label small" for="onlyAvail">
+                  Chỉ còn hàng
+                </label>
+              </div>
+              <button id="btn-refresh" class="btn btn-outline-primary btn-sm ms-auto">
+                Refresh
+              </button>
             </div>
           </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 mt-3">
-          <button id="btn-refresh" class="btn btn-primary">Tải danh sách</button>
-        </div>
+        <hr class="my-3" />
 
-        <div class="table-responsive mt-3">
+        <!-- Bảng kết quả -->
+        <div class="table-responsive">
           <table class="table table-sm table-hover align-middle">
             <thead class="table-light">
               <tr>
@@ -72,6 +81,7 @@
                 <th style="width:140px">Category</th>
                 <th class="text-end" style="width:110px">OnHand</th>
                 <th class="text-end" style="width:110px">Reserved</th>
+                <th class="text-end" style="width:110px">InTransit</th>
                 <th class="text-end" style="width:120px">Available</th>
               </tr>
             </thead>
@@ -89,6 +99,6 @@
     </div>
   </main>
 
-  <script src="warehouse-stocks.js" defer></script>
+  <script src="store-stocks.js" defer></script>
 </body>
 </html>

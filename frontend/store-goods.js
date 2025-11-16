@@ -70,7 +70,7 @@ btnSetStore.addEventListener('click', ()=>{
 async function fetchGoods(){
   mainMsg.textContent = '';
   if(!storeId){
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5">Nhập <b>Store ID</b> rồi bấm <b>Set</b>.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5">Nhập <b>Store ID</b> rồi bấm <b>Set</b>.</td></tr>`;
     pageInfo.textContent = '—';
     return;
   }
@@ -88,7 +88,7 @@ async function fetchGoods(){
     renderRows(items);
     renderPager(data);
   }catch(err){
-    tbody.innerHTML = `<tr><td colspan="9" class="text-danger text-center py-4">Không tải được danh sách (${err.message})</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-danger text-center py-4">Không tải được danh sách (${err.message})</td></tr>`;
     pageInfo.textContent = '—';
   }
 }
@@ -117,18 +117,31 @@ function renderRows(items){
       <td><span class="badge bg-light text-dark">${g.sku}</span></td>
       <td>${g.barcode ? `<span class="badge bg-secondary-subtle text-dark">${g.barcode}</span>` : ''}</td>
       <td>${g.categoryName}</td>
-      <td class="text-end ${(+g.available)<=0?'text-danger-strong':''}">${fmt(g.available)}</td>
       <td class="text-end">${fmt(g.priceBuy)}</td>
       <td class="text-end">${fmt(g.priceSell)}</td>
       <td class="text-end">
-        <button class="btn btn-sm btn-outline-primary" data-act="price" data-id="${g.goodID}" data-price="${g.priceSell}">
-          <i class="fa-solid fa-pen-to-square"></i>
-        </button>
+        <div class="btn-group btn-group-sm justify-content-end" role="group">
+          <!-- Sửa giá -->
+          <button class="btn btn-sm btn-outline-primary"
+                  data-act="price"
+                  data-id="${g.goodID}"
+                  data-price="${g.priceSell}">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+
+          <!-- Xem chi tiết -->
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-act="detail"
+                  data-id="${g.goodID}">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
+
 function renderPager(data){
   const total = data.total ?? data.Total ?? 0;
   const pageCount = data.pageCount ?? data.PageCount ?? 1;
@@ -143,17 +156,31 @@ searchInput.addEventListener('keypress', e=>{ if(e.key==='Enter'){ state.search=
 btnPrev.addEventListener('click', ()=>{ if(state.page>1){ state.page--; fetchGoods(); }});
 btnNext.addEventListener('click', ()=>{ state.page++; fetchGoods(); });
 
-// ===== Edit price (StorePrices) =====
+// ===== Edit price (StorePrices) & view detail =====
 tbody.addEventListener('click', (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
-  if(btn.dataset.act==='price'){
+  const act = btn.dataset.act;
+
+  // Sửa giá
+  if(act === 'price'){
     editingGoodId = +btn.dataset.id;
     priceForm.price.value = btn.dataset.price || 0;
     priceForm.effectiveFrom.value = '';
     priceMsg.textContent = '';
     priceModal.show();
   }
+  // Xem chi tiết
+  else if(act === 'detail'){
+    const goodId = btn.dataset.id;
+    if(goodId){
+      const url = new URL('store-good-detail.html', window.location.href);
+      url.searchParams.set('goodId', goodId);
+      if(storeId) url.searchParams.set('storeId', storeId);
+      window.location.href = url.toString();
+    }
+  }
 });
+
 priceForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   if(!storeId || !editingGoodId) return;
