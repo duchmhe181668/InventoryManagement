@@ -531,7 +531,7 @@
 
     const role = (getAuthPayload()?.role || parseJwt(getAccessToken())?.role || "").toString();
     const picker = document.getElementById('store-picker');
-    if (role === 'WarehouseManager') {
+    if (role === 'WarehouseManager' || role === 'Administrator') {
       picker.classList.remove('d-none');
       await setupStorePicker();
     } else {
@@ -664,10 +664,22 @@
           node.style.display='none';
         }
 
-        if (role ==='WarehouseManager')
+        if (role ==='WarehouseManager' )
         {
           document.getElementById('acc-manager').classList.add('d-none');
           document.getElementById('acc-manager').style.display='none';
+        }
+
+        if (role ==='Administrator')
+        {
+          document.getElementById('hid').classList.add('d-none');
+          document.getElementById('hid').style.display='none';
+          document.getElementById('hid1').classList.add('d-none');
+          document.getElementById('hid1').style.display='none';
+          document.getElementById('hid2').classList.add('d-none');
+          document.getElementById('hid2').style.display='none';
+          document.getElementById('hid3').classList.add('d-none');
+          document.getElementById('hid3').style.display='none';
         }
       })();
     });
