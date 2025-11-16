@@ -20,27 +20,8 @@
     </div>
 
     <div class="row g-4">
-      <!-- Nhập kho -->
-      <div class="col-md-3">
-        <div class="card h-100 shadow-lg border-0 rounded-3">
-          <div class="text-center mt-3">
-            <img src="https://cdn-icons-png.flaticon.com/512/126/126515.png" class="img-fluid" alt="Nhập kho" style="width:100px;">
-          </div>
-          <div class="card-body text-center">
-            <h5 class="card-title fw-bold">Nhập kho</h5>
-            <p class="card-text text-muted">Ghi nhận hàng hóa được nhập kho.</p>
-          </div>
-          <div class="card-footer bg-transparent text-center">
-            <!-- ĐÃ CẬP NHẬT HREF TẠI ĐÂY -->
-            <a href="transfer/transfer.html" class="btn btn-success px-4">Nhập hàng</a>
-
-          </div>
-        </div>
-      </div>
-
-
       <!-- Báo cáo -->
-      <div class="col-md-3">
+      <!-- <div class="col-md-3">
         <div class="card h-100 shadow-lg border-0 rounded-3">
           <div class="text-center mt-3">
             <img src="https://cdn-icons-png.flaticon.com/512/1828/1828884.png" class="img-fluid" alt="Báo cáo" style="width:100px;">
@@ -50,167 +31,156 @@
             <p class="card-text text-muted">Sales, Margin & Stock.</p>
           </div>
           <div class="card-footer bg-transparent text-center">
-            <button class="btn btn-outline-primary px-4" id="btn-open-reports">
+            <a class="btn btn-outline-primary px-4" id="btn-open-reports">
               <i class="bi bi-graph-up me-1"></i> Mở báo cáo
-            </button>
+            </a>
           </div>
         </div>
-      </div> 
-    </div> 
-  </div>
-
-  <!-- Modal: Reports -->
-  <div class="modal fade" id="reportsModal" tabindex="-1" aria-labelledby="reportsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-xl">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-graph-up-arrow me-2"></i>Báo cáo</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-
-        <div class="modal-body">
-
-          <!-- Store picker (chỉ hiển thị với WarehouseManager) -->
-          <div id="store-picker" class="mb-3 d-none">
-            <div class="row g-2 align-items-center">
-              <div class="col-auto"><span class="small text-muted">Cửa hàng:</span></div>
-              <div class="col-auto">
-                <select id="store-select" class="form-select form-select-sm"></select>
-              </div>
-              <div class="col-auto">
-                <button id="store-apply" class="btn btn-sm btn-outline-primary">Áp dụng</button>
-              </div>
-              <div class="col-auto small text-muted">
-                Đang xem: <span id="store-address-current" class="fw-semibold"></span>
-              </div>
-            </div>
-          </div>
-
-          <ul class="nav nav-tabs mb-3" id="rptTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rpt-sales-pane" type="button">Sales</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-margin-pane" type="button">Margin</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-stock-pane" type="button">Stock</button>
-            </li>
-          </ul>
-
-          <div class="tab-content">
-            <!-- SALES -->
-            <div class="tab-pane fade show active" id="rpt-sales-pane">
-              <div class="row g-2 align-items-end mb-2">
-                <div class="col-12 col-sm-3">
-                  <label class="form-label small text-muted">Từ ngày</label>
-                  <input type="date" id="rpt-sales-from" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-3">
-                  <label class="form-label small text-muted">Đến ngày</label>
-                  <input type="date" id="rpt-sales-to" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-6 text-sm-end">
-                  <button class="btn btn-primary btn-sm" id="rpt-sales-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
-                  <button class="btn btn-outline-secondary btn-sm" id="rpt-sales-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
-                </div>
-              </div>
-              <div class="small text-muted mb-2" id="rpt-sales-summary">—</div>
-              <div class="table-responsive">
-                <table class="table table-sm table-striped align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Ngày</th>
-                      <th class="text-end">Số HĐ</th>
-                      <th class="text-end">Doanh thu</th>
-                      <!-- <th class="text-end">AOV</th> -->
-                    </tr>
-                  </thead>
-                  <tbody id="rpt-sales-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- MARGIN -->
-            <div class="tab-pane fade" id="rpt-margin-pane">
-              <div class="row g-2 align-items-end mb-2">
-                <div class="col-12 col-sm-3">
-                  <label class="form-label small text-muted">Từ ngày</label>
-                  <input type="date" id="rpt-margin-from" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-3">
-                  <label class="form-label small text-muted">Đến ngày</label>
-                  <input type="date" id="rpt-margin-to" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-6 text-sm-end">
-                  <button class="btn btn-primary btn-sm" id="rpt-margin-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
-                  <button class="btn btn-outline-secondary btn-sm" id="rpt-margin-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
-                </div>
-              </div>
-              <div class="small text-muted mb-2" id="rpt-margin-summary">—</div>
-              <div class="table-responsive">
-                <table class="table table-sm table-striped align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Sản phẩm</th>
-                      <th class="text-end">SL</th>
-                      <th class="text-end">Doanh thu</th>
-                      <th class="text-end">Giá vốn</th>
-                      <th class="text-end">Lợi nhuận</th>
-                      <th class="text-end">Margin %</th>
-                    </tr>
-                  </thead>
-                  <tbody id="rpt-margin-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- STOCK -->
-            <div class="tab-pane fade" id="rpt-stock-pane">
-              <div class="d-flex justify-content-between align-items-end mb-2">
-                <div class="small text-muted">
-                  Tồn kho tại: <span id="current-store-address" class="fw-semibold"></span>
-                </div>
-                <div>
-                  <button class="btn btn-primary btn-sm" id="rpt-stock-run"><i class="bi bi-arrow-repeat me-1"></i>Nạp</button>
-                  <button class="btn btn-outline-secondary btn-sm" id="rpt-stock-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
-                </div>
-              </div>
-              <div class="small text-muted mb-2" id="rpt-stock-summary">—</div>
-              <div class="table-responsive">
-                <table class="table table-sm table-striped align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Sản phẩm</th>
-                      <th>ĐVT</th>
-                      <th class="text-end">Tồn</th>
-                      <th class="text-end">Giá vốn</th>
-                      <th class="text-end">Giá bán</th>
-                    </tr>
-                  </thead>
-                  <tbody id="rpt-stock-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-        </div>
-      </div>
+      </div> -->
     </div>
-  </div>
+
+    <!-- PANEL: Reports (luôn hiện trên main) -->
+    <div id="reports-panel" class="card shadow-lg border-0 rounded-3 mt-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-graph-up-arrow me-2"></i>Báo cáo
+        </h5>
+        <!-- <button id="btn-close-reports" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x-lg me-1"></i>Đóng
+        </button> -->
+      </div>
+      <div class="card-body">
+
+        <!-- Store picker (chỉ hiển thị với WarehouseManager) -->
+        <div id="store-picker" class="mb-3 d-none">
+          <div class="row g-2 align-items-center">
+            <div class="col-auto"><span class="small text-muted">Cửa hàng:</span></div>
+            <div class="col-auto">
+              <select id="store-select" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-auto">
+              <button id="store-apply" class="btn btn-sm btn-outline-primary">Áp dụng</button>
+            </div>
+            <div class="col-auto small text-muted">
+              Đang xem: <span id="store-address-current" class="fw-semibold"></span>
+            </div>
+          </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" id="rptTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rpt-sales-pane" type="button">Sales</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-margin-pane" type="button">Margin</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rpt-stock-pane" type="button">Stock</button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- SALES -->
+          <div class="tab-pane fade show active" id="rpt-sales-pane">
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-12 col-sm-3">
+                <label class="form-label small text-muted">Từ ngày</label>
+                <input type="date" id="rpt-sales-from" class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-sm-3">
+                <label class="form-label small text-muted">Đến ngày</label>
+                <input type="date" id="rpt-sales-to" class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-sm-6 text-sm-end">
+                <button class="btn btn-primary btn-sm" id="rpt-sales-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
+                <button class="btn btn-outline-secondary btn-sm" id="rpt-sales-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+              </div>
+            </div>
+            <div class="small text-muted mb-2" id="rpt-sales-summary">—</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Ngày</th>
+                    <th class="text-end">Số HĐ</th>
+                    <th class="text-end">Doanh thu</th>
+                  </tr>
+                </thead>
+                <tbody id="rpt-sales-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- MARGIN -->
+          <div class="tab-pane fade" id="rpt-margin-pane">
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-12 col-sm-3">
+                <label class="form-label small text-muted">Từ ngày</label>
+                <input type="date" id="rpt-margin-from" class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-sm-3">
+                <label class="form-label small text-muted">Đến ngày</label>
+                <input type="date" id="rpt-margin-to" class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-sm-6 text-sm-end">
+                <button class="btn btn-primary btn-sm" id="rpt-margin-run"><i class="bi bi-play-fill me-1"></i>Tạo báo cáo</button>
+                <button class="btn btn-outline-secondary btn-sm" id="rpt-margin-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+              </div>
+            </div>
+            <div class="small text-muted mb-2" id="rpt-margin-summary">—</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sản phẩm</th>
+                    <th class="text-end">SL</th>
+                    <th class="text-end">Doanh thu</th>
+                    <th class="text-end">Giá vốn</th>
+                    <th class="text-end">Lợi nhuận</th>
+                    <th class="text-end">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody id="rpt-margin-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- STOCK -->
+          <div class="tab-pane fade" id="rpt-stock-pane">
+            <div class="d-flex justify-content-between align-items-end mb-2">
+              <div class="small text-muted">
+                Tồn kho tại: <span id="current-store-address" class="fw-semibold"></span>
+              </div>
+              <div>
+                <button class="btn btn-primary btn-sm" id="rpt-stock-run"><i class="bi bi-arrow-repeat me-1"></i>Nạp</button>
+                <button class="btn btn-outline-secondary btn-sm" id="rpt-stock-csv"><i class="bi bi-download me-1"></i>Tải CSV</button>
+              </div>
+            </div>
+            <div class="small text-muted mb-2" id="rpt-stock-summary">—</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Sản phẩm</th>
+                    <th>ĐVT</th>
+                    <th class="text-end">Tồn</th>
+                    <th class="text-end">Giá vốn</th>
+                    <th class="text-end">Giá bán</th>
+                  </tr>
+                </thead>
+                <tbody id="rpt-stock-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end reports-panel -->
+
+  </div><!-- end content -->
 
   <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- load sidebar -->
-  <script>
-    fetch("sidebar.html")
-      .then(res => res.text())
-      .then(data => { document.getElementById("sidebar").innerHTML = data; });
-  </script>
 
   <!-- logout helper -->
   <script>
@@ -255,56 +225,55 @@
     }catch{ return null; }
   }
   function getAuthPayload() {
-  // Gộp dữ liệu thay vì return sớm
-  const payload = {};
-  try {
-    const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
-    if (raw) Object.assign(payload, JSON.parse(raw));
-  } catch {}
+    const payload = {};
+    try {
+      const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+      if (raw) Object.assign(payload, JSON.parse(raw));
+    } catch {}
 
-  // token + type
-  payload.accessToken =
-    localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") ||
-    localStorage.getItem("authToken")   || sessionStorage.getItem("authToken")   || "";
-  payload.tokenType =
-    localStorage.getItem("tokenType")   || sessionStorage.getItem("tokenType")   || "Bearer";
+    // token + type
+    payload.accessToken =
+      localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") ||
+      localStorage.getItem("authToken")   || sessionStorage.getItem("authToken")   || "";
+    payload.tokenType =
+      localStorage.getItem("tokenType")   || sessionStorage.getItem("tokenType")   || "Bearer";
 
-  // role (nếu có trong JWT)
-  const claims = payload.accessToken ? (parseJwt(payload.accessToken) || {}) : {};
-  payload.role = payload.role || claims["role"] || claims["roles"] || "";
+    // role (nếu có trong JWT)
+    const claims = payload.accessToken ? (parseJwt(payload.accessToken) || {}) : {};
+    payload.role = payload.role || claims["role"] || claims["roles"] || "";
 
-  // storeId: ưu tiên LS/SS -> fallback claim
-  const sFromStorage = localStorage.getItem("storeId") || sessionStorage.getItem("storeId");
-  if (sFromStorage && !Number.isNaN(Number(sFromStorage))) payload.storeId = Number(sFromStorage);
+    // storeId: ưu tiên LS/SS -> fallback claim
+    const sFromStorage = localStorage.getItem("storeId") || sessionStorage.getItem("storeId");
+    if (sFromStorage && !Number.isNaN(Number(sFromStorage))) payload.storeId = Number(sFromStorage);
 
-  if (payload.storeId == null) {
-    const keys = ["storeId","store_id","sid","store","StoreId","StoreID"];
-    for (const k of keys) {
-      if (claims[k] != null && claims[k] !== "") {
-        const v = Number(claims[k]);
-        if (!Number.isNaN(v)) {
-          payload.storeId = v;
-          break;
+    if (payload.storeId == null) {
+      const keys = ["storeId","store_id","sid","store","StoreId","StoreID"];
+      for (const k of keys) {
+        if (claims[k] != null && claims[k] !== "") {
+          const v = Number(claims[k]);
+          if (!Number.isNaN(v)) {
+            payload.storeId = v;
+            break;
+          }
         }
       }
     }
+    return payload.accessToken ? payload : null;
   }
-  return payload.accessToken ? payload : null;
-}
   function getAccessToken(){ return getAuthPayload()?.accessToken || ""; }
   function getTokenType(){ return getAuthPayload()?.tokenType || "Bearer"; }
   function getStoreId() {
-  // 1) Ưu tiên giá trị đã lưu khi bấm Áp dụng
-  const v1 = Number(sessionStorage.getItem('storeId') || localStorage.getItem('storeId'));
-  if (Number.isFinite(v1) && v1 > 0) return v1;
+    // 1) Ưu tiên giá trị đã lưu khi bấm Áp dụng
+    const v1 = Number(sessionStorage.getItem('storeId') || localStorage.getItem('storeId'));
+    if (Number.isFinite(v1) && v1 > 0) return v1;
 
-  // 2) Từ payload/claims
-  const v2 = getAuthPayload()?.storeId;
-  if (typeof v2 === "number" && v2 > 0) return v2;
+    // 2) Từ payload/claims
+    const v2 = getAuthPayload()?.storeId;
+    if (typeof v2 === "number" && v2 > 0) return v2;
 
-  // 3) Không có -> null
-  return null;
-}
+    // 3) Không có -> null
+    return null;
+  }
   function authHeaders(extra = {}) {
     const h = { "Accept": "application/json", ...extra };
     const t = getAccessToken(); const ty = getTokenType();
@@ -335,11 +304,11 @@
 
   // ===== Store picker helpers =====
   function setSelectedStore(storeId) {
-  try {
-    sessionStorage.setItem('storeId', String(storeId));
-    localStorage.setItem('storeId', String(storeId));   // lưu cả 2 nơi cho chắc
-  } catch {}
-}
+    try {
+      sessionStorage.setItem('storeId', String(storeId));
+      localStorage.setItem('storeId', String(storeId));
+    } catch {}
+  }
   function getStoreFromCache(id) {
     return STORES_CACHE.find(s => s.storeId === Number(id));
   }
@@ -427,7 +396,6 @@
       const date = r.date || '';
       const cnt = Number(r.invoiceCount || r.count || 0);
       const rev = Number(r.revenue || 0);
-      //const aov = Number(r.aov || (cnt ? Math.round(rev/cnt) : 0));
 
       totalCount += cnt; totalRevenue += rev;
 
@@ -442,7 +410,6 @@
       csv.push(`${date},${cnt},${rev}`);
     });
 
-   // const aovAll = totalCount ? Math.round(totalRevenue/totalCount) : 0;
     summaryEl.textContent = `Tổng: ${fmt(totalCount)} HĐ • ${fmt(totalRevenue)} VND `;
     updateStoreAddressBadges();
     return { csv };
@@ -548,32 +515,59 @@
     return { csv };
   }
 
+  // ===== Hàm mở báo cáo (dùng cho load trang + nút) =====
+  async function openReportsPanel() {
+    const reportsPanel = document.getElementById('reports-panel');
+    const df = startOfMonthStr(), dt = todayStr();
+
+    if (!document.getElementById('rpt-sales-from').value)
+      document.getElementById('rpt-sales-from').value = df;
+    if (!document.getElementById('rpt-sales-to').value)
+      document.getElementById('rpt-sales-to').value   = dt;
+    if (!document.getElementById('rpt-margin-from').value)
+      document.getElementById('rpt-margin-from').value= df;
+    if (!document.getElementById('rpt-margin-to').value)
+      document.getElementById('rpt-margin-to').value  = dt;
+
+    const role = (getAuthPayload()?.role || parseJwt(getAccessToken())?.role || "").toString();
+    const picker = document.getElementById('store-picker');
+    if (role === 'WarehouseManager') {
+      picker.classList.remove('d-none');
+      await setupStorePicker();
+    } else {
+      picker.classList.add('d-none');
+      await ensureAddressForCurrentStore();
+    }
+
+    reportsPanel.classList.remove('d-none');
+  }
+
   // ===== Wire up =====
-  let reportsModal;
   document.addEventListener('DOMContentLoaded', async () => {
-    reportsModal = new bootstrap.Modal(document.getElementById('reportsModal'));
+    const reportsPanel = document.getElementById('reports-panel');
 
-    // mở modal
-    document.getElementById('btn-open-reports').addEventListener('click', async () => {
-      const df = startOfMonthStr(), dt = todayStr();
-      if (!document.getElementById('rpt-sales-from').value)  document.getElementById('rpt-sales-from').value = df;
-      if (!document.getElementById('rpt-sales-to').value)    document.getElementById('rpt-sales-to').value   = dt;
-      if (!document.getElementById('rpt-margin-from').value) document.getElementById('rpt-margin-from').value= df;
-      if (!document.getElementById('rpt-margin-to').value)   document.getElementById('rpt-margin-to').value  = dt;
+    // Hiện báo cáo luôn khi load trang
+    try {
+      await openReportsPanel();
+    } catch(e) {
+      console.error(e);
+    }
 
-      // hiện bộ chọn khi role = WarehouseManager
-      const role = (getAuthPayload()?.role || parseJwt(getAccessToken())?.role || "").toString();
-      const picker = document.getElementById('store-picker');
-      if (role === 'WarehouseManager') {
-        picker.classList.remove('d-none');
-        await setupStorePicker();
-      } else {
-        picker.classList.add('d-none');
-        await ensureAddressForCurrentStore();
-      }
+    // Nút card "Mở báo cáo": chỉ cuộn xuống khu báo cáo (không cần để mở)
+    const btnOpen = document.getElementById('btn-open-reports');
+    if (btnOpen) {
+      btnOpen.addEventListener('click', () => {
+        reportsPanel.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
 
-      reportsModal.show();
-    });
+    // nút đóng panel: ẩn, nhưng có thể mở lại bằng nút card
+    const btnClose = document.getElementById('btn-close-reports');
+    if (btnClose) {
+      btnClose.addEventListener('click', () => {
+        reportsPanel.classList.add('d-none');
+      });
+    }
 
     // Áp dụng cửa hàng
     document.getElementById('store-apply').addEventListener('click', async () => {
@@ -584,9 +578,9 @@
       // refresh tab đang mở
       const active = document.querySelector('#rptTabs .nav-link.active')?.getAttribute('data-bs-target');
       try {
-        if (active === '#rpt-sales-pane')      await runSalesReport();
+        if (active === '#rpt-sales-pane')       await runSalesReport();
         else if (active === '#rpt-margin-pane') await runMarginReport();
-        else                                     await runStockReport();
+        else                                    await runStockReport();
       } catch(err){ alert('Lỗi tải báo cáo: ' + (err?.message || err)); }
     });
 
@@ -623,50 +617,60 @@
       csvDownload(`stock_${todayStr()}.csv`, lastStockCsv);
     });
   });
-  // get role
+
+  // get role + sidebar
   function readFirst(obj, keys){
-  for (const k of keys){
-    if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+    for (const k of keys){
+      if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+    }
+    return null;
   }
-  return null;
-}
-function normalizeRoles(val){
-  if (!val) return [];
-  if (Array.isArray(val)) return val.map(String).filter(Boolean);
-  if (typeof val === "string"){
-    // có nơi trả "Admin" hoặc "Admin,StoreManager"
-    return val.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+  function normalizeRoles(val){
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(String).filter(Boolean);
+    if (typeof val === "string"){
+      return val.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+    }
+    return [String(val)].filter(Boolean);
   }
-  return [String(val)].filter(Boolean);
-}
-fetch("sidebar.html")
-  .then(r=>r.text())
-  .then(html=>{
-    document.getElementById("sidebar").innerHTML = html;
-    (function applySidebarRole(){
-      const role = (function(){
-        try{
-          const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
-          if (raw){ const o = JSON.parse(raw); if (o?.role) return o.role; if (o?.roles?.length) return String(o.roles[0]); }
-        }catch{}
-        const t = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || localStorage.getItem("authToken") || sessionStorage.getItem("authToken") || "";
-        if (!t) return null;
-        try{
-          const claims = JSON.parse(atob(t.split('.')[1]));
-          const v = claims.role || claims.roles || claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"];
-          return Array.isArray(v) ? v[0] : v || null;
-        }catch{ return null; }
+  fetch("sidebar.html")
+    .then(r=>r.text())
+    .then(html=>{
+      document.getElementById("sidebar").innerHTML = html;
+      (function applySidebarRole(){
+        const role = (function(){
+          try{
+            const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+            if (raw){
+              const o = JSON.parse(raw);
+              if (o?.role) return o.role;
+              if (o?.roles?.length) return String(o.roles[0]);
+            }
+          }catch{}
+          const t = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || localStorage.getItem("authToken") || sessionStorage.getItem("authToken") || "";
+          if (!t) return null;
+          try{
+            const claims = JSON.parse(atob(t.split('.')[1]));
+            const v = claims.role || claims.roles || claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"];
+            return Array.isArray(v) ? v[0] : v || null;
+          }catch{ return null; }
+        })();
+        console.log('[host] role =', role);
+        const salesA = document.getElementById('menu-sales');
+        const node = salesA?.closest('li') || salesA;
+
+        if (role !== 'StoreManager' && node){
+          node.classList.add('d-none');
+          node.style.display='none';
+        }
+
+        if (role ==='WarehouseManager')
+        {
+          document.getElementById('acc-manager').classList.add('d-none');
+          document.getElementById('acc-manager').style.display='none';
+        }
       })();
-      console.log('[host] role =', role);
-      const salesA = document.getElementById('menu-sales');
-      const node = salesA?.closest('li') || salesA;
-      
-      if (role !== 'StoreManager' && node){
-        node.classList.add('d-none');
-        node.style.display='none';
-      }
-    })();
-  });
+    });
   </script>
 </body>
 </html>

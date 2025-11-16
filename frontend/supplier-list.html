@@ -166,9 +166,41 @@
 <script src="./supplier-list.js"></script>
 <script>
   // Nạp sidebar giống home.html
-    fetch('sidebar.html').then(r=>r.text()).then(html=>{
-      document.getElementById('sidebar').innerHTML = html;
-    }).catch(()=>{ /* ignore */ });
+    fetch("sidebar.html")
+  .then(r=>r.text())
+  .then(html=>{
+    document.getElementById("sidebar").innerHTML = html;
+    (function applySidebarRole(){
+      const role = (function(){
+        try{
+          const raw = localStorage.getItem("authUser") || sessionStorage.getItem("authUser");
+          if (raw){ const o = JSON.parse(raw); if (o?.role) return o.role; if (o?.roles?.length) return String(o.roles[0]); }
+        }catch{}
+        const t = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || localStorage.getItem("authToken") || sessionStorage.getItem("authToken") || "";
+        if (!t) return null;
+        try{
+          const claims = JSON.parse(atob(t.split('.')[1]));
+          const v = claims.role || claims.roles || claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"];
+          return Array.isArray(v) ? v[0] : v || null;
+        }catch{ return null; }
+      })();
+      console.log('[host] role =', role);
+      const salesA = document.getElementById('menu-sales');
+      const node = salesA?.closest('li') || salesA;
+      
+      if (role !== 'StoreManager' && node){
+        node.classList.add('d-none');
+        node.style.display='none';
+      }
+
+      if (role ==='WarehouseManager')
+      {
+        document.getElementById('acc-manager').classList.add('d-none');
+        document.getElementById('acc-manager').style.display='none';
+
+      }
+    })();
+  });
   </script>
 </script>
 </body>
