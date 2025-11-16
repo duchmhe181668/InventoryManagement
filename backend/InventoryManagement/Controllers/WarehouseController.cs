@@ -10,6 +10,8 @@ using InventoryManagement.Dto.TransferOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+// Thêm thư viện này nếu chưa có
+using System.Text.Json; 
 
 namespace InventoryManagement.Controllers
 {
@@ -37,22 +39,14 @@ namespace InventoryManagement.Controllers
                 .Include(t => t.ToLocation)
                 .AsQueryable();
 
-            // === SỬA ĐỔI: Logic lọc mới ===
-            
-            // 1. Quy tắc cứng: WM không bao giờ nhìn thấy phiếu Draft (Nháp)
             q = q.Where(t => t.Status != "Draft");
 
-            // 2. Xử lý bộ lọc từ Frontend
             if (!string.IsNullOrWhiteSpace(status)) 
             {
-                // Nếu có chọn cụ thể (Approved, Received...) thì lọc theo nó
                 q = q.Where(t => t.Status == status);
             }
-            // Nếu status rỗng (Tất cả), thì code sẽ chạy qua đây và lấy HẾT (trừ Draft)
 
-            // === KẾT THÚC SỬA ĐỔI ===
-
-            var list = await q.OrderByDescending(t => t.CreatedAt) // Nên sắp xếp mới nhất lên đầu
+            var list = await q.OrderByDescending(t => t.CreatedAt) 
                 .Select(t => new
                 {
                     transferID = t.TransferID,
@@ -68,7 +62,12 @@ namespace InventoryManagement.Controllers
             return Ok(list);
         }
 
-        // GET /api/warehouse/transfers/{id} -> LOGIC MỚI: TỰ ĐỘNG PHÂN BỔ LÔ (FEFO)
+        //
+        // ***************************************************************
+        // HÀM WAREHOUSE DETAIL ĐÃ ĐƯỢC SỬA (THEO Good.cs)
+        // ***************************************************************
+        //
+        // GET /api/warehouse/transfers/{id}
         [HttpGet("transfers/{id:int}")]
         public async Task<IActionResult> WarehouseDetail(int id)
         {
@@ -85,7 +84,6 @@ namespace InventoryManagement.Controllers
                     x.CreatedBy,
                     CreatedByName = _db.Users.Where(u => u.UserID == x.CreatedBy).Select(u => u.Name).FirstOrDefault(),
                     x.CreatedAt,
-                    // Lấy danh sách items yêu cầu
                     RequestItems = _db.TransferItems
                         .Where(ti => ti.TransferID == x.TransferID)
                         .Select(ti => new { ti.GoodID, ti.Quantity })
@@ -95,93 +93,113 @@ namespace InventoryManagement.Controllers
                 
             if (t == null) return NotFound("Không tìm thấy phiếu transfer.");
 
-            // === THUẬT TOÁN FEFO (First Expired First Out) ===
-            var pickList = new List<object>();
-            var fromLocId = t.FromLocationID;
+            var finalDisplayList = new List<object>();
 
-            foreach (var req in t.RequestItems)
+            if (t.Status == "Approved")
             {
-                // 1. Lấy thông tin hàng hóa
-                var good = await _db.Goods.AsNoTracking()
-                    .Where(g => g.GoodID == req.GoodID)
-                    .Select(g => new { g.SKU, g.Name, g.Barcode })
-                    .FirstOrDefaultAsync();
+                var fromLocId = t.FromLocationID;
 
-                // 2. Lấy danh sách các Lô có tồn kho (OnHand > 0) tại kho nguồn
-                // Sắp xếp: Hết hạn trước (ExpiryDate) -> Nhập trước (BatchID nhỏ)
-                var availableBatches = await _db.Stocks.AsNoTracking()
-                    .Include(s => s.Batch)
-                    .Where(s => s.LocationID == fromLocId && s.GoodID == req.GoodID && s.OnHand > 0)
-                    .OrderBy(s => s.Batch.ExpiryDate) // Ưu tiên date gần
-                    .ThenBy(s => s.BatchID)           // Sau đó ưu tiên lô cũ
-                    .Select(s => new 
-                    { 
-                        s.BatchID, 
-                        BatchNo = s.Batch.BatchNo, 
-                        ExpiryDate = s.Batch.ExpiryDate,
-                        // Tồn khả dụng để xuất = OnHand - Reserved (nếu có logic reserved riêng)
-                        // Ở đây ta dùng OnHand vì logic Approved đã giữ Reserved ở Batch 0 hoặc tổng
-                        AvailableQty = s.OnHand 
-                    })
-                    .ToListAsync();
-
-                decimal remainingNeeded = req.Quantity;
-
-                // 3. Phân bổ số lượng vào từng lô
-                foreach (var batch in availableBatches)
+                foreach (var req in t.RequestItems)
                 {
-                    if (remainingNeeded <= 0) break;
-
-                    var take = Math.Min(remainingNeeded, batch.AvailableQty);
+                    // 1. Lấy thông tin hàng hóa (THÊM PriceCost)
+                    var good = await _db.Goods.AsNoTracking()
+                        .Where(g => g.GoodID == req.GoodID)
+                        // Lấy đúng PriceCost từ Good.cs
+                        .Select(g => new { g.SKU, g.Name, g.Barcode, g.PriceCost }) 
+                        .FirstOrDefaultAsync();
                     
-                    pickList.Add(new 
+                    // Lấy giá vốn trực tiếp
+                    var costPrice = good?.PriceCost ?? 0m; 
+
+                    // 2. Lấy danh sách các Lô có tồn kho (FEFO)
+                    var availableBatches = await _db.Stocks.AsNoTracking()
+                        .Include(s => s.Batch)
+                        .Where(s => s.LocationID == fromLocId && s.GoodID == req.GoodID && s.OnHand > 0)
+                        .OrderBy(s => s.Batch.ExpiryDate) 
+                        .ThenBy(s => s.BatchID)           
+                        .Select(s => new 
+                        { 
+                            s.BatchID, 
+                            BatchNo = s.Batch.BatchNo, 
+                            ExpiryDate = s.Batch.ExpiryDate,
+                            AvailableQty = s.OnHand 
+                        })
+                        .ToListAsync();
+
+                    decimal remainingNeeded = req.Quantity;
+
+                    // 3. Phân bổ số lượng vào từng lô
+                    foreach (var batch in availableBatches)
                     {
-                        goodID = req.GoodID,
-                        sku = good.SKU,
-                        name = good.Name,
-                        barcode = good.Barcode,
-                        quantityNeeded = req.Quantity, // Tổng cần
+                        if (remainingNeeded <= 0) break;
+                        var take = Math.Min(remainingNeeded, batch.AvailableQty);
                         
-                        // Thông tin xuất
-                        batchID = batch.BatchID,
-                        batchNo = batch.BatchNo,
-                        expiryDate = batch.ExpiryDate,
-                        pickQty = take // Số lượng lấy từ lô này
-                    });
+                        finalDisplayList.Add(new 
+                        {
+                            goodID = req.GoodID, sku = good.SKU, name = good.Name, barcode = good.Barcode,
+                            batchID = batch.BatchID, batchNo = batch.BatchNo, expiryDate = batch.ExpiryDate,
+                            pickQty = take,
+                            costPrice = costPrice, // <-- THÊM MỚI
+                            totalCost = take * costPrice // <-- THÊM MỚI
+                        });
+                        remainingNeeded -= take;
+                    }
 
-                    remainingNeeded -= take;
+                    // Nếu thiếu hàng
+                    if (remainingNeeded > 0)
+                    {
+                        finalDisplayList.Add(new 
+                        {
+                            goodID = req.GoodID, sku = good.SKU, name = good.Name, barcode = good.Barcode,
+                            batchID = (int?)null, batchNo = "KHÔNG ĐỦ HÀNG", expiryDate = (DateTime?)null,
+                            pickQty = remainingNeeded,
+                            isMissing = true,
+                            costPrice = costPrice, // <-- THÊM MỚI
+                            totalCost = remainingNeeded * costPrice // <-- THÊM MỚI
+                        });
+                    }
                 }
-
-                // Nếu sau khi quét hết các lô mà vẫn thiếu hàng
-                if (remainingNeeded > 0)
+            }
+            else // (Received, Shipped, Cancelled...)
+            {
+                foreach (var req in t.RequestItems)
                 {
-                    // Thêm một dòng báo thiếu (BatchID = null hoặc đặc biệt) để FE hiển thị cảnh báo
-                    pickList.Add(new 
+                    // Lấy thông tin hàng hóa (THÊM PriceCost)
+                    var good = await _db.Goods.AsNoTracking()
+                        .Where(g => g.GoodID == req.GoodID)
+                        .Select(g => new { g.SKU, g.Name, g.Barcode, g.PriceCost }) // <-- SỬA Ở ĐÂY
+                        .FirstOrDefaultAsync();
+
+                    var costPrice = good?.PriceCost ?? 0m; // <-- SỬA Ở ĐÂY
+
+                    finalDisplayList.Add(new 
                     {
                         goodID = req.GoodID,
-                        sku = good.SKU,
-                        name = good.Name,
-                        barcode = good.Barcode,
-                        quantityNeeded = req.Quantity,
+                        sku = good?.SKU,
+                        name = good?.Name,
+                        barcode = good?.Barcode,
+                        
                         batchID = (int?)null,
-                        batchNo = "KHÔNG ĐỦ HÀNG",
+                        batchNo = (t.Status == "Cancelled") ? "ĐÃ HỦY" : "ĐÃ XUẤT KHO", // Sẽ bị JS ẩn đi
                         expiryDate = (DateTime?)null,
-                        pickQty = remainingNeeded,
-                        isMissing = true
+                        pickQty = req.Quantity, 
+                        isMissing = false,
+                        costPrice = costPrice, // <-- THÊM MỚI
+                        totalCost = req.Quantity * costPrice // <-- THÊM MỚI
                     });
                 }
             }
             
-            // Trả về đối tượng kết hợp thông tin phiếu và danh sách gợi ý xuất kho
+            // Trả về đối tượng kết hợp
             return Ok(new {
                 t.TransferID,
                 t.FromLocationID, t.FromLocationName,
                 t.ToLocationID, t.ToLocationName,
                 t.Status, t.CreatedBy, t.CreatedByName, t.CreatedAt,
-                PickList = pickList // Frontend sẽ vẽ bảng dựa trên list này
+                PickList = finalDisplayList 
             });
         }
-
+        
         // POST /api/warehouse/transfers/{id}/accept -> WM Chấp nhận theo PickList
         [HttpPost("transfers/{id:int}/accept")]
         public async Task<IActionResult> AcceptTransfer(int id, [FromBody] TransferShipDto dto)
@@ -197,10 +215,8 @@ namespace InventoryManagement.Controllers
             if (dto.Lines == null || dto.Lines.Count == 0)
                 return BadRequest("Danh sách xuất kho trống.");
             
-            // Duyệt qua từng dòng xuất kho (Pick Line)
             foreach (var line in dto.Lines)
             {
-                // Validate Item
                 var transferItem = t.Items.FirstOrDefault(x => x.GoodID == line.GoodID);
                 if (transferItem == null) 
                     return BadRequest($"Sản phẩm (GoodID {line.GoodID}) không có trong phiếu.");
@@ -216,24 +232,21 @@ namespace InventoryManagement.Controllers
                 }
                 fromStock.OnHand -= line.ShipQty;
 
-                // 2. Trừ Tồn Đặt giữ (Reserved) của Kho (thường nằm ở Batch 0 hoặc tổng)
-                // Logic: Tìm dòng Batch 0 để trừ reserved
+                // 2. Trừ Tồn Đặt giữ (Reserved) của Kho
                 var reservedStock = await _db.Stocks.FirstOrDefaultAsync(s =>
                     s.LocationID == t.FromLocationID && s.GoodID == line.GoodID && s.BatchID == 0);
                 
                 if (reservedStock != null)
                 {
-                    // Trừ reserved. Nếu < 0 thì set về 0 (đề phòng lệch data)
                     reservedStock.Reserved -= line.ShipQty;
                     if (reservedStock.Reserved < 0) reservedStock.Reserved = 0;
                 }
                 else 
                 {
-                    // Nếu không có Batch 0, thử trừ chính dòng batch đang xuất (nếu logic reserve lưu vào đó)
                     if (fromStock.Reserved >= line.ShipQty) fromStock.Reserved -= line.ShipQty;
                 }
 
-                // 3. Tăng Tồn Kho (OnHand) tại Cửa hàng (Store) - Giữ nguyên BatchID để truy xuất
+                // 3. Tăng Tồn Kho (OnHand) tại Cửa hàng (Store)
                 var toStock = await _db.Stocks.FirstOrDefaultAsync(s =>
                     s.LocationID == t.ToLocationID && s.GoodID == line.GoodID && s.BatchID == line.BatchID);
                 
@@ -242,16 +255,14 @@ namespace InventoryManagement.Controllers
                     toStock = new Stock { 
                         LocationID = t.ToLocationID, 
                         GoodID = line.GoodID, 
-                        BatchID = line.BatchID, // Chuyển nguyên Lô sang
+                        BatchID = line.BatchID, 
                         OnHand = 0, Reserved = 0, InTransit = 0 
                     };
                     _db.Stocks.Add(toStock);
                 }
                 toStock.OnHand += line.ShipQty;
 
-                // Cập nhật thông tin vào TransferItem (để biết đã xuất bao nhiêu)
-                // Lưu ý: 1 TransferItem có thể được xuất từ NHIỀU batch khác nhau.
-                // Ở đây ta cộng dồn ShippedQty và ReceivedQty
+                // Cập nhật thông tin vào TransferItem
                 transferItem.ShippedQty += line.ShipQty;
                 transferItem.ReceivedQty += line.ShipQty; // 1-Bước: Nhận luôn
             }
@@ -272,31 +283,26 @@ namespace InventoryManagement.Controllers
                                        .FirstOrDefaultAsync(x => x.TransferID == id);
             if (t == null) return NotFound("Không tìm thấy phiếu transfer.");
             
-            // Chỉ cho phép từ chối khi đang Approved (đã giữ hàng) hoặc Draft
             if (t.Status != "Approved" && t.Status != "Draft")
                 return BadRequest("Chỉ có thể từ chối phiếu ở trạng thái 'Approved' hoặc 'Draft'.");
 
-            // Nếu là Approved, cần HOÀN TRẢ lại Reserved
             if (t.Status == "Approved")
             {
-                // Gom nhóm items để trả reserved
                 var itemsGroup = t.Items.GroupBy(i => i.GoodID)
                     .Select(g => new { GoodID = g.Key, Qty = g.Sum(i => i.Quantity) });
 
                 foreach (var item in itemsGroup)
                 {
-                    // Tìm dòng Batch 0 (hoặc dòng đang giữ reserved) để trả lại
                     var reservedStock = await _db.Stocks.FirstOrDefaultAsync(s =>
                         s.LocationID == t.FromLocationID && s.GoodID == item.GoodID && s.BatchID == 0);
                     
                     if (reservedStock != null)
                     {
                         reservedStock.Reserved -= item.Qty;
-                        if (reservedStock.Reserved < 0) reservedStock.Reserved = 0; // Safety
+                        if (reservedStock.Reserved < 0) reservedStock.Reserved = 0; 
                     }
                     else 
                     {
-                        // Nếu không có Batch 0, thử tìm dòng nào có reserved > 0 để trừ
                         var anyStock = await _db.Stocks.FirstOrDefaultAsync(s => 
                             s.LocationID == t.FromLocationID && s.GoodID == item.GoodID && s.Reserved >= item.Qty);
                         if(anyStock != null) anyStock.Reserved -= item.Qty;

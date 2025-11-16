@@ -92,18 +92,28 @@
 
             <div class="card-body p-0">
               <div class="table-responsive">
+                
                 <table class="table table-sm align-middle mb-0 table-hover">
                   <thead class="table-light">
                     <tr>
-                      <th>Tên hàng</th>
-                      <th>Barcode</th>
-                      <th style="width: 150px;">Lô (Batch)</th>
-                      <th style="width: 120px;">Hạn sử dụng</th>
-                      <th class="text-center" style="width: 100px;">SL Xuất</th>
+                      <th style="width: 35%;">Tên hàng</th>
+                      <th style="width: 20%;">Barcode</th>
+                      <th style="width: 15%;" class="text-end">Giá vốn</th>
+                      <th style="width: 15%;" class="text-end">Tổng tiền (Vốn)</th>
+                      <th style="width: 15%;" class="text-center">SL Xuất</th>
                     </tr>
                   </thead>
-                  <tbody id="mTbody"></tbody>
+                  <tbody id="mTbody">
+                    </tbody>
+                  <tfoot class="table-group-divider fw-bold">
+                      <tr>
+                          <td colspan="3" class="text-end">TỔNG CỘNG:</td>
+                          <td id="mTotalAmount" class="text-end text-danger fs-6">0</td>
+                          <td id="mTotalQty" class="text-center text-primary fs-6">0</td>
+                      </tr>
+                  </tfoot>
                 </table>
+
               </div>
             </div>
           </div>

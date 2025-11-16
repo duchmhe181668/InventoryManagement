@@ -59,6 +59,13 @@ const esc = s => (s ?? '').toString().replace(/[&<>"'\\]/g, m => ({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','\\':'&#92;'
 }[m]));
 
+// Định dạng tiền tệ (Helper mới)
+const formatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  minimumFractionDigits: 0
+});
+
 function getStatusBadge(status) {
     const s = (status || 'draft').toLowerCase();
     const map = {
@@ -202,7 +209,7 @@ async function handleActionClick(e) {
   el('actionWrap').style.display = (action === 'process') ? 'block' : 'none';
   
   try {
-    // Gọi API Detail (Backend trả về PickList theo FEFO)
+    // Gọi API Detail (Backend trả về PickList theo FEFO VÀ GIÁ)
     const data = await api(`/api/warehouse/transfers/${id}`); 
     if (!data) throw new Error('Không tìm thấy dữ liệu phiếu.');
     
@@ -223,17 +230,38 @@ async function handleActionClick(e) {
   }
 }
 
+//
+// *****************************************************************
+// HÀM ĐÃ ĐƯỢC SỬA (BÊN DƯỚI) - ĐỂ THÊM GIÁ VÀ BỎ LÔ/HSD
+// *****************************************************************
+//
 function renderModalItems() {
   const tbody = el('mTbody');
+  
+  // Biến đếm tổng
+  let grandTotalQty = 0;
+  let grandTotalAmount = 0;
+
   if (!CURRENT_MODAL_ITEMS || CURRENT_MODAL_ITEMS.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted p-3">Không có dữ liệu xuất kho.</td></tr>`;
+    // Set tổng về 0
+    el('mTotalQty').textContent = '0';
+    el('mTotalAmount').textContent = '0';
     return;
   }
   
   tbody.innerHTML = CURRENT_MODAL_ITEMS.map((item) => {
-    // Format ngày hết hạn
-    const expiryDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('vi-VN') : '---';
     
+    // Cập nhật tổng (chỉ cộng nếu không thiếu hàng)
+    if (!item.isMissing) {
+        grandTotalQty += item.pickQty;
+        grandTotalAmount += (item.totalCost || 0);
+    }
+
+    // Định dạng tiền
+    const costPrice = item.costPrice ? formatter.format(item.costPrice) : '---';
+    const totalCost = item.totalCost ? formatter.format(item.totalCost) : '---';
+
     // Nếu là dòng báo thiếu hàng (Backend trả về flag isMissing)
     if (item.isMissing) {
         return `
@@ -244,13 +272,14 @@ function renderModalItems() {
             </td>
             <td>${esc(item.barcode)}</td>
             <td colspan="2" class="text-danger fw-bold text-center align-middle">
-                <i class="fa-solid fa-triangle-exclamation me-1"></i> KHÔNG ĐỦ HÀNG TRONG KHO
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> KHÔNG ĐỦ HÀNG
             </td>
             <td class="text-center fw-bold text-danger align-middle">${item.pickQty}</td>
         </tr>`;
     }
-
-    // Dòng bình thường (có Batch)
+    
+    // Dòng bình thường (ĐÃ BỎ LÔ/HSD theo yêu cầu)
+    // Hiển thị 5 cột: Tên, Barcode, Giá vốn, Tổng tiền, SL
     return `
     <tr>
       <td>
@@ -258,15 +287,17 @@ function renderModalItems() {
         <div class="small text-muted">SKU: ${esc(item.sku)}</div>
       </td>
       <td>${esc(item.barcode)}</td>
-      <td>
-        <span class="badge bg-light text-dark border">
-            ${esc(item.batchNo)} <span class="text-muted ms-1">(#${item.batchID})</span>
-        </span>
-      </td>
-      <td>${expiryDate}</td>
+      <td class="text-end">${costPrice}</td>
+      <td class="text-end">${totalCost}</td>
       <td class="text-center fw-bold text-primary fs-6">${item.pickQty}</td>
     </tr>
-  `}).join('');
+  `;
+
+  }).join('');
+
+  // Cập nhật Tổng tiền và Tổng SL vào tfoot
+  el('mTotalQty').textContent = grandTotalQty;
+  el('mTotalAmount').textContent = formatter.format(grandTotalAmount);
 }
 
 // ====== Gắn sự kiện cho nút "Chấp nhận & Xuất kho" ======
@@ -278,12 +309,13 @@ async function handleAccept() {
         alert('Lỗi: Kho không đủ hàng để đáp ứng phiếu này (xem các dòng màu đỏ).\nVui lòng kiểm tra lại tồn kho hoặc yêu cầu Store hủy phiếu.');
         return;
     }
-    
-    if (!confirm('Hệ thống đã tự động chọn lô theo nguyên tắc FEFO (Hết hạn trước - Xuất trước).\n\nBạn có chắc chắn muốn XUẤT KHO theo kế hoạch này?')) {
+    // Sửa lại confirm (vì FEFO vẫn chạy ngầm)
+    if (!confirm('Hệ thống đã tự động chọn lô theo nguyên tắc FEFO.\n\Bây giờ bạn có chắc chắn muốn XUẤT KHO theo kế hoạch này?')) {
         return;
     }
     
     // Build body từ PickList (Backend cần list này để trừ kho)
+    // GỬI LÊN batchId VẪN BÌNH THƯỜNG (dù FE không hiển thị)
     const lines = CURRENT_MODAL_ITEMS.map(item => ({
         goodId: item.goodID,
         batchId: item.batchID,
@@ -305,19 +337,17 @@ async function handleAccept() {
     }
 }
 
-// ====== Gắn sự kiện cho nút "Từ chối" (Hàm Mới) ======
 async function handleReject() {
     if (!confirm('Bạn có chắc chắn muốn TỪ CHỐI (HỦY) phiếu này không?\n\nHàng đã đặt giữ (Reserved) sẽ được trả lại cho kho.')) {
         return;
     }
     
     try {
-        // API POST /api/warehouse/transfers/{id}/reject
         await api(`/api/warehouse/transfers/${CURRENT_MODAL_ID}/reject`, 'POST');
         
         alert('Đã từ chối phiếu thành công. Phiếu đã chuyển sang trạng thái "Cancelled".');
         MODAL_INSTANCE.hide();
-        loadTransfers(); // Tải lại danh sách
+        loadTransfers(); 
         
     } catch(e) {
         alert('Lỗi khi từ chối phiếu: ' + e.message);
