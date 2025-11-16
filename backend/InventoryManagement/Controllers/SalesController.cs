@@ -586,8 +586,17 @@ namespace InventoryManagement.Controllers
             var fromTime = fromUtc ?? from;
             var toTime = toUtc ?? to;
 
-            if (fromTime.HasValue) q = q.Where(s => s.CreatedAt >= fromTime.Value);
-            if (toTime.HasValue) q = q.Where(s => s.CreatedAt < toTime.Value);
+            if (fromTime.HasValue)
+            {
+                var start = fromTime.Value.Date;
+                q = q.Where(s => s.CreatedAt >= start);
+            }
+
+            if (toTime.HasValue)
+            {
+                var endExclusive = toTime.Value.Date.AddDays(1);
+                q = q.Where(s => s.CreatedAt < endExclusive);
+            }
 
             var total = await q.CountAsync(ct);
 
