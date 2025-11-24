@@ -60,31 +60,26 @@
 
     <!-- STEP 1: yêu cầu mã -->
     <form id="step1" novalidate>
-      <div class="mb-2 step">Bước 1/2 — Gửi mã xác minh</div>
-      <div class="mb-3">
-        <label class="form-label">Tài khoản <span class="text-danger">*</span></label>
-        <div class="input-group pill">
-          <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-          <input id="username" class="form-control" autocomplete="username" placeholder="username" required>
-        </div>
-      </div>
-      <div class="mb-2">
-        <label class="form-label">Email <span class="text-danger">*</span></label>
-        <div class="input-group pill">
-          <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-          <input id="email" type="email" class="form-control" autocomplete="email" placeholder="you@example.com" required>
-        </div>
-        <div class="form-text hint">Bắt buộc nhập <b>cả Username và Email</b>.</div>
-      </div>
+  <div class="mb-2 step">Bước 1/2 — Gửi mã xác minh</div>
+  <div class="mb-3">
+    <label class="form-label">Tài khoản <span class="text-danger">*</span></label>
+    <div class="input-group pill">
+      <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+      <input id="username" class="form-control" autocomplete="username" placeholder="username" required>
+    </div>
+    <div class="form-text hint">Nhập username để nhận mã xác minh qua email đã đăng ký.</div>
+  </div>
 
-      <div class="d-flex gap-2 mt-3">
-        <a class="btn btn-outline-secondary flex-fill" href="login.html"><i class="bi bi-arrow-left me-1"></i> Về đăng nhập</a>
-        <button id="btnSend" type="submit" class="btn btn-primary flex-fill">
-          <span id="spnSend" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-          <i class="bi bi-send me-1"></i> Gửi mã
-        </button>
-      </div>
-    </form>
+  <div class="d-flex gap-2 mt-3">
+    <a class="btn btn-outline-secondary flex-fill" href="login.html">
+      <i class="bi bi-arrow-left me-1"></i> Về đăng nhập
+    </a>
+    <button id="btnSend" type="submit" class="btn btn-primary flex-fill">
+      <span id="spnSend" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+      <i class="bi bi-send me-1"></i> Gửi mã
+    </button>
+  </div>
+</form>
 
     <!-- STEP 2: nhập mã + đặt mật khẩu -->
     <form id="step2" class="d-none" novalidate>
@@ -144,7 +139,6 @@
   const step2 = document.getElementById('step2');
 
   const username = document.getElementById('username');
-  const email    = document.getElementById('email');
 
   const btnSend  = document.getElementById('btnSend');
   const spnSend  = document.getElementById('spnSend');
@@ -235,39 +229,47 @@
   //  Actions 
   // Step 1: gửi mã
   step1.addEventListener('submit', async (e)=>{
-    e.preventDefault(); clearAlert();
+  e.preventDefault();
+  clearAlert();
 
-    const u = username.value.trim();
-    const em = email.value.trim();
-    if(!u || !em){ showAlert('Vui lòng nhập đầy đủ Username và Email.'); return; }
+  const u = username.value.trim();
+  if (!u) {
+    showAlert('Vui lòng nhập Username.');
+    return;
+  }
 
-    busySend(true);
-    try{
-      await postJson(ENDPOINTS.forgot, { username: u, email: em });
-      showAlert('✅ Đã gửi mã xác minh. Vui lòng kiểm tra hộp thư hoặc kênh nhận mã của bạn.', 'success');
-      gotoStep2();
-    }catch(err){
-      showAlert(err?.message || 'Không gửi được mã. Vui lòng thử lại.');
-    }finally{
-      busySend(false);
-    }
-  });
+  busySend(true);
+  try {
+    await postJson(ENDPOINTS.forgot, { username: u }); // chỉ gửi username
+    showAlert('✅ Đã gửi mã xác minh. Vui lòng kiểm tra email đã đăng ký.', 'success');
+    gotoStep2();
+  } catch (err) {
+    showAlert(err?.message || 'Không gửi được mã. Vui lòng thử lại.');
+  } finally {
+    busySend(false);
+  }
+});
 
-  // Gửi lại mã
+
   btnResend.addEventListener('click', async ()=>{
-    if(remain>0) return;
-    clearAlert();
-    const u = username.value.trim();
-    const em = email.value.trim();
-    if(!u && !em){ showAlert('Vui lòng quay lại Bước 1 và nhập Username hoặc Email.'); return; }
-    try{
-      await postJson(ENDPOINTS.forgot, { username: u || null, email: em || null });
-      showAlert('Đã gửi lại mã xác minh.', 'success');
-      startCountdown(60);
-    }catch(err){
-      showAlert(err?.message || 'Không gửi lại được mã.');
-    }
-  });
+  if (remain > 0) return;
+  clearAlert();
+
+  const u = username.value.trim();
+  if (!u) {
+    showAlert('Vui lòng quay lại Bước 1 và nhập Username.');
+    return;
+  }
+
+  try{
+    await postJson(ENDPOINTS.forgot, { username: u });
+    showAlert('Đã gửi lại mã xác minh.', 'success');
+    startCountdown(60);
+  }catch(err){
+    showAlert(err?.message || 'Không gửi lại được mã.');
+  }
+});
+
 
   // Step 2: đặt lại mật khẩu
   step2.addEventListener('submit', async (e)=>{
@@ -291,7 +293,6 @@
     try{
       await postJson(ENDPOINTS.reset, {
         username: username.value.trim(),
-        email: email.value.trim(),
         code: code.value.trim(),
         newPassword: newPw.value
       });
