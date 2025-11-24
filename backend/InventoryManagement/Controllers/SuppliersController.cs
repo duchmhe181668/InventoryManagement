@@ -195,23 +195,39 @@ public class SuppliersController : ControllerBase
         pageSize = pageSize <= 0 ? 10 : Math.Min(pageSize, 100);
 
         var q = _db.PurchaseOrders.AsNoTracking().Where(p => p.SupplierID == id);
-        if (status is { Count: > 0 }) q = q.Where(p => status.Contains(p.Status));
+
+        if (status is { Count: > 0 })
+        {
+            var st = status.Select(s => s.Trim().ToLower()).ToList();
+            q = q.Where(p => st.Contains(p.Status.ToLower()));
+        }
 
         var total = await q.CountAsync();
+
         var items = await q.OrderByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(p => new POSummaryDto
             {
                 POID = p.POID,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
                 LineCount = _db.PurchaseOrderLines.Count(l => l.POID == p.POID),
-                TotalQty = _db.PurchaseOrderLines.Where(l => l.POID == p.POID).Sum(l => (decimal?)l.Quantity) ?? 0
+                TotalQty = _db.PurchaseOrderLines
+                    .Where(l => l.POID == p.POID)
+                    .Sum(l => (decimal?)l.Quantity) ?? 0
             })
             .ToListAsync();
 
-        return Ok(new PagedResult<POSummaryDto> { Page = page, PageSize = pageSize, TotalItems = total, Items = items });
+        return Ok(new PagedResult<POSummaryDto>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = total,
+            Items = items
+        });
     }
+
 
     // GET /api/suppliers/{id}/receipts?status=Confirmed&page=1&pageSize=10
     [HttpGet("{id:int}/receipts")]
@@ -222,23 +238,41 @@ public class SuppliersController : ControllerBase
         pageSize = pageSize <= 0 ? 10 : Math.Min(pageSize, 100);
 
         var q = _db.Receipts.AsNoTracking().Where(r => r.SupplierID == id);
-        if (status is { Count: > 0 }) q = q.Where(r => status.Contains(r.Status));
+
+        if (status is { Count: > 0 })
+        {
+            var st = status.Select(s => s.Trim().ToLower()).ToList();
+            q = q.Where(r => st.Contains(r.Status.ToLower()));
+        }
 
         var total = await q.CountAsync();
+
         var items = await q.OrderByDescending(r => r.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(r => new ReceiptSummaryDto
             {
                 ReceiptID = r.ReceiptID,
                 CreatedAt = r.CreatedAt,
                 Status = r.Status,
                 DetailCount = _db.ReceiptDetails.Count(d => d.ReceiptID == r.ReceiptID),
-                TotalQty = _db.ReceiptDetails.Where(d => d.ReceiptID == r.ReceiptID).Sum(d => (decimal?)d.Quantity) ?? 0,
-                TotalCost = _db.ReceiptDetails.Where(d => d.ReceiptID == r.ReceiptID).Sum(d => (decimal?)(d.UnitCost * d.Quantity)) ?? 0
+                TotalQty = _db.ReceiptDetails
+                    .Where(d => d.ReceiptID == r.ReceiptID)
+                    .Sum(d => (decimal?)d.Quantity) ?? 0,
+                TotalCost = _db.ReceiptDetails
+                    .Where(d => d.ReceiptID == r.ReceiptID)
+                    .Sum(d => (decimal?)(d.UnitCost * d.Quantity)) ?? 0
             })
             .ToListAsync();
 
-        return Ok(new PagedResult<ReceiptSummaryDto> { Page = page, PageSize = pageSize, TotalItems = total, Items = items });
+        return Ok(new PagedResult<ReceiptSummaryDto>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = total,
+            Items = items
+        });
     }
+
 
 }

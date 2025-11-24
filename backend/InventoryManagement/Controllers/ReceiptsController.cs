@@ -117,8 +117,7 @@ namespace InventoryManagement.Controllers
                     Status = r.Status!,
                     //CreatedAt = r.CreatedAt,
                     CreatedAt = DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc),
-                    TotalLines = r.Details.Count(), // ✅ dùng navigation
-                                                    // Sum nullable rồi coalesce về 0 để SQL dịch được
+                    TotalLines = r.Details.Count(), 
                     TotalAmount = r.Details
                     .Select(d => (decimal?)(d.Quantity * d.UnitCost))
                     .Sum() ?? 0m
@@ -209,14 +208,14 @@ namespace InventoryManagement.Controllers
             if (dto.Items == null || dto.Items.Count == 0) return BadRequest("Items rỗng.");
 
             // Map GoodID -> (Quantity, UnitPrice) từ PO line
-            // LƯU Ý: Ở DB của bạn line có field Quantity (KHÔNG phải QuantityOrdered)
+            // line có field Quantity (KHÔNG phải QuantityOrdered)
             var poLineByGood = po.Lines
                 .GroupBy(l => l.GoodID)
                 .ToDictionary(
                     g => g.Key,
                     g => new
                     {
-                        Qty = g.Sum(x => x.Quantity),      // ✅ dùng Quantity có sẵn
+                        Qty = g.Sum(x => x.Quantity),      // dùng Quantity có sẵn
                         UnitPrice = g.First().UnitPrice    // fallback unit price
                     });
 
@@ -258,7 +257,7 @@ namespace InventoryManagement.Controllers
 
 
             // 4) Tạo Receipt 
-            var currentUserId = GetSupplierIdFromToken(); // nếu có, trả int?; nếu chưa có thì bỏ qua
+            var currentUserId = GetSupplierIdFromToken(); 
             var receipt = new Receipt
             {
                 POID = po.POID,
@@ -275,7 +274,7 @@ namespace InventoryManagement.Controllers
             foreach (var it in dto.Items)
             {
                 var qty = it.Quantity ?? poLineByGood[it.GoodID].Qty;
-                var unit = it.UnitPrice; // ✅ supplier nhập, bắt buộc
+                var unit = it.UnitPrice; 
                 var batchUpper = NormalizeBatch(it.BatchNo);
 
                 // Tìm hoặc tạo Batch theo (GoodID, BatchNo, ExpiryDate) để tránh trùng lặp

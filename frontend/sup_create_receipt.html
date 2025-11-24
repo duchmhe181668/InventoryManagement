@@ -219,9 +219,9 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
       let grand = 0;
       document.querySelectorAll("#lineTableBody tr").forEach(tr => {
         const gid = tr.dataset.goodId;
-        const qty = parseFloat(el(`qty-${gid}`).value || "0");
-        const price = parseFloat(el(`price-${gid}`).value || "0");
-        const amount = (isFinite(qty) ? qty : 0) * (isFinite(price) ? price : 0);
+        const qty = parseFloat(el(`qty-${gid}`).value || "");
+        const price = parseFloat(el(`price-${gid}`).value || "");
+        const amount = (isFinite(qty) ? qty : 0) * (isFinite(price) ? price : "");
         el(`amt-${gid}`).textContent = fmt(amount);
         grand += amount;
       });
@@ -329,10 +329,9 @@ console.log('URL poid', new URLSearchParams(location.search).get('poid'));
 
 function fmtVN(dt) {
   if (!dt) return "";
-  const s = String(dt);
-  const iso = /[zZ]|[+\-]\d{2}:\d{2}$/.test(s) ? s : (s + 'Z');
-  return new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Bangkok' });
+  return new Date(dt).toLocaleString('vi-VN');
 }
+
 
 document.querySelectorAll("input[id^='exp-']").forEach(inp=>{
   inp.addEventListener("change", ()=>{

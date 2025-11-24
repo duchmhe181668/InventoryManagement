@@ -153,9 +153,10 @@ async function openDetail(id, name){
   await Promise.all([loadPOPage(), loadRCPage()]);
 }
 
+//Báo cáo
 async function loadDetailSummary(){
   lastDetail = null;
-  const params = new URLSearchParams({ max: '1' }); // chỉ cần summary
+  const params = new URLSearchParams({ max: '1' }); 
   try{
     const res = await fetch(`${API_SUPPLIERS}/${currentSupplierId}?${params}`, { headers:{ 'Content-Type':'application/json', ...authHeaders() }});
     if (res.ok){
